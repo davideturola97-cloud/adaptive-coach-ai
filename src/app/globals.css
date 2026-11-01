@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+/* Adaptive Coach AI — tema scuro "pista notturna": grafite profonda, corsa arancio, bici blu. */
+@theme {
+  --color-bg: #0a0d12;
+  --color-surface: #11151c;
+  --color-surface-2: #171c25;
+  --color-line: #222936;
+  --color-fg: #edf0f4;
+  --color-muted: #8a94a4;
+  --color-faint: #5b6575;
+  --color-run: #ff6a3d;
+  --color-run-soft: #ff6a3d26;
+  --color-bike: #3d9bff;
+  --color-bike-soft: #3d9bff26;
+  --color-ok: #4fd18b;
+  --color-warn: #f5b942;
+  --color-bad: #f2685f;
+  --color-estimate: #c9a7ff;
+
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-barlow), var(--font-manrope), ui-sans-serif, sans-serif;
+
+  --radius-card: 1.1rem;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.num {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-fg);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Recharts: testo e griglie coerenti col tema */
+.recharts-cartesian-axis-tick-value {
+  fill: var(--color-muted);
+  font-size: 11px;
+}
+.recharts-cartesian-grid line {
+  stroke: var(--color-line);
+}
