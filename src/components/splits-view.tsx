@@ -19,15 +19,15 @@ export function SplitsView({ splits, sport, planned, athlete }: { splits: Split[
         <table className="w-full text-sm tabular-nums">
           <thead className="text-left text-xs text-muted">
             <tr>
-              <th className="py-1 pr-2 font-medium">{sport === "swim" ? "Tratto" : "Km"}</th>
-              <th className="w-full py-1 pr-2 font-medium">Passo</th>
+              <th className="py-1 pr-2 font-medium">{sport === "swim" ? "Tratto" : sport === "bike" ? "Parziale" : "Km"}</th>
+              <th className="w-full py-1 pr-2 font-medium">{sport === "bike" ? "Velocità" : "Passo"}</th>
               {hasHr && <th className="py-1 text-right font-medium">FC</th>}
             </tr>
           </thead>
           <tbody>
             {splits.map((s) => (
               <tr key={s.n} className={s === a.fastest ? "text-ok" : s === a.slowest ? "text-warn" : undefined}>
-                <td className="py-1 pr-2">{s.km < 0.9 && sport !== "swim" ? `${s.n} (${s.km.toLocaleString("it-IT")})` : s.n}</td>
+                <td className="py-1 pr-2">{(sport === "bike" ? s.km !== 1 : s.km < 0.9 && sport !== "swim") ? `${s.n} (${s.km.toLocaleString("it-IT")} km)` : s.n}</td>
                 <td className="py-1 pr-2">
                   {s.paceSec ? (
                     <span className="flex items-center gap-2">
@@ -46,7 +46,7 @@ export function SplitsView({ splits, sport, planned, athlete }: { splits: Split[
       </div>
       {a.findings.length > 0 && (
         <div className="rounded-xl bg-surface-2 p-3 text-sm">
-          <p className="font-semibold">Valutazione</p>
+          <p className="font-semibold">Valutazione degli intertempi</p>
           <ul className="mt-1 list-disc space-y-1 pl-4 text-muted">{a.findings.map((f) => <li key={f}>{f}</li>)}</ul>
         </div>
       )}

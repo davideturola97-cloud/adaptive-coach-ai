@@ -9,6 +9,14 @@ import { SPORTS } from "@/lib/domain/sports";
 import type { Sport } from "@/lib/domain/types";
 import { formatDuration, formatTime } from "@/lib/training/formulas";
 import { SplitsView } from "@/components/splits-view";
+import { ActivityAnalysisCard } from "@/components/activity-analysis";
+import type { ActivityData, AthleteData, PlannedData } from "@/lib/training/analysis";
+
+export interface AnalysisContext {
+  athlete: AthleteData;
+  plan: (PlannedData & { date: string })[];
+  history: ActivityData[];
+}
 
 /** Riduce l'immagine nel browser (max 1600 px, JPEG): meno dati inviati, meno costi, nessun file salvato. */
 async function shrink(file: File): Promise<string> {
@@ -21,7 +29,7 @@ async function shrink(file: File): Promise<string> {
   return canvas.toDataURL("image/jpeg", 0.85);
 }
 
-export function ScreenshotImport({ today, sports, enabled, demo }: { today: string; sports: Sport[]; enabled: boolean; demo: boolean }) {
+export function ScreenshotImport({ today, sports, enabled, demo, context }: { today: string; sports: Sport[]; enabled: boolean; demo: boolean; context: AnalysisContext }) {
   const [busy, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Extraction | null>(null);
@@ -114,9 +122,25 @@ export function ScreenshotImport({ today, sports, enabled, demo }: { today: stri
               {!result.data && <p className="mt-2 text-xs text-muted">La data non era nello screenshot: ho messo oggi, correggila se serve.</p>}
             </div>
           </div>
+          {sport && result.durata_minuti && (
+            <ActivityAnalysisCard
+              a={{
+                date: result.data ?? today,
+                sport,
+                durationMin: result.durata_minuti,
+                distanceKm: result.distanza_km ?? undefined,
+                avgHr: result.fc_media ?? undefined,
+                avgPowerW: result.potenza_media_w ?? undefined,
+                elevationM: result.dislivello_m ?? undefined,
+              }}
+              planned={context.plan.find((w) => w.date === (result.data ?? today) && w.sport === sport)}
+              athlete={context.athlete}
+              history={context.history}
+            />
+          )}
           {result.splits.length > 0 && sport && (
             <div className="rounded-[var(--radius-card)] border border-line bg-surface p-4 sm:p-5">
-              <SplitsView splits={result.splits} sport={sport} />
+              <SplitsView splits={result.splits} sport={sport} planned={context.plan.find((w) => w.date === (result.data ?? today) && w.sport === sport)} athlete={context.athlete} />
               {result.splitsUnreadable > 0 && <p className="mt-2 text-xs text-warn">{result.splitsUnreadable} parziali non leggibili: restano vuoti, non li ho stimati.</p>}
             </div>
           )}

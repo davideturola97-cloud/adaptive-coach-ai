@@ -31,7 +31,7 @@ export default async function ActivityPage({ params, searchParams }: { params: P
         </p>
       )}
       {planned && <Link href={`/allenamenti/${planned.id}`} className="text-sm font-semibold underline">Vedi la seduta del programma</Link>}
-      <ActivitySummary a={a} back="/allenamenti" editable={mode === "utente"} planned={planned} athlete={athlete} />
+      <ActivitySummary a={a} back="/allenamenti" editable={mode === "utente"} planned={planned} athlete={athlete} history={activities} />
     </div>
   );
 }

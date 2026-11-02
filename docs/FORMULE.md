@@ -104,3 +104,19 @@ Calcolati sui parziali completi (l'ultimo, se più corto, si mostra ma non entra
   passo medio = durata ÷ distanza; FC media pesata sul tempo di ogni parziale. Prevalgono sul riepilogo letto; differenze oltre il 3%
   (4% per la FC) vengono segnalate. Se i parziali coprono meno del 90% della distanza del riepilogo, la tabella è considerata tagliata
   e si tiene il riepilogo.
+
+## Analisi della seduta (src/lib/training/analysis.ts)
+
+Per ogni sport, anche senza intertempi. Regole fisse; i valori legati ai test sono stime.
+
+- **Percorso** (corsa e bici): dislivello ÷ km. Sotto 5 m/km pianeggiante, 5–10 ondulato, 10–20 collinare, oltre di montagna.
+- **Bici**: velocità media; potenza media ÷ FTP e zona di Coggan; W/kg se c'è il peso; oltre 2 ore promemoria su cibo e acqua.
+  In una seduta di endurance una media oltre il 75% della FTP è segnalata come alta. Senza potenza: FC e RPE.
+- **Corsa**: passo ÷ soglia. Da 1,15 in su facile, 1,05–1,15 medio, 0,97–1,05 vicino alla soglia, sotto sopra la soglia.
+  In una seduta facile un passo sotto soglia × 1,15 (lungo × 1,12) è segnalato come veloce.
+- **Nuoto**: passo per 100 m rispetto al CSS (entro 3 s ritmo CSS, entro 10 s aerobico sostenuto, oltre facile).
+- **Seduta prevista**: durata sotto l'80% o sopra il 120% segnalata; RPE oltre ±1 dall'intervallo previsto segnalato.
+- **Storico**: velocità o passo e FC media confrontati con la media delle ultime 6 uscite dello stesso sport (servono almeno 3).
+  Differenze sotto 0,5 km/h, 3 s/km (o /100 m) o 4 battiti sono considerate nella norma.
+- **Carico**: minuti × RPE.
+- Intertempi in bici: velocità in km/h, parziali anche da 5 km (lap); conta come completo un parziale lungo almeno il 90% del più lungo.

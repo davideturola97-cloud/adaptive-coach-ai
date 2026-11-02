@@ -1,8 +1,10 @@
 import { HeartPulse, Trash2 } from "lucide-react";
 import { deleteActivity } from "@/app/allenamenti/actions";
 import { Card, OriginTag } from "@/components/ui";
-import type { AthleteProfile, CompletedActivity, PlannedWorkout } from "@/lib/domain/types";
+import type { CompletedActivity } from "@/lib/domain/types";
 import { SplitsView } from "./splits-view";
+import { ActivityAnalysisCard } from "./activity-analysis";
+import type { ActivityData, AthleteData, PlannedData } from "@/lib/training/analysis";
 import { formatDuration, formatPace, formatSwimPace } from "@/lib/training/formulas";
 
 function Item({ label, value }: { label: React.ReactNode; value: string }) {
@@ -15,7 +17,7 @@ function Item({ label, value }: { label: React.ReactNode; value: string }) {
 }
 
 /** Dati misurati di un'attività e il feedback dell'atleta, con la possibilità di cancellarla. */
-export function ActivitySummary({ a, back, editable, planned, athlete }: { a: CompletedActivity; back: string; editable: boolean; planned?: Pick<PlannedWorkout, "type">; athlete?: Pick<AthleteProfile, "thresholdPaceSecPerKm"> }) {
+export function ActivitySummary({ a, back, editable, planned, athlete, history }: { a: CompletedActivity; back: string; editable: boolean; planned?: PlannedData; athlete?: AthleteData; history?: ActivityData[] }) {
   const pace =
     a.distanceKm && a.distanceKm > 0
       ? a.sport === "run"
@@ -41,6 +43,7 @@ export function ActivitySummary({ a, back, editable, planned, athlete }: { a: Co
         {a.avgPowerW && <Item label="Potenza media" value={`${a.avgPowerW} W`} />}
         {a.elevationM !== undefined && a.elevationM > 0 && <Item label="Dislivello" value={`${a.elevationM} m`} />}
       </div>
+      <ActivityAnalysisCard a={a} planned={planned} athlete={athlete} history={history} />
       {a.splits?.length ? <div className="border-t border-line pt-3"><SplitsView splits={a.splits} sport={a.sport} planned={planned} athlete={athlete} /></div> : null}
       {f && (
         <div className="flex flex-col gap-2 border-t border-line pt-3 text-sm">

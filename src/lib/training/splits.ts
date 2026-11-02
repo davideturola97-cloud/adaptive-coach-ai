@@ -42,10 +42,13 @@ export interface SplitAnalysis {
 const EASY: WorkoutType[] = ["corsa_facile", "lungo", "recupero_corsa"];
 
 export function analyzeSplits(splits: Split[], sport: Sport, planned?: Pick<PlannedWorkout, "type">, athlete?: Pick<AthleteProfile, "thresholdPaceSecPerKm">): SplitAnalysis {
-  const full = splits.filter((s) => s.paceSec && s.km >= (sport === "swim" ? 0.09 : 0.9));
+  const minKm = sport === "swim" ? 0.09 : sport === "bike" ? Math.max(0.9, Math.max(...splits.map((s) => s.km)) * 0.9) : 0.9;
+  const full = splits.filter((s) => s.paceSec && s.km >= minKm);
   const fmt = (p: number) => formatSplitPace(sport, p);
   const unit = sport === "swim" ? "100 m" : "km";
-  const label = (s: Split) => (sport === "swim" ? `${s.n}° tratto` : `${s.n}° km`);
+  const label = (s: Split) => (sport === "swim" ? `${s.n}° tratto` : sport === "bike" ? `${s.n}° parziale` : `${s.n}° km`);
+  // In bici si ragiona in km/h: la differenza di passo diventa differenza di velocità.
+  const gap = (a: number, b: number) => (sport === "bike" ? `${Math.abs(3600 / a - 3600 / b).toFixed(1).replace(".", ",")} km/h` : `${Math.round(Math.abs(a - b))} secondi al ${unit}`);
   if (full.length < 3) {
     return { findings: full.length ? ["Troppo pochi parziali per una valutazione."] : [], trend: null };
   }
@@ -61,15 +64,15 @@ export function analyzeSplits(splits: Split[], sport: Sport, planned?: Pick<Plan
   const findings: string[] = [];
   const isIntervals = planned?.type === "ripetute" || planned?.type === "ripetute_nuoto" || planned?.type === "vo2max";
 
-  findings.push(`Passo medio sui parziali completi: ${fmt(avg)}. Il più veloce il ${label(fastest)} (${fmt(fastest.paceSec!)}), il più lento il ${label(slowest)} (${fmt(slowest.paceSec!)}).`);
+  findings.push(`${sport === "bike" ? "Velocità media" : "Passo medio"} sui parziali completi: ${fmt(avg)}. Il più veloce il ${label(fastest)} (${fmt(fastest.paceSec!)}), il più lento il ${label(slowest)} (${fmt(slowest.paceSec!)}).`);
 
   let trend: SplitAnalysis["trend"] = "regolare";
   if (diff <= -5) {
     trend = "progressione";
-    findings.push(`Seconda metà più veloce di ${Math.round(-diff)} secondi al ${unit}: chiusura in progressione, ottima gestione.`);
+    findings.push(`Seconda metà più veloce di ${gap(first, second)}: chiusura in progressione, ottima gestione.`);
   } else if (diff >= 8) {
     trend = "calo";
-    findings.push(`Seconda metà più lenta di ${Math.round(diff)} secondi al ${unit}: probabilmente sei partito troppo forte o è arrivata la fatica.`);
+    findings.push(`Seconda metà più lenta di ${gap(first, second)}${sport === "bike" ? ": può dipendere dal percorso (salite, vento) o dalla fatica" : ": probabilmente sei partito troppo forte o è arrivata la fatica"}.`);
   } else {
     findings.push("Prima e seconda metà quasi uguali: andatura regolare.");
   }
@@ -81,7 +84,7 @@ export function analyzeSplits(splits: Split[], sport: Sport, planned?: Pick<Plan
 
   if (full.length >= 5) {
     const last2 = mean(paces.slice(-2));
-    if (last2 - avg >= 10 && trend !== "progressione") findings.push(`Negli ultimi 2 ${unit === "km" ? "km" : "tratti"} sei calato di ${Math.round(last2 - avg)} secondi rispetto alla media.`);
+    if (last2 - avg >= 10 && trend !== "progressione") findings.push(`Negli ultimi 2 ${sport === "bike" ? "parziali" : unit === "km" ? "km" : "tratti"} sei calato di ${gap(last2, avg)} rispetto alla media.`);
   }
 
   if (isIntervals) {
@@ -116,7 +119,7 @@ export function analyzeSplits(splits: Split[], sport: Sport, planned?: Pick<Plan
     if (rise >= 5) findings.push(`Il battito è salito del ${rise.toFixed(0)}% a ritmo costante (deriva cardiaca): caldo, poca idratazione o fondo ancora da costruire.`);
   }
 
-  const partial = splits.find((s) => s.km < (sport === "swim" ? 0.09 : 0.9));
+  const partial = splits.find((s) => s.km < minKm);
   if (partial) findings.push(`L'ultimo parziale (${partial.km.toLocaleString("it-IT")} km) è più corto e non entra nei confronti.`);
 
   return { findings, trend, fastest, slowest, avgPaceSec: avg, variabilityPct: cv };
