@@ -48,3 +48,34 @@ export async function persistProfile(supabase: SupabaseClient, userId: string, p
   }
   return null;
 }
+
+/**
+ * Ricontrolla i test massimali già programmati: se una gara A o B li rende troppo vicini,
+ * li sposta nel primo giorno adatto (o li rimette "da programmare" se non ce n'è uno).
+ * Restituisce una frase per ogni test spostato.
+ */
+export async function reconcileTests(supabase: SupabaseClient): Promise<string[]> {
+  const { getAppData } = await import("./repository");
+  const { athlete, events, plannedTests, today } = await getAppData();
+  const { TEST_CATALOG, pickTestDay, raceConflict } = await import("@/lib/training/tests");
+  const { formatDayMonth } = await import("@/lib/dates");
+  const moved: string[] = [];
+  const busy = plannedTests.filter((t) => t.status === "programmato" && t.dueDate).map((t) => t.dueDate!);
+
+  for (const t of plannedTests) {
+    if (t.status !== "programmato" || !t.dueDate || !TEST_CATALOG[t.kind].maximal) continue;
+    const race = raceConflict(t.dueDate, events);
+    if (!race) continue;
+    const day = pickTestDay(today, athlete.availableDays, events, busy.filter((d) => d !== t.dueDate));
+    const patch = day ? { due_date: day } : { status: "proposto", due_date: null };
+    const { error } = await supabase.from("planned_tests").update(patch).eq("id", t.id);
+    if (error) continue;
+    if (day) busy.push(day);
+    moved.push(
+      day
+        ? `${TEST_CATALOG[t.kind].label} spostato al ${formatDayMonth(day, false)}: era troppo vicino a ${race.name}.`
+        : `${TEST_CATALOG[t.kind].label} tolto dal calendario: era troppo vicino a ${race.name} e non c'è un giorno adatto nelle prossime settimane.`,
+    );
+  }
+  return moved;
+}

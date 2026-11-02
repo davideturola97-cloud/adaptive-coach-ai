@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { todayISO } from "@/lib/dates";
 import type { Sport, TestKind } from "@/lib/domain/types";
+import { reconcileTests } from "@/lib/data/mutations";
 import { getAppData } from "@/lib/data/repository";
 import { getUser } from "@/lib/supabase/server";
 import { parseTime } from "@/lib/training/formulas";
@@ -146,6 +147,14 @@ export async function recordResult(_: TestState, fd: FormData): Promise<TestStat
     .in("status", ["proposto", "programmato", "rimandato", "rifiutato"]);
 
   return done(`Risultato salvato: ${evaluated.derived.map((d) => `${d.label} ${d.value}`).slice(0, 2).join(" · ")} (stima).`);
+}
+
+/** Sposta i test programmati troppo vicini a una gara. */
+export async function fixConflicts(): Promise<TestState> {
+  const { supabase, user } = await getUser();
+  if (!user) return { error: "Sessione scaduta: accedi di nuovo." };
+  const moved = await reconcileTests(supabase);
+  return done(moved.length ? moved.join(" ") : "Nessun test da spostare.");
 }
 
 /** Propone un nuovo test per uno sport (per esempio una rivalutazione). */

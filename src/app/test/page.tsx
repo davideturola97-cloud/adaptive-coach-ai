@@ -5,8 +5,8 @@ import { SPORT_KEYS } from "@/lib/domain/sports";
 import type { ValueOrigin } from "@/lib/domain/types";
 import { getAppData } from "@/lib/data/repository";
 import { formatPace, formatSwimPace } from "@/lib/training/formulas";
-import { TESTS_BY_SPORT, TEST_CATALOG } from "@/lib/training/tests";
-import { AddTestForm, ReadinessForm, ResultForm, TestCard } from "./test-cards";
+import { raceConflict, TESTS_BY_SPORT, TEST_CATALOG } from "@/lib/training/tests";
+import { AddTestForm, FixConflictsButton, ReadinessForm, ResultForm, TestCard } from "./test-cards";
 
 export const dynamic = "force-dynamic";
 
@@ -30,13 +30,20 @@ function Param({ label, value, origin, date }: { label: string; value?: string; 
 
 export default async function TestPage({ searchParams }: { searchParams: Promise<{ benvenuto?: string }> }) {
   const { benvenuto } = await searchParams;
-  const { athlete: a, plannedTests, tests, readiness, today, mode } = await getAppData();
+  const { athlete: a, plannedTests, tests, readiness, today, mode, events } = await getAppData();
   const demo = mode === "demo";
   const practiced = SPORT_KEYS.filter((s) => a.sports.some((x) => x.sport === s));
   const open = plannedTests.filter((t) => t.status !== "completato");
   const maximalBlocked = !readiness || (readiness.flagged && !readiness.doctorCleared);
   const testable = practiced.filter((s) => TESTS_BY_SPORT[s]);
   const withoutOpen = testable.filter((s) => !open.some((t) => t.sport === s));
+  const conflicts = new Map(
+    open.flatMap((t) => {
+      if (t.status !== "programmato" || !t.dueDate || !TEST_CATALOG[t.kind].maximal) return [];
+      const race = raceConflict(t.dueDate, events);
+      return race ? [[t.id, race.name] as const] : [];
+    }),
+  );
 
   return (
     <>
@@ -47,6 +54,14 @@ export default async function TestPage({ searchParams }: { searchParams: Promise
           <Card className="border-ok/40 bg-ok/5">
             <p className="font-semibold">Profilo pronto!</p>
             <p className="mt-1 text-sm text-muted">Ecco i test che ti consiglio per partire. Se hai già un risultato recente, inseriscilo e salti il test.</p>
+          </Card>
+        )}
+
+        {conflicts.size > 0 && (
+          <Card className="flex flex-col gap-3 border-bad/50">
+            <p className="font-semibold text-bad">Un test è programmato troppo vicino a una gara</p>
+            <p className="text-sm text-muted">Nei 7 giorni prima di una gara A o B e nei 4 giorni dopo è meglio non fare test a tutta. Lo sposto nel primo giorno adatto?</p>
+            <FixConflictsButton demo={demo} />
           </Card>
         )}
 
@@ -74,7 +89,7 @@ export default async function TestPage({ searchParams }: { searchParams: Promise
           <SectionTitle hint={`${open.length} da fare`}>Test consigliati</SectionTitle>
           {open.length ? (
             <div className="grid gap-4 lg:grid-cols-2">
-              {open.map((t) => <TestCard key={t.id} t={t} today={today} maximalBlocked={maximalBlocked} demo={demo} />)}
+              {open.map((t) => <TestCard key={t.id} t={t} today={today} maximalBlocked={maximalBlocked} demo={demo} conflict={conflicts.get(t.id)} />)}
             </div>
           ) : (
             <Card className="text-sm text-muted">Nessun test in sospeso. Il coach te ne proporrà uno quando i parametri diventeranno vecchi o vedrà dei miglioramenti.</Card>

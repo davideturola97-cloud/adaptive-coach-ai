@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { reconcileTests } from "@/lib/data/mutations";
 import { eventFromForm, eventRow } from "@/lib/domain/event-schema";
 import { getUser } from "@/lib/supabase/server";
 
@@ -13,8 +14,9 @@ export async function addEvent(_: EventState, fd: FormData): Promise<EventState>
   if (!user) return { errors: ["Sessione scaduta: accedi di nuovo."] };
   const { error } = await supabase.from("events").insert(eventRow(parsed.data));
   if (error) return { errors: ["Salvataggio non riuscito. Riprova."] };
+  const moved = await reconcileTests(supabase);
   revalidatePath("/", "layout");
-  return { ok: `Gara "${parsed.data.name}" aggiunta.` };
+  return { ok: [`Gara "${parsed.data.name}" aggiunta.`, ...moved].join(" ") };
 }
 
 export async function deleteEvent(fd: FormData) {

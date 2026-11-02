@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { RaceEvent } from "@/lib/domain/types";
 import { cssFrom400200, cssFromRecentSwim, parseTime, thresholdPaceFromCooper } from "./formulas";
-import { declineDate, evaluateReadiness, evaluateTest, pickTestDay, postponeDate, proposeInitialTests, retestDue } from "./tests";
+import { declineDate, evaluateReadiness, evaluateTest, pickTestDay, postponeDate, proposeInitialTests, raceConflict, retestDue } from "./tests";
 
 describe("formule del nuoto", () => {
   it("CSS da 400 e 200 m", () => {
@@ -83,6 +83,13 @@ describe("rinvii e scelta del giorno", () => {
   it("le gare C non spostano i test", () => {
     const race: RaceEvent = { id: "r", name: "Gara C", date: "2026-11-08", kind: "singolo", sport: "run", priority: "C" };
     expect(pickTestDay(today, ["Sab"], [race])).toBe("2026-11-07");
+  });
+  it("riconosce un test troppo vicino a una gara già in calendario", () => {
+    const race: RaceEvent = { id: "r", name: "Ravenna", date: "2026-11-08", kind: "singolo", sport: "run", priority: "A" };
+    expect(raceConflict("2026-11-04", [race])?.name).toBe("Ravenna");
+    expect(raceConflict("2026-11-11", [race])?.name).toBe("Ravenna");
+    expect(raceConflict("2026-11-13", [race])).toBeNull();
+    expect(raceConflict("2026-10-31", [race])).toBeNull();
   });
   it("suggerisce un nuovo test dopo 8 settimane", () => {
     expect(retestDue("2026-08-01", today)).toBe(true);

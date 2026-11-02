@@ -8,7 +8,7 @@ import { SportBadge } from "@/components/ui";
 import { formatDayMonth, weekdayName } from "@/lib/dates";
 import type { PlannedTest, Sport, TestKind } from "@/lib/domain/types";
 import { READINESS_QUESTIONS, TEST_CATALOG, TESTS_BY_SPORT } from "@/lib/training/tests";
-import { changeTest, proposeTest, recordResult, saveReadiness, type TestState } from "./actions";
+import { changeTest, fixConflicts, proposeTest, recordResult, saveReadiness, type TestState } from "./actions";
 
 function Message({ state }: { state: TestState }) {
   if (state.error) return <p role="alert" className="rounded-xl border border-bad/40 bg-bad/10 px-4 py-3 text-sm text-bad">{state.error}</p>;
@@ -17,7 +17,7 @@ function Message({ state }: { state: TestState }) {
 }
 
 const STATUS_TEXT = (t: PlannedTest) => {
-  const d = t.dueDate ? `${weekdayName(t.dueDate)} ${formatDayMonth(t.dueDate, false)}` : "";
+  const d = t.dueDate ? `${weekdayName(t.dueDate).toLowerCase()} ${formatDayMonth(t.dueDate, false)}` : "";
   switch (t.status) {
     case "programmato": return `Programmato per ${d}`;
     case "rimandato": return `Rimandato a ${d}`;
@@ -78,7 +78,7 @@ export function ResultForm({ sport, initialKind, today, disabled }: { sport: Spo
   );
 }
 
-export function TestCard({ t, today, maximalBlocked, demo }: { t: PlannedTest; today: string; maximalBlocked: boolean; demo: boolean }) {
+export function TestCard({ t, today, maximalBlocked, demo, conflict }: { t: PlannedTest; today: string; maximalBlocked: boolean; demo: boolean; conflict?: string }) {
   const info = TEST_CATALOG[t.kind];
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState<TestState, FormData>(changeTest, {});
@@ -94,6 +94,7 @@ export function TestCard({ t, today, maximalBlocked, demo }: { t: PlannedTest; t
         <h3 className="text-lg font-bold">{info.label}</h3>
         <p className="mt-1 text-sm text-muted">{info.summary}</p>
         {t.reason && <p className="mt-1 text-sm text-muted">Perché questo test: {t.reason}</p>}
+        {conflict && <p className="mt-2 rounded-xl border border-bad/40 bg-bad/10 px-3 py-2 text-sm text-bad">Troppo vicino a {conflict}: un test a tutta in questi giorni toglie freschezza alla gara. Spostalo.</p>}
         {info.maximal && <p className="mt-2 inline-block rounded-md border border-warn/40 px-2 py-0.5 text-xs font-semibold text-warn">Sforzo massimale · circa {info.durationMin} minuti</p>}
       </div>
       <details className="text-sm">
@@ -170,6 +171,18 @@ export function AddTestForm({ sports, demo }: { sports: Sport[]; demo: boolean }
         </Field>
       </div>
       <button disabled={pending || demo} className="min-h-12 rounded-xl border border-line bg-surface px-5 text-sm font-semibold disabled:opacity-50">Aggiungi</button>
+      <Message state={state} />
+    </form>
+  );
+}
+
+export function FixConflictsButton({ demo }: { demo: boolean }) {
+  const [state, action, pending] = useActionState<TestState>(fixConflicts, {});
+  return (
+    <form action={action} className="flex flex-col gap-2">
+      <button disabled={pending || demo} className="min-h-12 rounded-xl bg-fg text-sm font-semibold text-bg disabled:opacity-50">
+        {pending ? "Sposto..." : "Sposta in un giorno adatto"}
+      </button>
       <Message state={state} />
     </form>
   );

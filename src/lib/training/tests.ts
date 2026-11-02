@@ -211,19 +211,25 @@ export function declineDate(today: string): string {
  */
 export function pickTestDay(today: string, availableDays: string[], events: RaceEvent[], busy: string[] = []): string | null {
   const days = availableDays.length ? availableDays : ["Mar", "Mer", "Gio", "Sab", "Dom"];
-  const races = events.filter((e) => e.priority !== "C").map((e) => e.date);
   for (let i = 2; i <= 42; i++) {
     const d = addDays(today, i);
     if (!days.includes(weekdayName(d, true))) continue;
     if (busy.includes(d)) continue;
-    const t = parseISODate(d).getTime();
-    const nearRace = races.some((r) => {
-      const diff = (parseISODate(r).getTime() - t) / 864e5;
-      return diff >= 0 ? diff < 7 : diff > -5;
-    });
-    if (!nearRace) return d;
+    if (!raceConflict(d, events)) return d;
   }
   return null;
+}
+
+/** La gara A o B che rende sconsigliato un test massimale in quel giorno (7 giorni prima, 4 dopo), se c'è. */
+export function raceConflict(date: string, events: RaceEvent[]): RaceEvent | null {
+  const t = parseISODate(date).getTime();
+  return (
+    events.find((e) => {
+      if (e.priority === "C") return false;
+      const diff = (parseISODate(e.date).getTime() - t) / 864e5;
+      return diff >= 0 ? diff < 7 : diff > -5;
+    }) ?? null
+  );
 }
 
 /** Suggerisce un nuovo test quando l'ultimo ha più di 8 settimane. */
