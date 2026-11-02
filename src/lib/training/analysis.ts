@@ -49,7 +49,7 @@ export function analyzeActivity(a: ActivityData, opts: { planned?: PlannedData; 
   const speed = speedOf(a);
   const ter = terrain(a);
   const name = { run: "Corsa", bike: "Uscita in bici", swim: "Nuotata", gym: "Seduta in palestra" }[a.sport];
-  const headline = `${name} di ${dur(a.durationMin)}${a.distanceKm ? `, ${it(a.distanceKm, a.distanceKm < 10 ? 2 : 1)} km` : ""}${ter ? `, percorso ${ter.label}` : ""}`;
+  const headline = `${name} di ${dur(a.durationMin)}${a.distanceKm ? (a.sport === "swim" ? `, ${Math.round(a.distanceKm * 1000)} m` : `, ${it(a.distanceKm, a.distanceKm < 10 ? 2 : 1)} km`) : ""}${ter ? `, percorso ${ter.label}` : ""}`;
 
   // --- Riepilogo per sport ---
   if (a.sport === "bike") {

@@ -99,7 +99,11 @@ Calcolati sui parziali completi (l'ultimo, se più corto, si mostra ma non entra
 - **Ripetute**: frazioni veloci (almeno 15 s/km sotto la mediana) uniformi se lo scarto massimo è entro 6 s/km.
 - **Seduta facile** (con soglia da test): km più veloci di soglia × 1,2 (lungo × 1,15) meno 5 s sono segnalati come troppo veloci.
 - **Deriva cardiaca**: a ritmo stabile, battito della seconda metà più alto di almeno il 5%.
-- Dagli screenshot: passi al miglio o ai 100 m convertiti al km; passi impossibili scartati, mai stimati.
+- Dagli screenshot: passi al miglio o ai 100 m convertiti al km; passi impossibili scartati, mai stimati. Se c'è il tempo del parziale si usa quello (più preciso del passo arrotondato).
+- **Nuoto**: vasche e tratti in metri (25, 50, 100, 400…); un valore da 10 in su è sempre in metri. Le righe da 0 m si scartano.
+  Le vasche più lente di 1,6 × il passo tipico (primo quartile) contengono una pausa e non entrano nei confronti;
+  quelle più veloci di 0,6 × sono considerate errori di rilevamento. Soglie: progressione 2 s/100 m, calo 3 s/100 m.
+  Una distanza totale oltre 20 km letta per il nuoto è in metri.
 - **Totali dagli intertempi** (screenshot): distanza = somma dei parziali; durata = somma di passo × km (solo se ogni parziale ha il passo);
   passo medio = durata ÷ distanza; FC media pesata sul tempo di ogni parziale. Prevalgono sul riepilogo letto; differenze oltre il 3%
   (4% per la FC) vengono segnalate. Se i parziali coprono meno del 90% della distanza del riepilogo, la tabella è considerata tagliata

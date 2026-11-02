@@ -5,7 +5,7 @@
  */
 import { z } from "zod";
 import type { Split, Sport } from "@/lib/domain/types";
-import { formatSplitPace, parsePace, plausiblePace, totalsFromSplits } from "@/lib/training/splits";
+import { formatSplitPace, parsePace, parseSplitTime, plausiblePace, totalsFromSplits } from "@/lib/training/splits";
 import type { ChatClient } from "./openai";
 
 export const ALLOWED_IMAGE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
@@ -28,7 +28,7 @@ export const SCREENSHOT_SCHEMA = {
         data: { type: ["string", "null"], description: "YYYY-MM-DD, solo se scritta nell'immagine" },
         titolo: { type: ["string", "null"] },
         durata_minuti: { type: ["number", "null"], description: "Tempo di movimento in minuti" },
-        distanza_km: { type: ["number", "null"] },
+        distanza_km: { type: ["number", "null"], description: "Sempre in km: per il nuoto 1500 m = 1.5, 970 m = 0.97" },
         passo: { type: ["string", "null"], description: "Come scritto, es. 5:12 /km" },
         velocita_kmh: { type: ["number", "null"] },
         fc_media: { type: ["number", "null"] },
@@ -36,7 +36,7 @@ export const SCREENSHOT_SCHEMA = {
         dislivello_m: { type: ["number", "null"] },
         intervalli: { type: ["string", "null"], description: "Breve descrizione delle ripetute se visibili" },
         illeggibili: { type: "array", items: { type: "string", enum: [...FIELDS] }, description: "Campi presenti ma non leggibili con certezza" },
-        unita_parziali: { type: ["string", "null"], enum: ["km", "mi", "100m", null], description: "Unità dei parziali come scritta" },
+        unita_parziali: { type: ["string", "null"], enum: ["km", "mi", "100m", "m", null], description: "Unità della colonna distanza dei parziali. Nuoto: m" },
         parziali: {
           type: "array",
           description: "Tabella degli intertempi (splits/parziali/lap), una riga per parziale, nell'ordine. Vuota se non c'è.",
@@ -45,9 +45,9 @@ export const SCREENSHOT_SCHEMA = {
             additionalProperties: false,
             properties: {
               n: { type: ["integer", "null"] },
-              distanza: { type: ["number", "null"], description: "Lunghezza del parziale nell'unità indicata (di solito 1)" },
+              distanza: { type: ["number", "null"], description: "Lunghezza del parziale nell'unità indicata (corsa e bici di solito 1 km; nuoto in metri, es. 25, 50, 100, 400)" },
               passo: { type: ["string", "null"], description: "Passo come scritto, es. 5:12" },
-              tempo: { type: ["string", "null"], description: "Tempo del parziale come scritto, se non c'è il passo" },
+              tempo: { type: ["string", "null"], description: "Tempo del parziale come scritto, es. 3:03 o 53s. Riportalo sempre se c'è la colonna" },
               velocita_kmh: { type: ["number", "null"] },
               fc: { type: ["number", "null"] },
               dislivello_m: { type: ["number", "null"] },
@@ -69,6 +69,7 @@ La durata è il tempo in movimento in minuti (es. 1:05:30 = 65.5). Sport: run (c
 Se c'è una tabella di intertempi (parziali, splits, lap, km per km), riportala riga per riga in "parziali", senza saltare righe e senza inventarne:
 per ogni riga il numero, la lunghezza del parziale (l'ultimo spesso è più corto, es. 0,3), il passo come scritto, e se presenti frequenza cardiaca e dislivello.
 Se una cella non è leggibile metti null in quella cella.
+Nuoto: le distanze sono quasi sempre in metri. distanza_km va comunque in km (970 m = 0.97); nei parziali usa unita_parziali "m" e la lunghezza di ogni vasca o tratto in metri; il passo del nuoto è ai 100 m.
 Se l'immagine non mostra un'attività sportiva, e_attivita = false.`;
 
 const nullableNum = (min: number, max: number) => z.number().min(min).max(max).nullable().catch(null);
@@ -88,12 +89,12 @@ const extractionSchema = z.object({
   dislivello_m: nullableNum(0, 10000),
   intervalli: z.string().max(300).nullable().catch(null),
   illeggibili: z.array(z.enum(FIELDS)).catch([]),
-  unita_parziali: z.enum(["km", "mi", "100m"]).nullable().catch(null),
+  unita_parziali: z.enum(["km", "mi", "100m", "m"]).nullable().catch(null),
   parziali: z
     .array(
       z.object({
         n: z.number().int().nullable().catch(null),
-        distanza: z.number().positive().max(50).nullable().catch(null),
+        distanza: z.number().min(0).max(10000).nullable().catch(null),
         passo: z.string().max(20).nullable().catch(null),
         tempo: z.string().max(20).nullable().catch(null),
         velocita_kmh: z.number().positive().max(100).nullable().catch(null),
@@ -115,20 +116,34 @@ export type Extraction = Omit<z.infer<typeof extractionSchema>, "parziali" | "un
   differenze: string[];
 };
 
-/** Converte la tabella letta in parziali al km (secondi per km). Le righe illeggibili restano senza passo. */
-export function toSplits(rows: z.infer<typeof extractionSchema>["parziali"], unit: "km" | "mi" | "100m" | null, sport: Sport | null): { splits: Split[]; unreadable: number } {
-  const factor = unit === "mi" ? 1.609344 : unit === "100m" ? 0.1 : 1;
+/** Lunghezza di un parziale in km. Nel nuoto le vasche sono in metri: un valore da 10 in su non può essere in km o in centinaia di metri. */
+function splitKm(d: number | null, unit: "km" | "mi" | "100m" | "m" | null, sport: Sport | null): number {
+  if (sport === "swim") {
+    if (d === null) return 0;
+    const meters = unit === "m" || d >= 10 ? d : unit === "100m" ? d * 100 : unit === "mi" ? d * 1609.344 : d * 1000;
+    return Math.round(meters) / 1000;
+  }
+  const factor = unit === "mi" ? 1.609344 : unit === "100m" ? 0.1 : unit === "m" ? 0.001 : 1;
+  return Math.round((d ?? 1) * factor * 1000) / 1000;
+}
+
+/** Converte la tabella letta in parziali con passo in secondi al km. Le righe illeggibili restano senza passo. */
+export function toSplits(rows: z.infer<typeof extractionSchema>["parziali"], unit: "km" | "mi" | "100m" | "m" | null, sport: Sport | null): { splits: Split[]; unreadable: number } {
   let unreadable = 0;
-  const splits = rows.map((r, i) => {
-    const km = Math.round((r.distanza ?? 1) * factor * 1000) / 1000;
+  // Una riga da 0 m (fine registrazione o pausa) non è un parziale.
+  const kept = rows.filter((r) => r.distanza !== 0);
+  const splits = kept.map((r, i) => {
+    const km = splitKm(r.distanza, unit, sport);
     let paceSec: number | undefined;
-    if (r.passo) {
+    // Il tempo del parziale è più preciso del passo (che l'app arrotonda): se c'è, si usa quello.
+    const t = r.tempo ? parseSplitTime(r.tempo) : null;
+    if (t && km > 0) {
+      paceSec = t / km;
+    } else if (r.passo && km > 0) {
       const p = parsePace(r.passo);
-      if (p) paceSec = p / factor; // passo per miglio o per 100 m -> per km
-    } else if (r.tempo) {
-      const t = parsePace(r.tempo.split(":").length === 2 ? `0:${r.tempo}` : r.tempo);
-      if (t && km > 0) paceSec = t / km;
-    } else if (r.velocita_kmh) {
+      // Nuoto: passo ai 100 m. Corsa e bici: passo per unità (miglio -> km).
+      if (p) paceSec = sport === "swim" ? p * 10 : unit === "mi" ? p / 1.609344 : p;
+    } else if (r.velocita_kmh && km > 0) {
       paceSec = 3600 / r.velocita_kmh;
     }
     if (paceSec !== undefined && sport && !plausiblePace(sport, paceSec)) paceSec = undefined;
@@ -154,6 +169,12 @@ export const fieldLabel = (f: (typeof FIELDS)[number]) => LABEL[f];
 export function normalizeExtraction(raw: unknown, today: string): Extraction | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
+  const notes: string[] = [];
+  // Nuoto: "970" senza unità è in metri. Oltre i 20 km in vasca non è plausibile, quindi è un valore in metri.
+  if (r.sport === "swim" && typeof r.distanza_km === "number" && r.distanza_km > 20 && r.distanza_km <= 20000) {
+    notes.push(`distanza letta come ${r.distanza_km} m, cioè ${r.distanza_km / 1000} km`);
+    raw = { ...r, distanza_km: r.distanza_km / 1000 };
+  }
   const parsed = extractionSchema.safeParse(raw);
   if (!parsed.success) return null;
   const e = parsed.data;
@@ -174,7 +195,7 @@ export function normalizeExtraction(raw: unknown, today: string): Extraction | n
     scartati.push("distanza (non coerente con la durata)");
     distanza_km = null;
   }
-  const out: Extraction = { ...rest, data, distanza_km, splits, splitsUnreadable: unreadable, scartati, daiParziali: [], differenze: [] };
+  const out: Extraction = { ...rest, data, distanza_km, splits, splitsUnreadable: unreadable, scartati, daiParziali: [], differenze: notes };
   return relevantUnreadable(e.sport && e.sport !== "gym" ? applySplitTotals(out, e.sport) : out);
 }
 
@@ -213,6 +234,12 @@ export function applySplitTotals(x: Extraction, sport: Sport): Extraction {
   const differs = (read: number | null, calc: number, tol: number) => read !== null && Math.abs(read - calc) / calc > tol;
   const fmtMin = (m: number) => `${Math.floor(m / 60) ? `${Math.floor(m / 60)}h ` : ""}${String(Math.round(m % 60)).padStart(2, "0")}'`;
 
+  // Totale impossibile per lo sport: lettura sbagliata della tabella, meglio non usarla per i totali.
+  const MAX_KM: Record<Sport, number> = { swim: 20, run: 250, bike: 800, gym: 0 };
+  if (t.distanceKm > MAX_KM[sport]) {
+    out.differenze.push(`la somma dei parziali (${t.distanceKm} km) non è plausibile: per i totali tengo il riepilogo`);
+    return out;
+  }
   // Tabella tagliata (screenshot che mostra solo una parte dei km): i totali non si possono ricavare.
   if (x.distanza_km !== null && t.distanceKm < x.distanza_km * 0.9) {
     out.differenze.push(`i parziali letti coprono ${t.distanceKm} km su ${x.distanza_km}: per i totali tengo il riepilogo (manda anche lo screenshot con gli altri km)`);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Split } from "@/lib/domain/types";
-import { analyzeSplits, parsePace, totalsFromSplits } from "./splits";
+import { analyzeSplits, parsePace, parseSplitTime, totalsFromSplits } from "./splits";
 
 const km = (paces: number[], hr?: number[]): Split[] => paces.map((p, i) => ({ n: i + 1, km: 1, paceSec: p, hr: hr?.[i] }));
 
@@ -64,4 +64,23 @@ describe("totali dagli intertempi", () => {
     expect(t.distanceKm).toBe(2);
   });
   it("nessun parziale: null", () => expect(totalsFromSplits([])).toBeNull());
+});
+
+describe("nuoto in vasca", () => {
+  it("legge i tempi dei parziali", () => {
+    expect(parseSplitTime("53s")).toBe(53);
+    expect(parseSplitTime("3:03")).toBe(183);
+    expect(parseSplitTime("1:05:30")).toBe(3930);
+    expect(parseSplitTime("3:75")).toBeNull();
+  });
+  it("separa le vasche con pausa e quelle anomale", () => {
+    const secs = [183, 53, 67, 121, 94, 105, 95, 144, 97, 65, 182, 143, 61, 135, 92, 15, 91, 25];
+    const lens = [25, 25, 25, 25, 50, 25, 50, 25, 50, 25, 50, 25, 25, 25, 50, 25, 50, 25];
+    const splits = secs.map((t, i) => ({ n: i, km: lens[i] / 1000, paceSec: Math.round(t / (lens[i] / 1000)) }));
+    const a = analyzeSplits(splits, "swim");
+    const all = a.findings.join(" ");
+    expect(all).toMatch(/vasche includono una pausa/);
+    expect(all).toMatch(/troppo veloci rispetto alle altre \(15ª, 17ª\)/);
+    expect(all).toMatch(/Passo medio sui parziali completi: 3:\d\d \/100 m/);
+  });
 });

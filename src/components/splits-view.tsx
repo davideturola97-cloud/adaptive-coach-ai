@@ -27,11 +27,11 @@ export function SplitsView({ splits, sport, planned, athlete }: { splits: Split[
           <tbody>
             {splits.map((s) => (
               <tr key={s.n} className={s === a.fastest ? "text-ok" : s === a.slowest ? "text-warn" : undefined}>
-                <td className="py-1 pr-2">{(sport === "bike" ? s.km !== 1 : s.km < 0.9 && sport !== "swim") ? `${s.n} (${s.km.toLocaleString("it-IT")} km)` : s.n}</td>
+                <td className="py-1 pr-2">{sport === "swim" ? `${s.n} (${Math.round(s.km * 1000)} m)` : (sport === "bike" ? s.km !== 1 : s.km < 0.9) ? `${s.n} (${s.km.toLocaleString("it-IT")} km)` : s.n}</td>
                 <td className="py-1 pr-2">
                   {s.paceSec ? (
                     <span className="flex items-center gap-2">
-                      <span className="h-2.5 rounded-full" style={{ width: `${30 + ((slow - s.paceSec) / span) * 70}%`, background: SPORTS[sport].colorVar, opacity: s.km < 0.9 ? 0.4 : 1 }} />
+                      <span className="h-2.5 rounded-full" style={{ width: `${30 + ((slow - s.paceSec) / span) * 70}%`, background: SPORTS[sport].colorVar, opacity: sport !== "swim" && s.km < 0.9 ? 0.4 : 1 }} />
                       <span className="shrink-0">{formatSplitPace(sport, s.paceSec)}</span>
                     </span>
                   ) : (

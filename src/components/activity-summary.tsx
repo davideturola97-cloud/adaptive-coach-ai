@@ -37,7 +37,7 @@ export function ActivitySummary({ a, back, editable, planned, athlete, history }
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Item label="Durata" value={formatDuration(a.durationMin)} />
-        {a.distanceKm !== undefined && <Item label="Distanza" value={`${a.distanceKm.toLocaleString("it-IT")} km`} />}
+        {a.distanceKm !== undefined && <Item label="Distanza" value={a.sport === "swim" ? `${Math.round(a.distanceKm * 1000)} m` : `${a.distanceKm.toLocaleString("it-IT")} km`} />}
         {pace && <Item label={a.sport === "bike" ? "Velocità media" : "Passo medio"} value={pace} />}
         {a.avgHr && <Item label={<span className="flex items-center gap-1"><HeartPulse className="size-3.5" aria-hidden />FC media</span>} value={`${a.avgHr} bpm`} />}
         {a.avgPowerW && <Item label="Potenza media" value={`${a.avgPowerW} W`} />}

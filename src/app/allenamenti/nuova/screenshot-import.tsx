@@ -63,7 +63,7 @@ export function ScreenshotImport({ today, sports, enabled, demo, context }: { to
         ["Sport", result.sport && SPORTS[result.sport].label],
         ["Data", result.data],
         ["Durata", result.durata_minuti && `${result.daiParziali.includes("durata") ? formatTime(result.durata_minuti * 60) : formatDuration(result.durata_minuti)}${calc("durata")}`],
-        ["Distanza", result.distanza_km && `${result.distanza_km.toLocaleString("it-IT")} km${calc("distanza")}`],
+        ["Distanza", result.distanza_km && `${result.sport === "swim" ? `${Math.round(result.distanza_km * 1000)} m` : `${result.distanza_km.toLocaleString("it-IT")} km`}${calc("distanza")}`],
         ["Passo medio", result.passo && `${result.passo}${calc("passo")}`],
         ["Velocità", result.velocita_kmh && `${result.velocita_kmh.toLocaleString("it-IT")} km/h`],
         ["FC media", result.fc_media && `${result.fc_media} bpm${calc("fc")}`],

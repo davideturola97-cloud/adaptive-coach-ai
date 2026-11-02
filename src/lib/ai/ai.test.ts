@@ -149,6 +149,26 @@ describe("lettura screenshot", () => {
     const noSplits = normalizeExtraction({ ...base, fc_media: null, illeggibili: ["fc_media", "potenza_media_w"] }, today)!;
     expect(noSplits.illeggibili).toEqual(["fc_media"]);
   });
+  it("nuoto da Strava: vasche in metri, tempi con pausa, riga finale da 0 m", () => {
+    // Dati reali: parziale, distanza (m), tempo, passo /100 m, FC.
+    const t: [number, number, string, string | null, number | null][] = [
+      [0, 25, "3:03", "12:11", 81], [1, 25, "53s", "3:32", null], [2, 25, "1:07", "4:28", 112], [3, 25, "2:01", "8:04", null],
+      [4, 50, "1:34", "3:08", 109], [5, 25, "1:45", "7:00", null], [6, 50, "1:35", "3:10", 112], [7, 25, "2:24", "9:36", null],
+      [8, 50, "1:37", "3:14", 124], [9, 25, "1:05", "4:19", null], [10, 50, "3:02", "6:03", 109], [11, 25, "2:23", "9:32", null],
+      [12, 25, "1:01", "4:04", 118], [13, 25, "2:15", "9:00", null], [14, 50, "1:32", "3:04", 122], [15, 25, "15s", "1:00", null],
+      [16, 50, "1:31", "3:01", 124], [17, 25, "25s", "1:40", null], [18, 0, "32s", null, 129],
+    ];
+    const parziali = t.map(([n, d, tempo, passo, fc]) => ({ n, distanza: d, tempo, passo, velocita_kmh: null, fc, dislivello_m: null }));
+    const e = normalizeExtraction({ ...base, sport: "swim", durata_minuti: null, distanza_km: 600, passo: null, fc_media: null, dislivello_m: null, unita_parziali: "m", parziali }, today)!;
+    expect(e.splits).toHaveLength(18);
+    expect(e.splitsUnreadable).toBe(0);
+    expect(e.splits[0]).toMatchObject({ km: 0.025, paceSec: 7320 });
+    expect(e.distanza_km).toBe(0.6);
+    // somma dei tempi delle vasche: 1768 s = 29:28
+    expect(e.durata_minuti).toBe(29.47);
+    expect(e.passo).toBe("4:55 /100 m");
+    expect(e.differenze.join(" ")).toMatch(/600 m/);
+  });
   it("accetta valori plausibili", () => {
     const e = normalizeExtraction(base, today)!;
     expect(e.distanza_km).toBe(10.1);
