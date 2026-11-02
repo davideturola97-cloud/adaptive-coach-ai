@@ -106,15 +106,23 @@ export function TestCard({ t, today, maximalBlocked, demo }: { t: PlannedTest; t
       </button>
       {open && <ResultForm sport={t.sport} initialKind={t.kind} today={today} disabled={demo} />}
 
-      <form action={action} className="grid grid-cols-2 gap-2">
-        <input type="hidden" name="id" value={t.id} />
-        <button name="op" value="auto" disabled={pending || demo || (info.maximal && maximalBlocked)} className={clsx(btn, "col-span-2")}>
-          <CalendarCheck className="size-4" aria-hidden /> Scegli tu un giorno adatto
-        </button>
-        <button name="op" value="rimanda1" disabled={pending || demo} className={btn}><Clock className="size-4" aria-hidden /> Tra 1 settimana</button>
-        <button name="op" value="rimanda2" disabled={pending || demo} className={btn}><Clock className="size-4" aria-hidden /> Tra 2 settimane</button>
-        <button name="op" value="rifiuta" disabled={pending || demo} className={clsx(btn, "col-span-2 text-muted")}><X className="size-4" aria-hidden /> Non ora</button>
-      </form>
+      {/* Un modulo per pulsante: l'operazione viaggia in un campo nascosto, non dipende dal pulsante premuto. */}
+      <div className="grid grid-cols-2 gap-2">
+        {([
+          ["auto", "Scegli tu un giorno adatto", CalendarCheck, "col-span-2", info.maximal && maximalBlocked],
+          ["rimanda1", "Tra 1 settimana", Clock, "", false],
+          ["rimanda2", "Tra 2 settimane", Clock, "", false],
+          ["rifiuta", "Non ora", X, "col-span-2 text-muted", false],
+        ] as const).map(([op, label, Icon, cls, blocked]) => (
+          <form key={op} action={action} className={cls.includes("col-span-2") ? "col-span-2" : undefined}>
+            <input type="hidden" name="id" value={t.id} />
+            <input type="hidden" name="op" value={op} />
+            <button disabled={pending || demo || blocked} className={clsx(btn, "w-full", cls.replace("col-span-2", ""))}>
+              <Icon className="size-4" aria-hidden /> {label}
+            </button>
+          </form>
+        ))}
+      </div>
       {info.maximal && maximalBlocked && <p className="text-xs text-warn">Per programmare un test a tutta rispondi prima alle domande di sicurezza (o serve il via libera del medico).</p>}
       <Message state={state} />
     </article>
