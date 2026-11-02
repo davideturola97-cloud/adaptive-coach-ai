@@ -23,6 +23,28 @@ if not exist .env.local if exist .env.local.txt ren .env.local.txt .env.local
 if not exist .env.local if exist env.local ren env.local .env.local
 if not exist .env.local if exist env.local.txt ren env.local.txt .env.local
 
+rem Primo avvio su questo computer: crea .env.local chiedendo i due valori di Supabase.
+if not exist .env.local (
+  echo.
+  echo Su questo computer manca il collegamento a Supabase ^(file .env.local^).
+  set /p CREA=Vuoi crearlo adesso? Scrivi S e premi Invio, oppure solo Invio per la modalita dimostrativa: 
+)
+if not exist .env.local if /i "%CREA%"=="S" (
+  echo.
+  echo Su supabase.com: Project Settings, poi Data API per l'indirizzo, poi API Keys per la chiave publishable.
+  echo Per incollare in questa finestra usa il tasto destro del mouse oppure Ctrl+V.
+  echo.
+  set /p SUPA_IN_URL=Incolla il Project URL ^(inizia con https://^) e premi Invio: 
+  set /p SUPA_IN_KEY=Incolla la chiave publishable o anon e premi Invio: 
+)
+if not exist .env.local if /i "%CREA%"=="S" (
+  > .env.local echo # Configurazione Supabase
+  >> .env.local echo NEXT_PUBLIC_SUPABASE_URL=%SUPA_IN_URL%
+  >> .env.local echo NEXT_PUBLIC_SUPABASE_ANON_KEY=%SUPA_IN_KEY%
+  echo File .env.local creato nella cartella del progetto.
+)
+set SUPA_IN_KEY=
+
 rem Controllo della configurazione Supabase, senza mostrare i valori.
 set SUPA_URL=NO
 set SUPA_KEY=NO
