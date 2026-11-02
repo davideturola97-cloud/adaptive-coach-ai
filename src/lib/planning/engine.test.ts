@@ -31,6 +31,10 @@ const plan = generatePlan({ today, athlete, events: [ravenna, reggio, ledro], we
 const hardDates = (ws = plan.workouts) => ws.filter((w) => isHard(w.type) && w.type !== "lungo" && w.type !== "brick").map((w) => w.date);
 
 describe("vincoli dell'atleta", () => {
+  it("nessuna seduta resta fuori con i giorni dell'atleta", () => {
+    expect(plan.warnings.filter((w) => w.includes("non trova posto"))).toEqual([]);
+  });
+
   it("solo nei giorni disponibili e dopo oggi", () => {
     for (const w of plan.workouts) {
       expect(athlete.availableDays).toContain(weekdayName(w.date, true));
@@ -60,6 +64,30 @@ describe("vincoli dell'atleta", () => {
     const swims = p.workouts.filter((w) => w.sport === "swim");
     expect(swims.length).toBeGreaterThan(0);
     for (const w of swims) expect(["Lun", "Mer"]).toContain(weekdayName(w.date, true));
+  });
+});
+
+describe("giorni pochi", () => {
+  it("con pochi giorni le sedute si uniscono invece di restare fuori", () => {
+    const few = { ...athlete, availableDays: ["Mar", "Gio", "Sab", "Dom"], weeklyHoursAvailable: 7 };
+    const p = generatePlan({ today, athlete: few, events: [ravenna, reggio, ledro], weeks: 12 });
+    expect(p.warnings.filter((w) => w.includes("non trova posto"))).toEqual([]);
+    for (const wk of p.weeks) {
+      const ws = p.workouts.filter((w) => w.sport !== "gym" && w.date >= wk.weekStart && w.date <= addDays(wk.weekStart, 6));
+      expect(new Set(ws.map((w) => w.date)).size).toBe(ws.length); // una seduta di resistenza al giorno
+    }
+  });
+});
+
+describe("giorni vincolati", () => {
+  it("il nuoto con giorni fissi trova sempre posto", () => {
+    for (const swim of [["Lun", "Mer"], ["Mar", "Gio"]]) {
+      for (const h of [6, 8, 10, 12]) {
+        const p = generatePlan({ today, athlete: { ...athlete, availableDays: ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"], weeklyHoursAvailable: h, sportDays: { swim } }, events: [ravenna, reggio, ledro], weeks: 12 });
+        expect(p.warnings.filter((w) => w.includes("non trova posto"))).toEqual([]);
+        for (const w of p.workouts.filter((x) => x.sport === "swim")) expect(swim).toContain(weekdayName(w.date, true));
+      }
+    }
   });
 });
 

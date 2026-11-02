@@ -10,7 +10,7 @@
  *    mai due sedute dure in giorni consecutivi, lunghi nei giorni scelti dall'atleta;
  * 5. intensità in RPE, con ritmi o watt stimati solo se esistono parametri da test.
  */
-import { addDays, daysBetween, mondayOf, weekdayName } from "@/lib/dates";
+import { addDays, daysBetween, formatDayMonth, mondayOf, weekdayName } from "@/lib/dates";
 import { SPORTS } from "@/lib/domain/sports";
 import type { AthleteProfile, PlannedTest, PlannedWorkout, RaceEvent, Sport, TestKind, WorkoutType } from "@/lib/domain/types";
 import { template } from "@/lib/training/templates";
@@ -311,6 +311,31 @@ export function generatePlan(input: PlanInput): PlanDraft {
     // Test programmati in questa settimana: prendono il posto di una seduta di quello sport.
     const weekTests = (input.tests ?? []).filter((t) => t.status === "programmato" && t.dueDate && t.dueDate >= weekStart && t.dueDate <= addDays(weekStart, 6) && t.dueDate >= startDate);
 
+    // Tante sedute di resistenza quanti giorni disponibili: se sono troppe, si uniscono le facili
+    // (stesso sport, una seduta più lunga) invece di lasciarne fuori qualcuna.
+    const testsHere = weekTests.filter((t) => TEST_TYPE[t.kind] && usable.includes(t.dueDate!));
+    const replacedQ = testsHere.filter((t) => slots.some((x) => x.sport === t.sport && x.role === "qualita")).length;
+    const reserved = testsHere.length + (activationDay && usable.includes(activationDay) ? 1 : 0);
+    const need = () => slots.filter((x) => x.sport !== "gym").length - replacedQ + reserved;
+    while (need() > usable.length) {
+      const easyBySport = endurance
+        .map((sp) => ({ sp, easy: slots.filter((x) => x.sport === sp && x.role === "facile") }))
+        .filter((e) => e.easy.length > 0)
+        .sort((x, y) => y.easy.length - x.easy.length || (shares[x.sp] ?? 0) - (shares[y.sp] ?? 0));
+      const pick = easyBySport[0];
+      if (pick) {
+        const removed = pick.easy[pick.easy.length - 1];
+        slots.splice(slots.indexOf(removed), 1);
+        const keep = pick.easy.length > 1 ? pick.easy[0] : slots.find((x) => x.sport === pick.sp && x.role === "lungo");
+        if (keep) keep.minutes = Math.min(keep.role === "lungo" ? maxLong : maxSession, keep.minutes + removed.minutes);
+        continue;
+      }
+      // Niente più sedute facili da unire: si toglie la seduta di qualità dello sport meno importante.
+      const q = slots.filter((x) => x.role === "qualita").sort((x, y) => (shares[x.sport] ?? 0) - (shares[y.sport] ?? 0))[0];
+      if (!q) break;
+      slots.splice(slots.indexOf(q), 1);
+    }
+
     // 5. Posizionamento
     const placed: { date: string; slot: Slot }[] = [];
     const hardDays = new Set<string>();
@@ -350,12 +375,14 @@ export function generatePlan(input: PlanInput): PlanDraft {
         continue;
       }
       // Nessun giorno dei lunghi libero: diventa una seduta facile.
-      warnings.push(`Settimana del ${weekStart}: nessun giorno dei lunghi libero per ${SPORTS[l.sport].label.toLowerCase()}, la seduta lunga diventa facile.`);
+      warnings.push(`Settimana del ${formatDayMonth(weekStart, false)}: nessun giorno dei lunghi libero per ${SPORTS[l.sport].label.toLowerCase()}, la seduta lunga diventa facile.`);
       slots.push({ ...l, role: "facile", type: easyType(l.sport, phase, 0), minutes: Math.min(l.minutes, maxSession), priority: 5 });
     }
 
     // Sedute di qualità: il più lontano possibile dalle altre sedute dure, mai in giorni consecutivi.
-    for (const q of slots.filter((x) => x.role === "qualita")) {
+    // Gli sport con giorni vincolati (es. piscina) scelgono per primi.
+    const constrained = (sp: Sport) => (a.sportDays[sp]?.length ? 0 : 1);
+    for (const q of slots.filter((x) => x.role === "qualita").sort((x, y) => constrained(x.sport) - constrained(y.sport))) {
       const candidates = usable.filter((d) => !used.has(d) && !nearHard(d) && sportOk(q.sport, d) && !(raceThisWeek && d > raceThisWeek.date));
       const score = (d: string) => Math.min(...[...allHard].map((h) => Math.abs(daysBetween(h, d))), 9);
       const day = candidates.sort((x, y) => score(y) - score(x) || x.localeCompare(y))[0];
@@ -364,10 +391,17 @@ export function generatePlan(input: PlanInput): PlanDraft {
     }
 
     // Sedute facili: un giorno libero ciascuna, alternando gli sport.
-    const easy = slots.filter((x) => x.role === "facile").sort((x, y) => x.priority - y.priority);
+    const easy = slots.filter((x) => x.role === "facile").sort((x, y) => constrained(x.sport) - constrained(y.sport) || x.priority - y.priority);
     const dropped: Slot[] = [];
     for (const e of easy) {
-      const day = usable.find((d) => !used.has(d) && sportOk(e.sport, d));
+      const day =
+        usable.find((d) => !used.has(d) && sportOk(e.sport, d)) ??
+        // Doppia seduta: un nuoto facile si affianca a un'altra seduta, preferendo i giorni senza sedute dure.
+        (e.sport === "swim"
+          ? [...usable]
+              .filter((d) => sportOk("swim", d) && (used.get(d) ?? 0) === 1 && !placed.some((p) => p.date === d && p.slot.sport === "swim"))
+              .sort((x, y) => Number(hardDays.has(x)) - Number(hardDays.has(y)))[0]
+          : undefined);
       if (day) take(day, e);
       else dropped.push(e);
     }
@@ -383,7 +417,8 @@ export function generatePlan(input: PlanInput): PlanDraft {
       else dropped.push(g);
     }
     if (dropped.length) {
-      warnings.push(`Settimana del ${weekStart}: ${dropped.length} sedute non trovano posto nei giorni disponibili (${[...new Set(dropped.map((d) => SPORTS[d.sport].label.toLowerCase()))].join(", ")}).`);
+      const what = [...new Set(dropped.map((d) => SPORTS[d.sport].label.toLowerCase()))].join(", ");
+      warnings.push(`Settimana del ${formatDayMonth(weekStart, false)}: ${dropped.length === 1 ? "una seduta" : `${dropped.length} sedute`} di ${what} non trova posto. Controlla i giorni preferiti di quello sport o aggiungi un giorno disponibile.`);
     }
 
     // Creazione delle sedute
