@@ -53,9 +53,7 @@ export function openAiClient(apiKey: string, timeoutMs = 45_000): ChatClient {
         body: JSON.stringify(req),
         signal: controller.signal,
       });
-      if (res.status === 401) throw new AiError("La chiave OpenAI non è valida o è stata revocata.", "chiave");
-      if (res.status === 429) throw new AiError("OpenAI ha rifiutato la richiesta per limiti di uso o credito esaurito.", "limite");
-      if (!res.ok) throw new AiError(`Il servizio AI non ha risposto correttamente (errore ${res.status}).`, "servizio");
+      if (!res.ok) throw await describeError(res, req.model);
       const json = await res.json();
       const choice = json.choices?.[0]?.message ?? { content: "" };
       return {
@@ -70,4 +68,26 @@ export function openAiClient(apiKey: string, timeoutMs = 45_000): ChatClient {
       clearTimeout(timer);
     }
   };
+}
+
+/** Traduce gli errori di OpenAI in messaggi chiari, senza mai riportare la chiave. */
+async function describeError(res: Response, model: string): Promise<AiError> {
+  let code = "";
+  let detail = "";
+  try {
+    const j = await res.json();
+    code = String(j?.error?.code ?? j?.error?.type ?? "");
+    detail = String(j?.error?.message ?? "").replace(/sk-[A-Za-z0-9_-]+/g, "sk-***").slice(0, 200);
+  } catch {
+    /* corpo non JSON */
+  }
+  if (res.status === 401) return new AiError("OpenAI non accetta la chiave: è sbagliata, incompleta o è stata revocata. Ricreala su platform.openai.com e sostituiscila in .env.local.", "chiave");
+  if (code === "insufficient_quota") return new AiError("Credito OpenAI esaurito o non ancora attivo. Aggiungi credito in Settings > Billing su platform.openai.com (può servire qualche minuto).", "limite");
+  if (res.status === 429) return new AiError("Troppe richieste a OpenAI in poco tempo. Aspetta un minuto e riprova.", "limite");
+  if (code === "model_not_found" || /model/i.test(detail) && res.status === 404) {
+    return new AiError(`Il modello "${model}" non è disponibile nel tuo account OpenAI. Aggiungi in .env.local una riga OPENAI_MODEL= con un modello disponibile (per esempio gpt-4o-mini).`, "servizio");
+  }
+  if (res.status === 403) return new AiError(`OpenAI ha negato l'accesso (${detail || "progetto o modello non abilitato"}).`, "chiave");
+  if (res.status === 400) return new AiError(`OpenAI ha rifiutato la richiesta: ${detail || "richiesta non valida"}.`, "servizio");
+  return new AiError(`Il servizio AI non ha risposto correttamente (errore ${res.status}${detail ? `: ${detail}` : ""}).`, "servizio");
 }

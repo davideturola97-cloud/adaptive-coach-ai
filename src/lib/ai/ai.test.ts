@@ -3,7 +3,8 @@ import type { AthleteProfile, PlannedWorkout, RaceEvent } from "@/lib/domain/typ
 import { generatePlan } from "@/lib/planning/engine";
 import { type CoachData, runCoach, runTool, systemPrompt } from "./coach";
 import { limitMessage } from "./limits";
-import type { ChatClient, ChatRequest } from "./openai";
+import { type ChatClient, type ChatRequest, openAiClient } from "./openai";
+import { vi } from "vitest";
 import { normalizeExtraction } from "./screenshot";
 
 const athlete: AthleteProfile = {
@@ -102,5 +103,24 @@ describe("lettura screenshot", () => {
   it("risposta non valida: nessun dato", () => {
     expect(normalizeExtraction("ciao", today)).toBeNull();
     expect(normalizeExtraction({ app: "x" }, today)).toBeNull();
+  });
+});
+
+describe("errori di OpenAI", () => {
+  const reply = (status: number, body: unknown) => vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response(JSON.stringify(body), { status }));
+  const req = { model: "gpt-x", messages: [] };
+  it("credito esaurito", async () => {
+    reply(429, { error: { code: "insufficient_quota", message: "You exceeded your current quota" } });
+    await expect(openAiClient("sk-test")(req)).rejects.toThrow(/Credito OpenAI esaurito/);
+  });
+  it("modello non disponibile: indica come cambiarlo", async () => {
+    reply(404, { error: { code: "model_not_found", message: "The model gpt-x does not exist" } });
+    await expect(openAiClient("sk-test")(req)).rejects.toThrow(/OPENAI_MODEL/);
+  });
+  it("chiave sbagliata, e la chiave non compare mai nel messaggio", async () => {
+    reply(401, { error: { message: "Incorrect API key provided: sk-abc123" } });
+    const err = await openAiClient("sk-abc123")(req).catch((e) => e as Error);
+    expect(err.message).toMatch(/non accetta la chiave/);
+    expect(err.message).not.toContain("sk-abc123");
   });
 });
