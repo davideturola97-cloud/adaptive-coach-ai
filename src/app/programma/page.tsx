@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card, PageHeader } from "@/components/ui";
 import { formatDayMonth } from "@/lib/dates";
 import { getAppData } from "@/lib/data/repository";
+import { ClearPlan } from "./clear-plan";
 import { PlanBuilder } from "./plan-builder";
 
 export const dynamic = "force-dynamic";
@@ -16,8 +17,12 @@ export default async function PlanPage() {
       <PageHeader title="Programma" subtitle="Il coach costruisce le settimane attorno alle tue gare, ai giorni disponibili e ai lunghi nel weekend." />
       <div className="flex flex-col gap-5">
         {future.length > 0 && (
-          <Card className="text-sm">
-            Hai un programma con <span className="font-semibold">{future.length} sedute</span> fino al {lastDate && formatDayMonth(lastDate, false)}. <Link href="/calendario" className="font-semibold underline">Vedi il calendario</Link>.
+          <Card className="flex flex-col gap-3 text-sm">
+            <p>
+              Programma attuale: <span className="font-semibold">{future.length} sedute</span> fino al {lastDate && formatDayMonth(lastDate, false)}. <Link href="/calendario" className="font-semibold underline">Vedi il calendario</Link>.
+            </p>
+            <p className="text-muted">Per sostituirlo crea una nuova anteprima qui sotto e premi <span className="font-semibold text-fg">Conferma e salva</span>: le sedute future vengono rimpiazzate.</p>
+            {mode === "utente" && <ClearPlan />}
           </Card>
         )}
         {mode === "utente" && !events.some((e) => e.date >= today) && (

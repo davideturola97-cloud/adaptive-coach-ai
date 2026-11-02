@@ -39,3 +39,15 @@ export async function savePlan(_: PreviewState, fd: FormData): Promise<PreviewSt
   revalidatePath("/", "layout");
   return { saved: `Programma salvato: ${r.draft.workouts.length} sedute in ${weeks} settimane. Lo trovi nel Calendario.` };
 }
+
+/** Toglie tutte le sedute ancora da fare (da oggi in poi). Le sedute fatte restano; la versione tolta resta nello storico. */
+export async function clearPlan(): Promise<PreviewState> {
+  const data = await getAppData();
+  if (data.mode === "demo") return { error: "In modalità dimostrativa il programma non si modifica." };
+  const { supabase, user } = await getUser();
+  if (!user) return { error: "Sessione scaduta: accedi di nuovo." };
+  const { error } = await supabase.rpc("replace_future_plan", { p_from: data.today, p_workouts: [], p_reason: "Programma cancellato" });
+  if (error) return { error: "Cancellazione non riuscita. Riprova." };
+  revalidatePath("/", "layout");
+  return { saved: "Programma futuro cancellato. Puoi crearne uno nuovo qui sotto." };
+}

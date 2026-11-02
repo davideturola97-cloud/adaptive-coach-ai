@@ -51,6 +51,9 @@ export function PlanBuilder({ demo, hasPlan }: { demo: boolean; hasPlan: boolean
 
       {draft && (
         <>
+          <p className="rounded-xl border border-line bg-surface px-4 py-3 text-sm text-muted">
+            Questa è solo un&apos;anteprima: il calendario non cambia finché non premi <span className="font-semibold text-fg">Conferma e salva</span> in fondo.
+          </p>
           {draft.warnings.length > 0 && (
             <div className="flex flex-col gap-1 rounded-xl border border-warn/40 bg-warn/10 px-4 py-3 text-sm text-warn">
               {draft.warnings.slice(0, 5).map((w) => <p key={w} className="flex gap-2"><AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />{w}</p>)}
