@@ -24,7 +24,7 @@ const KINDS: { kind: DisruptionKind; label: string; hint: string }[] = [
 const RANGE: DisruptionKind[] = ["malato", "viaggio"];
 const day = (d: string) => `${weekdayName(d).toLowerCase()} ${formatDayMonth(d, false)}`;
 
-function Coach({ children }: { children: React.ReactNode }) {
+export function Coach({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex max-w-[95%] gap-3">
       <span className="grid size-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-run to-bike"><Bot className="size-4 text-white" aria-hidden /></span>
@@ -33,7 +33,7 @@ function Coach({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Me({ children }: { children: React.ReactNode }) {
+export function Me({ children }: { children: React.ReactNode }) {
   return <p className="ml-auto max-w-[85%] rounded-2xl rounded-br-md bg-surface-2 px-4 py-3 text-sm">{children}</p>;
 }
 
@@ -68,7 +68,7 @@ function ChangeRow({ c }: { c: Change }) {
   );
 }
 
-function ProposalCard({ p, onApply, busy, demo }: { p: Proposal; onApply: () => void; busy: boolean; demo: boolean }) {
+export function ProposalCard({ p, onApply, busy, demo }: { p: Proposal; onApply: () => void; busy: boolean; demo: boolean }) {
   return (
     <article className="flex flex-col gap-3 rounded-[var(--radius-card)] border border-line bg-surface p-4 sm:p-5">
       <div>

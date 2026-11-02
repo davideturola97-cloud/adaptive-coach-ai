@@ -23,14 +23,13 @@ export default async function WorkoutsPage() {
     <>
       <PageHeader title="Allenamenti" subtitle="Sedute in programma e storico delle attività." />
       <div className="mb-6 grid grid-cols-2 gap-3">
-        <button disabled className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-line bg-surface text-sm font-semibold text-faint" title="Disponibile nella Milestone 7">
+        <Link href="/allenamenti/nuova?screenshot=1" className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-line bg-surface text-sm font-semibold hover:border-faint">
           <Camera className="size-5" aria-hidden /> Carica screenshot
-        </button>
+        </Link>
         <Link href="/allenamenti/nuova" className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-line bg-surface text-sm font-semibold hover:border-faint">
           <PencilLine className="size-5" aria-hidden /> Inserisci a mano
         </Link>
       </div>
-      <p className="-mt-3 mb-6 text-xs text-faint">Il caricamento da screenshot arriva con l&apos;intelligenza artificiale (Milestone 7).</p>
       <WorkoutList plan={plan} today={today} history={history} />
     </>
   );

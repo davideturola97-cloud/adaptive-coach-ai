@@ -72,6 +72,11 @@ export interface ActivityDefaults {
   title?: string;
   durationMin?: number;
   distanceKm?: number;
+  avgHr?: number;
+  avgPowerW?: number;
+  elevationM?: number;
+  /** Da dove vengono i valori: compilati a mano o letti da uno screenshot (da controllare). */
+  source?: "manuale" | "screenshot";
 }
 
 export function ActivityForm({ defaults, plannedId, sports, today, demo }: { defaults: ActivityDefaults; plannedId?: string; sports: Sport[]; today: string; demo?: boolean }) {
@@ -84,6 +89,7 @@ export function ActivityForm({ defaults, plannedId, sports, today, demo }: { def
     <form action={action} className="flex flex-col gap-5">
       {plannedId && <input type="hidden" name="plannedId" value={plannedId} />}
       <input type="hidden" name="confirmDuplicate" value={confirmDup ? "1" : ""} />
+      <input type="hidden" name="source" value={defaults.source ?? "manuale"} />
 
       {plannedId ? (
         <input type="hidden" name="sport" value={sport} />
@@ -118,9 +124,9 @@ export function ActivityForm({ defaults, plannedId, sports, today, demo }: { def
             <input name="distanceKm" inputMode="decimal" defaultValue={defaults.distanceKm ?? ""} className={inputCls} />
           </Field>
         )}
-        {hasDistance && <Field label="Frequenza cardiaca media" hint="Facoltativa, battiti al minuto"><input name="avgHr" inputMode="numeric" className={inputCls} /></Field>}
-        {sport === "bike" && <Field label="Potenza media (W)" hint="Facoltativa"><input name="avgPowerW" inputMode="numeric" className={inputCls} /></Field>}
-        {(sport === "bike" || sport === "run") && <Field label="Dislivello (m)" hint="Facoltativo"><input name="elevationM" inputMode="numeric" className={inputCls} /></Field>}
+        {hasDistance && <Field label="Frequenza cardiaca media" hint="Facoltativa, battiti al minuto"><input name="avgHr" inputMode="numeric" defaultValue={defaults.avgHr ?? ""} className={inputCls} /></Field>}
+        {sport === "bike" && <Field label="Potenza media (W)" hint="Facoltativa"><input name="avgPowerW" inputMode="numeric" defaultValue={defaults.avgPowerW ?? ""} className={inputCls} /></Field>}
+        {(sport === "bike" || sport === "run") && <Field label="Dislivello (m)" hint="Facoltativo"><input name="elevationM" inputMode="numeric" defaultValue={defaults.elevationM ?? ""} className={inputCls} /></Field>}
       </div>
 
       <div className="rounded-[var(--radius-card)] border border-line bg-surface/40 p-4 sm:p-5">

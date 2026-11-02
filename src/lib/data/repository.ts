@@ -125,3 +125,33 @@ export async function getPlanVersions(limit = 20): Promise<PlanVersion[]> {
     changes: Array.isArray(v.workouts) ? v.workouts.length : 0,
   }));
 }
+
+export interface CoachConversation {
+  id: string;
+  title: string;
+  updatedAt: string;
+}
+
+export async function getCoachConversations(): Promise<CoachConversation[]> {
+  if (!isSupabaseConfigured()) return [];
+  const { supabase, user } = await getUser();
+  if (!user) return [];
+  const { data } = await supabase.from("coach_conversations").select("id, title, updated_at").order("updated_at", { ascending: false }).limit(20);
+  return (data ?? []).map((c: any) => ({ id: c.id, title: c.title, updatedAt: c.updated_at }));
+}
+
+export async function getCoachMessages(conversationId: string) {
+  if (!isSupabaseConfigured()) return [];
+  const { supabase, user } = await getUser();
+  if (!user) return [];
+  const { data } = await supabase.from("coach_messages").select("id, role, content, proposals, created_at").eq("conversation_id", conversationId).order("created_at").limit(200);
+  return (data ?? []).map((m: any) => ({ id: m.id as string, role: m.role as "user" | "assistant", content: m.content as string, proposals: m.proposals ?? null, createdAt: m.created_at as string }));
+}
+
+export async function getAiUsageToday() {
+  if (!isSupabaseConfigured()) return null;
+  const { supabase, user } = await getUser();
+  if (!user) return null;
+  const { data } = await supabase.from("ai_usage").select("requests, input_tokens, output_tokens, images").eq("day", new Date().toISOString().slice(0, 10)).maybeSingle();
+  return { requests: data?.requests ?? 0, tokens: (data?.input_tokens ?? 0) + (data?.output_tokens ?? 0), images: data?.images ?? 0 };
+}

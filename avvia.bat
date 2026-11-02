@@ -45,6 +45,23 @@ if not exist .env.local if /i "%CREA%"=="S" (
 )
 set SUPA_IN_KEY=
 
+rem Coach AI: finche' manca la chiave OpenAI la chiede all'avvio (Invio per saltare). La chiave non viene mostrata.
+set HAS_AI=NO
+set AI_IN_KEY=
+if exist .env.local findstr /r /b /c:"OPENAI_API_KEY=.." .env.local >nul && set HAS_AI=SI
+if exist .env.local if "%HAS_AI%"=="NO" (
+  echo.
+  echo Coach AI: per attivarlo incolla la chiave OpenAI ^(inizia con sk-^) e premi Invio.
+  echo Se non ce l'hai ancora premi solo Invio: il resto dell'app funziona lo stesso.
+  set /p AI_IN_KEY=Chiave OpenAI: 
+)
+if defined AI_IN_KEY (
+  >> .env.local echo OPENAI_API_KEY=%AI_IN_KEY%
+  set HAS_AI=SI
+  echo Chiave OpenAI salvata in .env.local.
+)
+set AI_IN_KEY=
+
 rem Controllo della configurazione Supabase, senza mostrare i valori.
 set SUPA_URL=NO
 set SUPA_KEY=NO
@@ -60,6 +77,7 @@ if not exist .env.local (
   echo Supabase: indirizzo impostato: %SUPA_URL%   chiave impostata: %SUPA_KEY%
   if "%SUPA_URL%%SUPA_KEY%"=="SISI" (echo Supabase configurato: vedrai la pagina di accesso.) else (echo Manca un valore in .env.local: l'app parte in modalita dimostrativa.)
 )
+echo Coach AI: chiave impostata: %HAS_AI%
 echo.
 
 echo Avvio di Adaptive Coach AI su http://localhost:3000

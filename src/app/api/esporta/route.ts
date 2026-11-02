@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getUser } from "@/lib/supabase/server";
 
-const TABLES = ["profiles", "athlete_sports", "events", "planned_workouts", "activities", "feedback", "test_results"] as const;
+const TABLES = ["profiles", "athlete_sports", "events", "planned_workouts", "activities", "feedback", "test_results", "planned_tests", "readiness_checks", "plan_versions", "coach_conversations", "coach_messages", "ai_usage"] as const;
 
 /** Esporta tutti i dati dell'utente collegato in un file JSON. RLS garantisce che escano solo le sue righe. */
 export async function GET() {

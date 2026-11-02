@@ -47,7 +47,7 @@ export async function logActivity(_: LogState, fd: FormData): Promise<LogState> 
       avg_hr: a.avgHr ?? null,
       avg_power_w: a.avgPowerW ?? null,
       elevation_m: a.elevationM ?? null,
-      source: "manuale",
+      source: fd.get("source") === "screenshot" ? "screenshot" : "manuale",
       dedupe_key: fd.get("confirmDuplicate") === "1" ? null : dedupeKey(a.sport, a.date, a.durationMin),
       planned_workout_id: plannedId ?? null,
     },

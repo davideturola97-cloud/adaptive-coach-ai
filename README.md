@@ -2,7 +2,9 @@
 
 Allenatore personale per corsa e ciclismo che adatta il programma alla tua settimana.
 
-**Stato: Milestone 6.** Riprogrammazione degli imprevisti con conversazione guidata, anteprima prima/dopo, conferma, storico delle versioni e annullamento.
+**Stato: Milestone 7.** Chat con il coach AI (accesso controllato ai dati, proposte tramite il motore di regole, conferma obbligatoria), lettura degli screenshot delle attività, dettatura vocale, limiti di uso giornalieri.
+Per attivare l'AI segui `docs/OPENAI.md`.
+Milestone 6: Riprogrammazione degli imprevisti con conversazione guidata, anteprima prima/dopo, conferma, storico delle versioni e annullamento.
 Milestone 5: Sedute segnate come fatte o saltate, attività inserite a mano con controllo dei duplicati, feedback dopo ogni seduta, storico e segnali dai feedback ripetuti.
 Milestone 4: motore di programmazione con anteprima, conferma e versioni salvate.
 Milestone 3: Quattro sport (nuoto, ciclismo, corsa, palestra) e gare di triathlon. Onboarding guidato, gare, test iniziali con rinvio e controlli di sicurezza, parametri stimati. Accesso con Supabase e dati protetti per utente.
@@ -34,7 +36,8 @@ src/
   components/          interfaccia (menu, schede, grafici, calendario)
   lib/domain/          modello dei dati: sport (nuoto, bici, corsa, palestra), gare, validazione
   lib/training/        formule, modelli di seduta, analisi e logica dei test
-  lib/planning/        motore di programmazione (regole deterministiche, senza AI) e ritmi/watt stimati
+  lib/planning/        motore di programmazione e riprogrammazione (regole deterministiche, senza AI)
+  lib/ai/              coach AI: prompt, strumenti di lettura, lettura screenshot, limiti di uso
   lib/data/            lettura dei dati: Supabase se configurato, altrimenti dati dimostrativi
   lib/supabase/        collegamento a Supabase (sessione, middleware)
   lib/demo/            DATI DIMOSTRATIVI
@@ -51,5 +54,5 @@ docs/FORMULE.md        formule usate e loro limiti
 4. ✅ Motore di programmazione e calendario persistente
 5. ✅ Completamento attività, feedback e storico
 6. ✅ Riprogrammazione con regole deterministiche, anteprima e conferma
-7. Integrazione AI, chat e analisi screenshot
+7. ✅ Integrazione AI, chat e analisi screenshot
 8. Test end-to-end, sicurezza, PWA e deployment

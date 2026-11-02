@@ -37,7 +37,7 @@ async function as(user: string | null, sql: string, params: unknown[] = []) {
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(SUPABASE_STUB);
-  for (const f of ["0001_schema.sql", "0002_multisport.sql", "0003_plan.sql", "0004_activities.sql", "0005_reschedule.sql"]) {
+  for (const f of ["0001_schema.sql", "0002_multisport.sql", "0003_plan.sql", "0004_activities.sql", "0005_reschedule.sql", "0006_coach_ai.sql"]) {
     await db.exec(readFileSync(path.join(__dirname, "migrations", f), "utf8"));
   }
   // Le migrazioni devono poter essere rieseguite senza errori.
@@ -45,6 +45,7 @@ beforeAll(async () => {
   await db.exec(readFileSync(path.join(__dirname, "migrations/0003_plan.sql"), "utf8"));
   await db.exec(readFileSync(path.join(__dirname, "migrations/0004_activities.sql"), "utf8"));
   await db.exec(readFileSync(path.join(__dirname, "migrations/0005_reschedule.sql"), "utf8"));
+  await db.exec(readFileSync(path.join(__dirname, "migrations/0006_coach_ai.sql"), "utf8"));
   await db.exec(`insert into auth.users (id, email) values ('${ALICE}', 'a@example.com'), ('${BOB}', 'b@example.com');`);
 });
 
@@ -267,6 +268,28 @@ describe("riprogrammazione e annullamento (Milestone 6)", () => {
     expect((await as(ALICE, "select count(*)::int as n from public.planned_workouts where title = 'Nuova'")).rows[0].n).toBe(1);
     await as(ALICE, "select public.undo_plan_version($1)", [v]);
     expect((await as(ALICE, "select count(*)::int as n from public.planned_workouts where title = 'Nuova'")).rows[0].n).toBe(0);
+  });
+});
+
+describe("coach AI (Milestone 7)", () => {
+  let conv = "";
+  it("conversazioni e messaggi privati", async () => {
+    conv = String((await as(ALICE, "insert into public.coach_conversations (title) values ('Cena') returning id")).rows[0].id);
+    await as(ALICE, "insert into public.coach_messages (conversation_id, role, content) values ($1, 'user', 'Martedì ho una cena')", [conv]);
+    expect((await as(BOB, "select * from public.coach_messages")).rows).toHaveLength(0);
+    expect((await as(BOB, "select * from public.coach_conversations")).rows).toHaveLength(0);
+  });
+  it("non si scrive nella conversazione di un altro", async () => {
+    await expect(as(BOB, "insert into public.coach_messages (conversation_id, role, content) values ($1, 'user', 'x')", [conv])).rejects.toThrow();
+  });
+  it("il contatore d'uso sale solo e non si può azzerare", async () => {
+    await as(ALICE, "select public.ai_usage_add(1000, 200, 0)");
+    await as(ALICE, "select public.ai_usage_add(-5000, -5000, -1)");
+    const r = await as(ALICE, "select requests, input_tokens, output_tokens from public.ai_usage");
+    expect(r.rows).toEqual([{ requests: 2, input_tokens: 1000, output_tokens: 200 }]);
+    await expect(as(ALICE, "update public.ai_usage set requests = 0")).rejects.toThrow(/permission denied/);
+    await expect(as(ALICE, "delete from public.ai_usage")).rejects.toThrow(/permission denied/);
+    expect((await as(BOB, "select * from public.ai_usage")).rows).toHaveLength(0);
   });
 });
 
