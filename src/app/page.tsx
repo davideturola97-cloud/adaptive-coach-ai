@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Card, SectionTitle, SportBadge, Stat, StatusLabel, WorkoutRow } from "@/components/ui";
 import { addDays, daysBetween, formatDayMonth, mondayOf, weekdayName } from "@/lib/dates";
 import { WORKOUT_TYPE_LABEL } from "@/lib/domain/sports";
-import { getData } from "@/lib/demo/store";
+import { getAppData } from "@/lib/data/repository";
 import { adherence, loadState, weeklySummaries } from "@/lib/training/analytics";
 import { formatDuration } from "@/lib/training/formulas";
 
@@ -12,8 +12,9 @@ export const dynamic = "force-dynamic";
 
 const LOAD_COLOR = { basso: "var(--color-muted)", equilibrato: "var(--color-ok)", "in crescita": "var(--color-warn)", alto: "var(--color-bad)" } as const;
 
-export default function HomePage() {
-  const { today, athlete, events, plan, activities } = getData();
+export default async function HomePage() {
+  const { today, athlete, events, plan, activities, mode, onboardingCompleted } = await getAppData();
+  const needsProfile = mode === "utente" && !onboardingCompleted && !athlete.sports.length;
   const monday = mondayOf(today);
   const week = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   const todays = plan.filter((p) => p.date === today);
@@ -32,6 +33,14 @@ export default function HomePage() {
         </p>
         <h1 className="text-3xl font-bold tracking-tight">Ciao, {athlete.name.split(" ")[0]}</h1>
       </header>
+
+      {needsProfile && (
+        <Card className="flex flex-col gap-3 border-run/40">
+          <p className="text-lg font-semibold">Benvenuto! Iniziamo dal tuo profilo</p>
+          <p className="text-sm text-muted">Dimmi che sport fai, quanto tempo hai e qual è il tuo obiettivo. Il programma di allenamento arriverà con le prossime funzioni.</p>
+          <Link href="/profilo/modifica" className="inline-flex min-h-12 w-fit items-center rounded-xl bg-fg px-5 text-sm font-semibold text-bg">Completa il profilo</Link>
+        </Card>
+      )}
 
       {race && (
         <Link href="/profilo" className="group relative overflow-hidden rounded-[var(--radius-card)] border border-line bg-gradient-to-br from-run/20 via-surface to-surface p-5">

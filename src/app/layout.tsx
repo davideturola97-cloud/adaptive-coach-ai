@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Barlow_Condensed, Manrope } from "next/font/google";
 import { AppShell } from "@/components/app-shell";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 import "./globals.css";
 
 const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope", display: "swap" });
@@ -22,7 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="it" className={`${manrope.variable} ${barlow.variable}`}>
       <body>
-        <AppShell>{children}</AppShell>
+        <AppShell demo={!isSupabaseConfigured()}>{children}</AppShell>
       </body>
     </html>
   );

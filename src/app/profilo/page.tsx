@@ -1,8 +1,11 @@
-import { Download, Trash2 } from "lucide-react";
+import { Download, LogOut, Pencil, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { signOut } from "@/app/accedi/actions";
 import { Card, OriginTag, PageHeader, SectionTitle, SportBadge } from "@/components/ui";
 import { daysBetween, formatDayMonth } from "@/lib/dates";
-import { getData } from "@/lib/demo/store";
+import { getAppData } from "@/lib/data/repository";
 import { formatPace, powerZones } from "@/lib/training/formulas";
+import { deleteAccount } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -15,13 +18,26 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-export default function ProfilePage() {
-  const { athlete: a, events, today } = getData();
-  const age = Math.floor(daysBetween(a.birthDate, today) / 365.25);
+const dash = "–";
+
+export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ errore?: string }> }) {
+  const { athlete: a, events, today, mode, email } = await getAppData();
+  const { errore } = await searchParams;
+  const demo = mode === "demo";
+  const age = a.birthDate ? `${Math.floor(daysBetween(a.birthDate, today) / 365.25)} anni` : null;
+  const body = [age, a.heightCm && `${a.heightCm} cm`, a.weightKg && `${a.weightKg} kg`].filter(Boolean).join(" · ");
 
   return (
     <>
-      <PageHeader title="Profilo" subtitle="I tuoi dati, obiettivi e parametri di allenamento." />
+      <PageHeader
+        title="Profilo"
+        subtitle={email ? `Collegato come ${email}` : "I tuoi dati, obiettivi e parametri di allenamento."}
+        action={!demo && (
+          <Link href="/profilo/modifica" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-fg px-4 text-sm font-semibold text-bg">
+            <Pencil className="size-4" aria-hidden /> Modifica
+          </Link>
+        )}
+      />
 
       <div className="flex flex-col gap-6">
         <Card className="flex items-center gap-4">
@@ -30,7 +46,7 @@ export default function ProfilePage() {
           </span>
           <div className="min-w-0">
             <p className="text-xl font-bold">{a.name}</p>
-            <p className="text-sm text-muted">{age} anni · {a.heightCm} cm · {a.weightKg} kg</p>
+            <p className="text-sm text-muted">{body || "Completa il profilo per iniziare"}</p>
             <div className="mt-2 flex flex-wrap gap-2">{a.sports.map((s) => <SportBadge key={s.sport} sport={s.sport} />)}</div>
           </div>
         </Card>
@@ -40,8 +56,8 @@ export default function ProfilePage() {
             <SectionTitle>Obiettivi ed eventi</SectionTitle>
             <Card>
               <dl>
-                <Row label="Obiettivo principale">{a.goals.primary}</Row>
-                <Row label="Obiettivi secondari">{a.goals.secondary.join(" · ")}</Row>
+                <Row label="Obiettivo principale">{a.goals.primary || dash}</Row>
+                <Row label="Obiettivi secondari">{a.goals.secondary.join(" · ") || dash}</Row>
                 {events.map((e) => (
                   <Row key={e.id} label={`Evento ${e.priority}`}>
                     {e.name}
@@ -56,10 +72,10 @@ export default function ProfilePage() {
             <SectionTitle>Disponibilità</SectionTitle>
             <Card>
               <dl>
-                <Row label="Ore a settimana">{a.weeklyHoursAvailable} h</Row>
-                <Row label="Giorni">{a.availableDays.join(", ")}</Row>
-                <Row label="Seduta più lunga">{a.maxSessionMin} minuti</Row>
-                <Row label="Attrezzatura">{a.equipment.join(", ")}</Row>
+                <Row label="Ore a settimana">{a.weeklyHoursAvailable !== undefined ? `${a.weeklyHoursAvailable} h` : dash}</Row>
+                <Row label="Giorni">{a.availableDays.join(", ") || dash}</Row>
+                <Row label="Seduta più lunga">{a.maxSessionMin ? `${a.maxSessionMin} minuti` : dash}</Row>
+                <Row label="Attrezzatura">{a.equipment.join(", ") || dash}</Row>
                 <Row label="Limitazioni">{a.limitations.join(", ") || "Nessuna"}</Row>
               </dl>
             </Card>
@@ -92,7 +108,7 @@ export default function ProfilePage() {
                 {a.ftpW && (
                   <Row label="FTP">
                     <span className="flex items-center justify-end gap-2">{a.ftpW.value} W <OriginTag origin={a.ftpW.origin} /></span>
-                    <span className="block text-xs text-muted">{(a.ftpW.value / a.weightKg).toFixed(1).replace(".", ",")} W/kg · dal test del {formatDayMonth(a.ftpW.date, false)}</span>
+                    <span className="block text-xs text-muted">{a.weightKg ? `${(a.ftpW.value / a.weightKg).toFixed(1).replace(".", ",")} W/kg · ` : ""}dal test del {formatDayMonth(a.ftpW.date, false)}</span>
                   </Row>
                 )}
               </dl>
@@ -126,15 +142,37 @@ export default function ProfilePage() {
 
         <section>
           <SectionTitle>I tuoi dati</SectionTitle>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <button disabled className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-line bg-surface text-sm font-semibold text-faint">
-              <Download className="size-5" aria-hidden /> Esporta i miei dati
-            </button>
-            <button disabled className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-bad/30 bg-surface text-sm font-semibold text-bad/50">
-              <Trash2 className="size-5" aria-hidden /> Cancella account e dati
-            </button>
-          </div>
-          <p className="mt-2 text-xs text-faint">Modifica del profilo, esportazione e cancellazione arrivano con la Milestone 2.</p>
+          {demo ? (
+            <p className="text-sm text-muted">Esportazione e cancellazione sono disponibili quando accedi con il tuo account.</p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <a href="/api/esporta" className="flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-line bg-surface text-sm font-semibold hover:border-faint">
+                  <Download className="size-5" aria-hidden /> Esporta i miei dati (JSON)
+                </a>
+                <form action={signOut}>
+                  <button className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl border border-line bg-surface text-sm font-semibold hover:border-faint">
+                    <LogOut className="size-5" aria-hidden /> Esci
+                  </button>
+                </form>
+              </div>
+              <details className="rounded-2xl border border-bad/30 bg-surface p-4">
+                <summary className="flex min-h-8 cursor-pointer items-center gap-2 text-sm font-semibold text-bad">
+                  <Trash2 className="size-4" aria-hidden /> Cancella account e tutti i dati
+                </summary>
+                <form action={deleteAccount} className="mt-4 flex flex-col gap-3">
+                  <p className="text-sm text-muted">Profilo, programmi, attività, feedback e test vengono eliminati per sempre. Prima puoi esportarli.</p>
+                  <label className="flex flex-col gap-1.5 text-sm font-medium">
+                    Per confermare scrivi CANCELLA
+                    <input id="confirm" name="confirm" autoComplete="off" className="min-h-12 rounded-xl border border-line bg-bg px-4 text-base outline-none focus:border-bad" />
+                  </label>
+                  <button className="min-h-12 rounded-xl bg-bad text-sm font-semibold text-white">Cancella definitivamente</button>
+                </form>
+              </details>
+              {errore === "conferma" && <p role="alert" className="text-sm text-bad">Per cancellare l&apos;account scrivi CANCELLA nel campo di conferma.</p>}
+              {errore === "cancellazione" && <p role="alert" className="text-sm text-bad">Cancellazione non riuscita. Riprova tra poco.</p>}
+            </div>
+          )}
         </section>
       </div>
     </>

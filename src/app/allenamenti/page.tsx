@@ -1,12 +1,12 @@
 import { Camera, PencilLine } from "lucide-react";
 import { PageHeader } from "@/components/ui";
 import { WorkoutList } from "@/components/workout-list";
-import { getData } from "@/lib/demo/store";
+import { getAppData } from "@/lib/data/repository";
 
 export const dynamic = "force-dynamic";
 
-export default function WorkoutsPage() {
-  const { plan, today } = getData();
+export default async function WorkoutsPage() {
+  const { plan, today } = await getAppData();
   return (
     <>
       <PageHeader title="Allenamenti" subtitle="Sedute in programma e storico delle attività." />

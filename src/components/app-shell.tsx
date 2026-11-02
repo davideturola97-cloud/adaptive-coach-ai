@@ -18,8 +18,11 @@ function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, demo }: { children: React.ReactNode; demo: boolean }) {
   const pathname = usePathname();
+
+  // Pagina di accesso: niente menu.
+  if (pathname.startsWith("/accedi")) return <main className="px-4 sm:px-6">{children}</main>;
 
   return (
     <div className="min-h-dvh md:grid md:grid-cols-[15rem_1fr]">
@@ -53,9 +56,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="min-w-0">
-        <div className="border-b border-estimate/30 bg-estimate/10 px-4 py-2 text-center text-xs text-estimate">
-          Modalità dimostrativa: tutti i dati sono di esempio e non appartengono a una persona reale.
-        </div>
+        {demo && (
+          <div className="border-b border-estimate/30 bg-estimate/10 px-4 py-2 text-center text-xs text-estimate">
+            Modalità dimostrativa: tutti i dati sono di esempio e non appartengono a una persona reale.
+          </div>
+        )}
         <main className="mx-auto w-full max-w-5xl px-4 pb-32 pt-5 sm:px-6 md:pb-12">{children}</main>
       </div>
 

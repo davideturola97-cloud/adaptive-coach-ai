@@ -1,13 +1,13 @@
 import { AdherenceChart, BikeHoursChart, LoadChart, PaceChart, RunKmChart, VolumeChart } from "@/components/charts";
 import { Card, OriginTag, PageHeader, SectionTitle, SportBadge } from "@/components/ui";
 import { addDays, formatDayMonth } from "@/lib/dates";
-import { getData } from "@/lib/demo/store";
+import { getAppData } from "@/lib/data/repository";
 import { weeklySummaries } from "@/lib/training/analytics";
 
 export const dynamic = "force-dynamic";
 
-export default function ProgressPage() {
-  const { plan, activities, tests, today, athlete } = getData();
+export default async function ProgressPage() {
+  const { plan, activities, tests, today, athlete } = await getAppData();
   const weeks = weeklySummaries(activities, plan, today, 10);
 
   const easyTypes = new Set(["corsa_facile", "lungo"]);

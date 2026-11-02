@@ -3,5 +3,5 @@ import path from "path";
 
 export default defineConfig({
   resolve: { alias: { "@": path.resolve(__dirname, "src") } },
-  test: { include: ["src/**/*.test.ts"] },
+  test: { include: ["src/**/*.test.ts", "supabase/**/*.test.ts"] },
 });

@@ -1,11 +1,11 @@
 import { CalendarView } from "@/components/calendar-view";
 import { PageHeader } from "@/components/ui";
-import { getData } from "@/lib/demo/store";
+import { getAppData } from "@/lib/data/repository";
 
 export const dynamic = "force-dynamic";
 
-export default function CalendarPage() {
-  const { plan, events, today } = getData();
+export default async function CalendarPage() {
+  const { plan, events, today } = await getAppData();
   return (
     <>
       <PageHeader title="Calendario" subtitle="Il tuo programma giorno per giorno. Tocca una seduta per i dettagli." />

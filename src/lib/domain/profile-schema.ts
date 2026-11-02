@@ -1,0 +1,77 @@
+import { z } from "zod";
+
+/** Validazione del modulo profilo. Gli stessi limiti sono ripetuti nel database (vincoli CHECK). */
+
+export const WEEK_DAYS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"] as const;
+export const LEVELS = ["principiante", "intermedio", "avanzato"] as const;
+
+const optionalNumber = (min: number, max: number, label: string) =>
+  z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : Number(String(v).replace(",", "."))),
+    z.number({ invalid_type_error: `${label}: inserisci un numero` }).min(min, `${label}: minimo ${min}`).max(max, `${label}: massimo ${max}`).optional(),
+  );
+
+/** Testo con più voci separate da virgola o a capo -> elenco pulito. */
+const list = (maxItems: number) =>
+  z.preprocess(
+    (v) => (typeof v === "string" ? v.split(/[\n,]/).map((s) => s.trim()).filter(Boolean) : v),
+    z.array(z.string().max(120, "Voce troppo lunga (max 120 caratteri)")).max(maxItems, `Massimo ${maxItems} voci`),
+  );
+
+const sportEntry = z.object({
+  enabled: z.boolean(),
+  level: z.enum(LEVELS),
+  yearsExperience: optionalNumber(0, 80, "Anni di esperienza"),
+  weeklyVolume: z.string().trim().max(200).default(""),
+});
+
+export const profileSchema = z
+  .object({
+    displayName: z.string().trim().min(1, "Inserisci un nome").max(80, "Nome troppo lungo"),
+    birthDate: z
+      .string()
+      .optional()
+      .transform((v) => (v ? v : undefined))
+      .refine((v) => !v || (/^\d{4}-\d{2}-\d{2}$/.test(v) && v >= "1900-01-01" && v <= new Date().toISOString().slice(0, 10)), "Data di nascita non valida"),
+    sex: z.preprocess((v) => (v === "" ? undefined : v), z.enum(["M", "F", "altro"]).optional()),
+    heightCm: optionalNumber(100, 250, "Altezza"),
+    weightKg: optionalNumber(25, 300, "Peso"),
+    weeklyHoursAvailable: optionalNumber(0, 40, "Ore a settimana"),
+    maxSessionMin: optionalNumber(10, 600, "Durata massima seduta"),
+    availableDays: z.array(z.enum(WEEK_DAYS)).default([]),
+    equipment: list(20),
+    limitations: list(20),
+    goalPrimary: z.string().trim().max(200, "Obiettivo troppo lungo"),
+    goalsSecondary: list(10),
+    run: sportEntry,
+    bike: sportEntry,
+  })
+  .refine((p) => p.run.enabled || p.bike.enabled, { message: "Scegli almeno uno sport", path: ["run"] });
+
+export type ProfileInput = z.infer<typeof profileSchema>;
+
+/** Legge i campi dal FormData del modulo. */
+export function profileFromForm(fd: FormData) {
+  const sport = (k: "run" | "bike") => ({
+    enabled: fd.get(`${k}.enabled`) === "on",
+    level: fd.get(`${k}.level`) ?? "principiante",
+    yearsExperience: fd.get(`${k}.yearsExperience`) ?? "",
+    weeklyVolume: fd.get(`${k}.weeklyVolume`) ?? "",
+  });
+  return profileSchema.safeParse({
+    displayName: fd.get("displayName") ?? "",
+    birthDate: fd.get("birthDate") ?? "",
+    sex: fd.get("sex") ?? "",
+    heightCm: fd.get("heightCm") ?? "",
+    weightKg: fd.get("weightKg") ?? "",
+    weeklyHoursAvailable: fd.get("weeklyHoursAvailable") ?? "",
+    maxSessionMin: fd.get("maxSessionMin") ?? "",
+    availableDays: fd.getAll("availableDays"),
+    equipment: fd.get("equipment") ?? "",
+    limitations: fd.get("limitations") ?? "",
+    goalPrimary: fd.get("goalPrimary") ?? "",
+    goalsSecondary: fd.get("goalsSecondary") ?? "",
+    run: sport("run"),
+    bike: sport("bike"),
+  });
+}

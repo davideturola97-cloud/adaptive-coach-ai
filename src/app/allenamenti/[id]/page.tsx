@@ -5,7 +5,7 @@ import { Card, OriginTag, SectionTitle, SportBadge, StatusLabel } from "@/compon
 import { formatDayMonth, weekdayName } from "@/lib/dates";
 import { WORKOUT_TYPE_LABEL } from "@/lib/domain/sports";
 import type { WorkoutStep } from "@/lib/domain/types";
-import { getData } from "@/lib/demo/store";
+import { getAppData } from "@/lib/data/repository";
 import { formatDuration } from "@/lib/training/formulas";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +35,7 @@ function Step({ s }: { s: WorkoutStep }) {
 
 export default async function WorkoutPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { plan, activities } = getData();
+  const { plan, activities } = await getAppData();
   const w = plan.find((p) => p.id === id);
   if (!w) notFound();
   const done = w.completedActivityId ? activities.find((a) => a.id === w.completedActivityId) : undefined;

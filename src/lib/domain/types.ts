@@ -110,16 +110,24 @@ export interface RaceEvent {
   priority: "A" | "B" | "C";
 }
 
+export interface AthleteSport {
+  sport: Sport;
+  level: Level;
+  yearsExperience: number;
+  weeklyVolume?: string;
+}
+
+/** Profilo atleta. I campi facoltativi possono mancare finché l'atleta non completa l'onboarding. */
 export interface AthleteProfile {
   name: string;
-  birthDate: string;
+  birthDate?: string;
   sex?: "M" | "F" | "altro";
-  heightCm: number;
-  weightKg: number;
-  sports: { sport: Sport; level: Level; yearsExperience: number }[];
-  weeklyHoursAvailable: number;
+  heightCm?: number;
+  weightKg?: number;
+  sports: AthleteSport[];
+  weeklyHoursAvailable?: number;
   availableDays: string[];
-  maxSessionMin: number;
+  maxSessionMin?: number;
   equipment: string[];
   limitations: string[];
   goals: { primary: string; secondary: string[] };
