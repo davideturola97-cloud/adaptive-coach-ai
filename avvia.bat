@@ -18,6 +18,28 @@ if errorlevel 1 (
   exit /b 1
 )
 
+rem Il Blocco note a volte salva ".env.local.txt": lo rinomino.
+if not exist .env.local if exist .env.local.txt ren .env.local.txt .env.local
+if not exist .env.local if exist env.local ren env.local .env.local
+if not exist .env.local if exist env.local.txt ren env.local.txt .env.local
+
+rem Controllo della configurazione Supabase, senza mostrare i valori.
+set SUPA_URL=NO
+set SUPA_KEY=NO
+if exist .env.local (
+  findstr /r /b /c:"NEXT_PUBLIC_SUPABASE_URL=https://." .env.local >nul && set SUPA_URL=SI
+  findstr /r /b /c:"NEXT_PUBLIC_SUPABASE_ANON_KEY=.." .env.local >nul && set SUPA_KEY=SI
+  findstr /r /b /c:"NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=.." .env.local >nul && set SUPA_KEY=SI
+)
+echo.
+if not exist .env.local (
+  echo Supabase: file .env.local NON trovato. L'app parte in modalita dimostrativa.
+) else (
+  echo Supabase: indirizzo impostato: %SUPA_URL%   chiave impostata: %SUPA_KEY%
+  if "%SUPA_URL%%SUPA_KEY%"=="SISI" (echo Supabase configurato: vedrai la pagina di accesso.) else (echo Manca un valore in .env.local: l'app parte in modalita dimostrativa.)
+)
+echo.
+
 echo Avvio di Adaptive Coach AI su http://localhost:3000
 echo Per fermarla chiudi questa finestra.
 start "" http://localhost:3000
