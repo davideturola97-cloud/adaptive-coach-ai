@@ -66,6 +66,7 @@ export async function getAppData(): Promise<AppData> {
     return {
       id: a.id, date: a.activity_date, sport: a.sport, title: a.title, durationMin: Number(a.duration_min),
       distanceKm: num(a.distance_km), avgHr: num(a.avg_hr), avgPowerW: num(a.avg_power_w), elevationM: num(a.elevation_m), source: a.source,
+      splits: Array.isArray(a.splits) ? a.splits : undefined,
       feedback: f ? { rpe: f.rpe, muscleFatigue: f.muscle_fatigue, cardioFatigue: f.cardio_fatigue, sleepQuality: f.sleep_quality ?? undefined, feeling: f.feeling, pain: f.pain ?? undefined, notes: f.notes ?? undefined } : undefined,
     };
   });

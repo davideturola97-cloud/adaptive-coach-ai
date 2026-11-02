@@ -11,6 +11,7 @@ import { type Disruption, proposeReschedule, type RescheduleResult } from "@/lib
 import { loadState } from "@/lib/training/analytics";
 import { feedbackSignals } from "@/lib/training/feedback";
 import { formatDuration, formatPace, formatSwimPace } from "@/lib/training/formulas";
+import { analyzeSplits } from "@/lib/training/splits";
 import { TEST_CATALOG } from "@/lib/training/tests";
 import type { ChatClient, ChatMessage, ToolDef } from "./openai";
 
@@ -192,7 +193,9 @@ export function runTool(name: string, rawArgs: string, ctx: ToolContext): string
         .map((a) => {
           const f = a.feedback;
           const fb = f ? ` · RPE ${f.rpe}, fatica muscolare ${f.muscleFatigue}/5, fiato ${f.cardioFatigue}/5${f.sleepQuality ? `, sonno ${f.sleepQuality}/5` : ""}, ${f.feeling}${f.pain ? `, dolore: ${f.pain}` : ""}${f.notes ? `, note: ${f.notes}` : ""}` : " · senza feedback";
-          return `${a.date} · ${SPORTS[a.sport].label} · ${a.title} · ${formatDuration(a.durationMin)}${a.distanceKm ? ` · ${a.distanceKm} km` : ""}${a.avgHr ? ` · FC ${a.avgHr}` : ""}${a.avgPowerW ? ` · ${a.avgPowerW} W` : ""} (misurato)${fb}`;
+          const p = data.plan.find((w) => w.completedActivityId === a.id);
+          const sp = a.splits?.length ? ` · intertempi: ${analyzeSplits(a.splits, a.sport, p, data.athlete).findings.join(" ")}` : "";
+          return `${a.date} · ${SPORTS[a.sport].label} · ${a.title} · ${formatDuration(a.durationMin)}${a.distanceKm ? ` · ${a.distanceKm} km` : ""}${a.avgHr ? ` · FC ${a.avgHr}` : ""}${a.avgPowerW ? ` · ${a.avgPowerW} W` : ""} (misurato)${fb}${sp}`;
         });
       const skipped = data.plan.filter((w) => w.status === "saltato" && w.date > addDays(data.today, -days)).map((w) => `${w.date} · saltata: ${w.title}${w.skipReason ? ` (${w.skipReason})` : ""}`);
       return [...rows, ...skipped].join("\n") || "Nessuna attività registrata in quel periodo.";

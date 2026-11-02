@@ -99,7 +99,19 @@ describe("limiti di uso", () => {
 });
 
 describe("lettura screenshot", () => {
-  const base = { e_attivita: true, app: "Strava", sport: "run", data: "2026-11-15", titolo: "Corsa", durata_minuti: 52.5, distanza_km: 10.1, passo: "5:12 /km", velocita_kmh: null, fc_media: 152, potenza_media_w: null, dislivello_m: 40, intervalli: null, illeggibili: [] };
+  const base = { e_attivita: true, app: "Strava", sport: "run", data: "2026-11-15", titolo: "Corsa", durata_minuti: 52.5, distanza_km: 10.1, passo: "5:12 /km", velocita_kmh: null, fc_media: 152, potenza_media_w: null, dislivello_m: 40, intervalli: null, illeggibili: [], unita_parziali: "km", parziali: [] };
+  const row = (n: number, passo: string | null, extra = {}) => ({ n, distanza: 1, passo, tempo: null, velocita_kmh: null, fc: 150, dislivello_m: 3, ...extra });
+  it("legge gli intertempi al km", () => {
+    const e = normalizeExtraction({ ...base, parziali: [row(1, "5:20"), row(2, "5:12"), row(3, null), { ...row(4, "4:50"), distanza: 0.1 }] }, today)!;
+    expect(e.splits.map((s) => s.paceSec)).toEqual([320, 312, undefined, 290]);
+    expect(e.splits[3].km).toBe(0.1);
+    expect(e.splitsUnreadable).toBe(1);
+  });
+  it("converte i parziali in miglia e scarta i passi impossibili", () => {
+    const e = normalizeExtraction({ ...base, unita_parziali: "mi", parziali: [row(1, "8:00"), row(2, "0:30")] }, today)!;
+    expect(e.splits[0].paceSec).toBe(298); // 8:00 al miglio = 4:58 al km
+    expect(e.splits[1].paceSec).toBeUndefined();
+  });
   it("accetta valori plausibili", () => {
     const e = normalizeExtraction(base, today)!;
     expect(e.distanza_km).toBe(10.1);

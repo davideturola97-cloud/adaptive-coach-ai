@@ -88,3 +88,15 @@ nessuna seduta dura vicino a una gara, mai due sedute dure in giorni consecutivi
 Una seduta importante spostata in un'altra settimana si accorcia del 20%.
 Se l'atleta indica un giorno preciso, quella proposta compare per prima se rispetta le regole (in quel caso i giorni disponibili
 del profilo non contano, perché è l'atleta a dire che può); altrimenti il coach spiega il motivo e propone alternative.
+
+## Intertempi (src/lib/training/splits.ts)
+
+Calcolati sui parziali completi (l'ultimo, se più corto, si mostra ma non entra nei confronti). Servono almeno 3 parziali.
+
+- **Andamento**: seconda metà più veloce di almeno 5 s/km = progressione; più lenta di almeno 8 s/km = calo; altrimenti regolare.
+- **Regolarità**: oscillazione (deviazione standard / media) sotto il 2% = molto costante, sopra il 5% = variabile (non nelle ripetute).
+- **Calo finale**: media degli ultimi 2 km più lenta di almeno 10 s/km rispetto alla media.
+- **Ripetute**: frazioni veloci (almeno 15 s/km sotto la mediana) uniformi se lo scarto massimo è entro 6 s/km.
+- **Seduta facile** (con soglia da test): km più veloci di soglia × 1,2 (lungo × 1,15) meno 5 s sono segnalati come troppo veloci.
+- **Deriva cardiaca**: a ritmo stabile, battito della seconda metà più alto di almeno il 5%.
+- Dagli screenshot: passi al miglio o ai 100 m convertiti al km; passi impossibili scartati, mai stimati.

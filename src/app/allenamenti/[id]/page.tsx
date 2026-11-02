@@ -115,7 +115,7 @@ export default async function WorkoutPage({ params, searchParams }: { params: Pr
         </p>
       )}
 
-      {done && <ActivitySummary a={done} back={`/allenamenti/${w.id}`} editable={!demo} />}
+      {done && <ActivitySummary a={done} back={`/allenamenti/${w.id}`} editable={!demo} planned={w} athlete={athlete} />}
 
       {w.status === "saltato" && (
         <Card className="flex flex-col gap-3 border-bad/40">

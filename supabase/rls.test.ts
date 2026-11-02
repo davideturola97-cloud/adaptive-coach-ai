@@ -37,7 +37,7 @@ async function as(user: string | null, sql: string, params: unknown[] = []) {
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(SUPABASE_STUB);
-  for (const f of ["0001_schema.sql", "0002_multisport.sql", "0003_plan.sql", "0004_activities.sql", "0005_reschedule.sql", "0006_coach_ai.sql"]) {
+  for (const f of ["0001_schema.sql", "0002_multisport.sql", "0003_plan.sql", "0004_activities.sql", "0005_reschedule.sql", "0006_coach_ai.sql", "0007_splits.sql"]) {
     await db.exec(readFileSync(path.join(__dirname, "migrations", f), "utf8"));
   }
   // Le migrazioni devono poter essere rieseguite senza errori.
@@ -46,6 +46,7 @@ beforeAll(async () => {
   await db.exec(readFileSync(path.join(__dirname, "migrations/0004_activities.sql"), "utf8"));
   await db.exec(readFileSync(path.join(__dirname, "migrations/0005_reschedule.sql"), "utf8"));
   await db.exec(readFileSync(path.join(__dirname, "migrations/0006_coach_ai.sql"), "utf8"));
+  await db.exec(readFileSync(path.join(__dirname, "migrations/0007_splits.sql"), "utf8"));
   await db.exec(`insert into auth.users (id, email) values ('${ALICE}', 'a@example.com'), ('${BOB}', 'b@example.com');`);
 });
 
@@ -290,6 +291,19 @@ describe("coach AI (Milestone 7)", () => {
     await expect(as(ALICE, "update public.ai_usage set requests = 0")).rejects.toThrow(/permission denied/);
     await expect(as(ALICE, "delete from public.ai_usage")).rejects.toThrow(/permission denied/);
     expect((await as(BOB, "select * from public.ai_usage")).rows).toHaveLength(0);
+  });
+});
+
+describe("intertempi", () => {
+  it("salva i parziali con l'attività", async () => {
+    const splits = [{ n: 1, km: 1, paceSec: 310 }, { n: 2, km: 1, paceSec: 305 }];
+    const act = { activity_date: "2026-12-03", sport: "run", title: "Con parziali", duration_min: 10.3, source: "screenshot", splits };
+    await as(ALICE, "select public.record_activity($1::jsonb, null)", [JSON.stringify(act)]);
+    const r = await as(ALICE, "select jsonb_array_length(splits) as n from public.activities where title = 'Con parziali'");
+    expect(r.rows).toEqual([{ n: 2 }]);
+  });
+  it("rifiuta parziali non validi", async () => {
+    await expect(as(ALICE, "insert into public.activities (activity_date, sport, duration_min, source, splits) values ('2026-12-04', 'run', 30, 'manuale', '{}'::jsonb)")).rejects.toThrow();
   });
 });
 

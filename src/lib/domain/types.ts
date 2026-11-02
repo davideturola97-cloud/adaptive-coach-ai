@@ -92,6 +92,15 @@ export interface Feedback {
   notes?: string;
 }
 
+/** Un parziale (di solito un km). `paceSec` è il tempo per km in secondi, anche per bici e nuoto. */
+export interface Split {
+  n: number;
+  km: number;
+  paceSec?: number;
+  hr?: number;
+  elevM?: number;
+}
+
 export interface CompletedActivity {
   id: string;
   date: string;
@@ -103,6 +112,7 @@ export interface CompletedActivity {
   avgPowerW?: number;
   elevationM?: number;
   source: "manuale" | "screenshot" | "file" | "demo";
+  splits?: Split[];
   feedback?: Feedback;
 }
 

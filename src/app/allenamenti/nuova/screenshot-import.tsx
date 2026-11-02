@@ -8,6 +8,7 @@ import { fieldLabel, type Extraction } from "@/lib/ai/screenshot";
 import { SPORTS } from "@/lib/domain/sports";
 import type { Sport } from "@/lib/domain/types";
 import { formatDuration } from "@/lib/training/formulas";
+import { SplitsView } from "@/components/splits-view";
 
 /** Riduce l'immagine nel browser (max 1600 px, JPEG): meno dati inviati, meno costi, nessun file salvato. */
 async function shrink(file: File): Promise<string> {
@@ -104,6 +105,12 @@ export function ScreenshotImport({ today, sports, enabled, demo }: { today: stri
               {!result.data && <p className="mt-2 text-xs text-muted">La data non era nello screenshot: ho messo oggi, correggila se serve.</p>}
             </div>
           </div>
+          {result.splits.length > 0 && sport && (
+            <div className="rounded-[var(--radius-card)] border border-line bg-surface p-4 sm:p-5">
+              <SplitsView splits={result.splits} sport={sport} />
+              {result.splitsUnreadable > 0 && <p className="mt-2 text-xs text-warn">{result.splitsUnreadable} parziali non leggibili: restano vuoti, non li ho stimati.</p>}
+            </div>
+          )}
           <p className="text-sm text-muted">Controlla i valori qui sotto, aggiungi il tuo feedback e salva. Se l&apos;attività è già registrata, te lo segnalo.</p>
           <ActivityForm
             key={JSON.stringify(result)}
@@ -117,6 +124,7 @@ export function ScreenshotImport({ today, sports, enabled, demo }: { today: stri
               avgPowerW: result.potenza_media_w ? Math.round(result.potenza_media_w) : undefined,
               elevationM: result.dislivello_m !== null ? Math.round(result.dislivello_m) : undefined,
               source: "screenshot",
+              splits: result.splits.length ? result.splits : undefined,
             }}
             sports={sports}
             today={today}

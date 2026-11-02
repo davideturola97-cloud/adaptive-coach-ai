@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function ActivityPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ salvato?: string }> }) {
   const { id } = await params;
   const { salvato } = await searchParams;
-  const { activities, plan, mode } = await getAppData();
+  const { activities, plan, mode, athlete } = await getAppData();
   const a = activities.find((x) => x.id === id);
   if (!a) notFound();
   const planned = plan.find((p) => p.completedActivityId === a.id);
@@ -31,7 +31,7 @@ export default async function ActivityPage({ params, searchParams }: { params: P
         </p>
       )}
       {planned && <Link href={`/allenamenti/${planned.id}`} className="text-sm font-semibold underline">Vedi la seduta del programma</Link>}
-      <ActivitySummary a={a} back="/allenamenti" editable={mode === "utente"} />
+      <ActivitySummary a={a} back="/allenamenti" editable={mode === "utente"} planned={planned} athlete={athlete} />
     </div>
   );
 }

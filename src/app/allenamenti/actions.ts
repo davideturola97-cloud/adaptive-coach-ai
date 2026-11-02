@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getAppData } from "@/lib/data/repository";
-import { activityFromForm } from "@/lib/domain/activity-schema";
+import { activityFromForm, splitsFromForm } from "@/lib/domain/activity-schema";
 import { sportLabel } from "@/lib/domain/sports";
 import { getUser } from "@/lib/supabase/server";
 import { dedupeKey, findSimilar, matchPlanned } from "@/lib/training/feedback";
@@ -50,6 +50,7 @@ export async function logActivity(_: LogState, fd: FormData): Promise<LogState> 
       source: fd.get("source") === "screenshot" ? "screenshot" : "manuale",
       dedupe_key: fd.get("confirmDuplicate") === "1" ? null : dedupeKey(a.sport, a.date, a.durationMin),
       planned_workout_id: plannedId ?? null,
+      splits: splitsFromForm(fd.get("splits")) ?? null,
     },
     p_feedback: {
       rpe: f.rpe,

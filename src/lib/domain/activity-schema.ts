@@ -50,6 +50,29 @@ export function parseDurationMin(text: string): number | null {
   return m > 0 && m <= 1440 ? Math.round(m * 10) / 10 : null;
 }
 
+const splitsSchema = z
+  .array(
+    z.object({
+      n: z.number().int().min(0).max(1000),
+      km: z.number().positive().max(50),
+      paceSec: z.number().positive().max(10000).optional(),
+      hr: z.number().min(30).max(230).optional(),
+      elevM: z.number().min(-2000).max(2000).optional(),
+    }),
+  )
+  .max(200);
+
+/** Parziali arrivati dal modulo (JSON nascosto). Se non validi si ignorano: non bloccano il salvataggio. */
+export function splitsFromForm(raw: FormDataEntryValue | null) {
+  if (typeof raw !== "string" || !raw) return undefined;
+  try {
+    const r = splitsSchema.safeParse(JSON.parse(raw));
+    return r.success && r.data.length ? r.data : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export type ActivityInput = z.infer<typeof activitySchema> & { durationMin: number };
 export type FeedbackInput = z.infer<typeof feedbackSchema>;
 

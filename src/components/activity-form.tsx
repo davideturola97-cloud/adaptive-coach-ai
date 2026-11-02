@@ -77,6 +77,8 @@ export interface ActivityDefaults {
   elevationM?: number;
   /** Da dove vengono i valori: compilati a mano o letti da uno screenshot (da controllare). */
   source?: "manuale" | "screenshot";
+  /** Intertempi letti dallo screenshot. */
+  splits?: import("@/lib/domain/types").Split[];
 }
 
 export function ActivityForm({ defaults, plannedId, sports, today, demo }: { defaults: ActivityDefaults; plannedId?: string; sports: Sport[]; today: string; demo?: boolean }) {
@@ -90,6 +92,7 @@ export function ActivityForm({ defaults, plannedId, sports, today, demo }: { def
       {plannedId && <input type="hidden" name="plannedId" value={plannedId} />}
       <input type="hidden" name="confirmDuplicate" value={confirmDup ? "1" : ""} />
       <input type="hidden" name="source" value={defaults.source ?? "manuale"} />
+      {defaults.splits?.length ? <input type="hidden" name="splits" value={JSON.stringify(defaults.splits)} /> : null}
 
       {plannedId ? (
         <input type="hidden" name="sport" value={sport} />

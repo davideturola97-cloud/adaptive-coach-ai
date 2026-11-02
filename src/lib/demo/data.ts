@@ -42,6 +42,15 @@ export interface DemoData {
   plannedTests: PlannedTest[];
 }
 
+function demoSplits(count: number, pace: number, hr: number, rand: () => number) {
+  return Array.from({ length: count }, (_: unknown, k: number) => ({
+    n: k + 1,
+    km: 1,
+    paceSec: Math.round(pace + 6 - (12 * k) / Math.max(1, count - 1) + (rand() - 0.5) * 8),
+    hr: Math.round(hr + k * 0.8),
+  }));
+}
+
 export function buildDemoData(now = new Date()): DemoData {
   const today = todayISO(now);
   const monday = mondayOf(today);
@@ -91,6 +100,8 @@ export function buildDemoData(now = new Date()): DemoData {
           elevationM: isRun || t.sport === "bike" ? Math.round(rand() * (isRun ? 80 : 600)) : undefined,
           source: "demo",
           feedback,
+          // Intertempi dimostrativi per le corse: leggera progressione con un po' di variabilità.
+          splits: isRun ? demoSplits(Math.floor((durationMin * 60) / paceSec), paceSec, 128 + rpe * 5, rand) : undefined,
         };
         activities.push(act);
         workout.completedActivityId = act.id;
