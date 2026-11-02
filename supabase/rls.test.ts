@@ -37,7 +37,11 @@ async function as(user: string | null, sql: string, params: unknown[] = []) {
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(SUPABASE_STUB);
-  await db.exec(readFileSync(path.join(__dirname, "migrations/0001_schema.sql"), "utf8"));
+  for (const f of ["0001_schema.sql", "0002_multisport.sql"]) {
+    await db.exec(readFileSync(path.join(__dirname, "migrations", f), "utf8"));
+  }
+  // Le migrazioni devono poter essere rieseguite senza errori.
+  await db.exec(readFileSync(path.join(__dirname, "migrations/0002_multisport.sql"), "utf8"));
   await db.exec(`insert into auth.users (id, email) values ('${ALICE}', 'a@example.com'), ('${BOB}', 'b@example.com');`);
 });
 
@@ -111,6 +115,37 @@ describe("dati di allenamento", () => {
     const q = "insert into public.activities (activity_date, sport, duration_min, source, dedupe_key) values ('2026-11-01', 'run', 40, 'manuale', 'run|2026-11-01T07:00|40')";
     await as(ALICE, q);
     await expect(as(ALICE, q)).rejects.toThrow();
+  });
+});
+
+describe("multisport (Milestone 3)", () => {
+  it("nuoto e palestra sono sport validi", async () => {
+    await as(ALICE, "insert into public.athlete_sports (user_id, sport, level) values ($1, 'swim', 'principiante'), ($1, 'gym', 'intermedio')", [ALICE]);
+    expect((await as(ALICE, "select sport from public.athlete_sports order by sport")).rows).toEqual([{ sport: "gym" }, { sport: "swim" }]);
+  });
+
+  it("una gara di triathlon richiede le tre frazioni e nessuno sport singolo", async () => {
+    await as(ALICE, "insert into public.events (name, event_date, kind, tri_format, swim_km, bike_km, run_km, date_tentative) values ('Ledroman', '2027-07-01', 'triathlon', 'personalizzato', 1.9, 90, 21.1, true)");
+    await expect(as(ALICE, "insert into public.events (name, event_date, kind, swim_km) values ('x', '2027-07-01', 'triathlon', 1.5)")).rejects.toThrow();
+    await expect(as(ALICE, "insert into public.events (name, event_date, kind) values ('x', '2027-07-01', 'singolo')")).rejects.toThrow();
+  });
+
+  it("un solo test aperto per sport", async () => {
+    await as(ALICE, "insert into public.planned_tests (sport, kind) values ('swim', 'css')");
+    await expect(as(ALICE, "insert into public.planned_tests (sport, kind) values ('swim', 'recente_nuoto')")).rejects.toThrow();
+    await as(ALICE, "update public.planned_tests set status = 'completato' where sport = 'swim'");
+    await as(ALICE, "insert into public.planned_tests (sport, kind) values ('swim', 'css')");
+  });
+
+  it("test proposti e controlli di sicurezza sono privati", async () => {
+    await as(ALICE, "insert into public.readiness_checks (answers, flagged) values ('{}'::jsonb, false)");
+    expect((await as(BOB, "select * from public.readiness_checks")).rows).toHaveLength(0);
+    expect((await as(BOB, "select * from public.planned_tests")).rows).toHaveLength(0);
+    await expect(as(null, "select * from public.planned_tests")).rejects.toThrow(/permission denied/);
+  });
+
+  it("i nuovi tipi di test sono accettati", async () => {
+    await as(ALICE, "insert into public.test_results (test_date, sport, kind, raw_value) values ('2026-11-01', 'swim', 'css', '{}'::jsonb)");
   });
 });
 

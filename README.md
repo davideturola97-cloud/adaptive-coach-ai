@@ -2,7 +2,7 @@
 
 Allenatore personale per corsa e ciclismo che adatta il programma alla tua settimana.
 
-**Stato: Milestone 2.** Accesso con email e password, profilo atleta modificabile, database Supabase con regole di sicurezza per utente, esportazione e cancellazione dei dati.
+**Stato: Milestone 3.** Quattro sport (nuoto, ciclismo, corsa, palestra) e gare di triathlon. Onboarding guidato, gare, test iniziali con rinvio e controlli di sicurezza, parametri stimati. Accesso con Supabase e dati protetti per utente.
 Senza configurazione Supabase l'app parte in modalità dimostrativa.
 
 Per collegare Supabase segui `docs/SUPABASE.md`.
@@ -29,8 +29,8 @@ Per collegare Supabase segui `docs/SUPABASE.md`.
 src/
   app/                 pagine: Home, Calendario, Allenamenti, Coach AI, Progressi, Profilo
   components/          interfaccia (menu, schede, grafici, calendario)
-  lib/domain/          modello dei dati (sport estendibili: per ora corsa e ciclismo)
-  lib/training/        formule e analisi, con test
+  lib/domain/          modello dei dati: sport (nuoto, bici, corsa, palestra), gare, validazione
+  lib/training/        formule, analisi e logica dei test, con test automatici
   lib/data/            lettura dei dati: Supabase se configurato, altrimenti dati dimostrativi
   lib/supabase/        collegamento a Supabase (sessione, middleware)
   lib/demo/            DATI DIMOSTRATIVI
@@ -43,7 +43,7 @@ docs/FORMULE.md        formule usate e loro limiti
 
 1. ✅ Progetto Next.js, design, navigazione, dati dimostrativi
 2. ✅ Supabase, autenticazione, profilo atleta, database
-3. Onboarding e test iniziali
+3. ✅ Onboarding e test iniziali (con nuoto, palestra e triathlon)
 4. Motore di programmazione e calendario persistente
 5. Completamento attività, feedback e storico
 6. Riprogrammazione con regole deterministiche, anteprima e conferma

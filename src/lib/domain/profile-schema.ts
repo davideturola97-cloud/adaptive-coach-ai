@@ -1,9 +1,11 @@
 import { z } from "zod";
+import { SPORT_KEYS } from "./sports";
 
 /** Validazione del modulo profilo. Gli stessi limiti sono ripetuti nel database (vincoli CHECK). */
 
 export const WEEK_DAYS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"] as const;
 export const LEVELS = ["principiante", "intermedio", "avanzato"] as const;
+export const STROKES = ["Stile libero", "Dorso", "Rana", "Delfino"] as const;
 
 const optionalNumber = (min: number, max: number, label: string) =>
   z.preprocess(
@@ -43,22 +45,36 @@ export const profileSchema = z
     limitations: list(20),
     goalPrimary: z.string().trim().max(200, "Obiettivo troppo lungo"),
     goalsSecondary: list(10),
-    run: sportEntry,
+    swim: sportEntry,
     bike: sportEntry,
+    run: sportEntry,
+    gym: sportEntry,
+    swimDetails: z.object({
+      poolLengthM: z.preprocess((v) => (v === "" || v == null ? undefined : Number(v)), z.union([z.literal(25), z.literal(50)]).optional()),
+      openWater: z.boolean(),
+      wetsuit: z.boolean(),
+      strokes: z.array(z.enum(STROKES)).default([]),
+      canSwim400: z.boolean(),
+    }),
   })
-  .refine((p) => p.run.enabled || p.bike.enabled, { message: "Scegli almeno uno sport", path: ["run"] });
+  .refine((p) => SPORT_KEYS.some((k) => p[k].enabled), { message: "Scegli almeno uno sport", path: ["run"] });
 
 export type ProfileInput = z.infer<typeof profileSchema>;
 
 /** Legge i campi dal FormData del modulo. */
 export function profileFromForm(fd: FormData) {
-  const sport = (k: "run" | "bike") => ({
+  return profileSchema.safeParse(profileValues(fd));
+}
+
+/** Valori grezzi del modulo profilo (riusati dall'onboarding). */
+export function profileValues(fd: FormData) {
+  const sport = (k: (typeof SPORT_KEYS)[number]) => ({
     enabled: fd.get(`${k}.enabled`) === "on",
     level: fd.get(`${k}.level`) ?? "principiante",
     yearsExperience: fd.get(`${k}.yearsExperience`) ?? "",
     weeklyVolume: fd.get(`${k}.weeklyVolume`) ?? "",
   });
-  return profileSchema.safeParse({
+  return {
     displayName: fd.get("displayName") ?? "",
     birthDate: fd.get("birthDate") ?? "",
     sex: fd.get("sex") ?? "",
@@ -71,7 +87,16 @@ export function profileFromForm(fd: FormData) {
     limitations: fd.get("limitations") ?? "",
     goalPrimary: fd.get("goalPrimary") ?? "",
     goalsSecondary: fd.get("goalsSecondary") ?? "",
-    run: sport("run"),
+    swim: sport("swim"),
     bike: sport("bike"),
-  });
+    run: sport("run"),
+    gym: sport("gym"),
+    swimDetails: {
+      poolLengthM: fd.get("swim.poolLengthM") ?? "",
+      openWater: fd.get("swim.openWater") === "on",
+      wetsuit: fd.get("swim.wetsuit") === "on",
+      strokes: fd.getAll("swim.strokes"),
+      canSwim400: fd.get("swim.canSwim400") === "on",
+    },
+  };
 }

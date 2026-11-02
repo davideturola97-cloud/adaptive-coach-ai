@@ -4,7 +4,9 @@ import { signOut } from "@/app/accedi/actions";
 import { Card, OriginTag, PageHeader, SectionTitle, SportBadge } from "@/components/ui";
 import { daysBetween, formatDayMonth } from "@/lib/dates";
 import { getAppData } from "@/lib/data/repository";
-import { formatPace, powerZones } from "@/lib/training/formulas";
+import { eventDescription } from "@/components/event-summary";
+import { sportLabel } from "@/lib/domain/sports";
+import { formatPace, formatSwimPace, powerZones } from "@/lib/training/formulas";
 import { deleteAccount } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -58,13 +60,14 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
               <dl>
                 <Row label="Obiettivo principale">{a.goals.primary || dash}</Row>
                 <Row label="Obiettivi secondari">{a.goals.secondary.join(" · ") || dash}</Row>
-                {events.map((e) => (
-                  <Row key={e.id} label={`Evento ${e.priority}`}>
+                {events.filter((e) => e.date >= today).map((e) => (
+                  <Row key={e.id} label={`Gara ${e.priority}`}>
                     {e.name}
-                    <span className="block text-xs text-muted">{formatDayMonth(e.date, false)} · {e.distanceKm} km</span>
+                    <span className="block text-xs text-muted">{eventDescription(e)}</span>
                   </Row>
                 ))}
               </dl>
+              {!demo && <Link href="/profilo/gare" className="mt-3 flex min-h-11 items-center justify-center rounded-xl border border-line text-sm font-semibold hover:border-faint">Gestisci le gare</Link>}
             </Card>
           </section>
 
@@ -86,11 +89,18 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             <Card>
               <dl>
                 {a.sports.map((s) => (
-                  <Row key={s.sport} label={s.sport === "run" ? "Corsa" : "Ciclismo"}>
+                  <Row key={s.sport} label={sportLabel(s.sport)}>
                     <span className="capitalize">{s.level}</span>
-                    <span className="block text-xs text-muted">{s.yearsExperience} anni di esperienza</span>
+                    <span className="block text-xs text-muted">{s.yearsExperience} anni di esperienza{s.weeklyVolume ? ` · ${s.weeklyVolume}` : ""}</span>
                   </Row>
                 ))}
+                {a.swim && (
+                  <Row label="Nuoto: dettagli">
+                    {[a.swim.poolLengthM && `Vasca da ${a.swim.poolLengthM} m`, a.swim.openWater && "acque libere", a.swim.wetsuit && "con muta"].filter(Boolean).join(" · ") || dash}
+                    <span className="block text-xs text-muted">{a.swim.strokes.join(", ")}</span>
+                  </Row>
+                )}
+                {!a.sports.length && <p className="py-2 text-sm text-muted">Nessuno sport scelto.</p>}
               </dl>
             </Card>
           </section>
@@ -105,6 +115,12 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
                     <span className="block text-xs text-muted">dal test del {formatDayMonth(a.thresholdPaceSecPerKm.date, false)}</span>
                   </Row>
                 )}
+                {a.cssPaceSecPer100m && (
+                  <Row label="Ritmo CSS (nuoto)">
+                    <span className="flex items-center justify-end gap-2">{formatSwimPace(a.cssPaceSecPer100m.value)} <OriginTag origin={a.cssPaceSecPer100m.origin} /></span>
+                    <span className="block text-xs text-muted">dal test del {formatDayMonth(a.cssPaceSecPer100m.date, false)}</span>
+                  </Row>
+                )}
                 {a.ftpW && (
                   <Row label="FTP">
                     <span className="flex items-center justify-end gap-2">{a.ftpW.value} W <OriginTag origin={a.ftpW.origin} /></span>
@@ -112,6 +128,8 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
                   </Row>
                 )}
               </dl>
+              {!a.thresholdPaceSecPerKm && !a.ftpW && !a.cssPaceSecPer100m && <p className="py-2 text-sm text-muted">Ancora nessun test: il coach usa l&apos;RPE.</p>}
+              <Link href="/test" className="mt-3 flex min-h-11 items-center justify-center rounded-xl border border-line text-sm font-semibold hover:border-faint">Test e parametri</Link>
             </Card>
           </section>
         </div>

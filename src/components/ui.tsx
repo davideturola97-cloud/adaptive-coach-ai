@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { Bike, Footprints } from "lucide-react";
+import { Bike, Dumbbell, Footprints, Waves } from "lucide-react";
 import Link from "next/link";
 import { formatDayMonth, weekdayName } from "@/lib/dates";
 import { SPORTS, WORKOUT_TYPE_LABEL } from "@/lib/domain/sports";
@@ -36,17 +36,15 @@ export function SectionTitle({ children, hint }: { children: React.ReactNode; hi
 }
 
 export function SportIcon({ sport, className }: { sport: Sport; className?: string }) {
-  const Icon = sport === "run" ? Footprints : Bike;
+  const Icon = { run: Footprints, bike: Bike, swim: Waves, gym: Dumbbell }[sport];
   return <Icon className={clsx("size-4", className)} style={{ color: SPORTS[sport].colorVar }} aria-hidden />;
 }
 
 export function SportBadge({ sport }: { sport: Sport }) {
   return (
     <span
-      className={clsx(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
-        sport === "run" ? "bg-run-soft text-run" : "bg-bike-soft text-bike",
-      )}
+      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+      style={{ background: SPORTS[sport].softVar, color: SPORTS[sport].colorVar }}
     >
       <SportIcon sport={sport} className="size-3.5" />
       {SPORTS[sport].label}
@@ -97,7 +95,7 @@ export function WorkoutRow({ w, showDate = true }: { w: PlannedWorkout; showDate
       href={`/allenamenti/${w.id}`}
       className="group flex min-h-16 items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 transition-colors hover:border-faint"
     >
-      <span className={clsx("h-10 w-1 shrink-0 rounded-full", w.sport === "run" ? "bg-run" : "bg-bike")} aria-hidden />
+      <span className="h-10 w-1 shrink-0 rounded-full" style={{ background: SPORTS[w.sport].colorVar }} aria-hidden />
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold">{w.title}</p>
         <p className="truncate text-xs text-muted">
@@ -107,5 +105,20 @@ export function WorkoutRow({ w, showDate = true }: { w: PlannedWorkout; showDate
       </div>
       <StatusLabel status={w.status} />
     </Link>
+  );
+}
+
+/** Pallino colorato di uno sport (calendario, settimana). */
+export function SportDot({ sport, className, faded }: { sport: Sport; className?: string; faded?: boolean }) {
+  return <span className={clsx("rounded-full", className ?? "size-2", faded && "opacity-30")} style={{ background: SPORTS[sport].colorVar }} />;
+}
+
+export function SportLegend({ sports }: { sports: Sport[] }) {
+  return (
+    <p className="flex flex-wrap gap-4 text-xs text-muted">
+      {sports.map((s) => (
+        <span key={s} className="flex items-center gap-1.5"><SportDot sport={s} /> {SPORTS[s].label}</span>
+      ))}
+    </p>
   );
 }

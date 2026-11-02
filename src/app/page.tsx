@@ -1,9 +1,12 @@
 import clsx from "clsx";
 import { ChevronRight, Flag } from "lucide-react";
 import Link from "next/link";
-import { Card, SectionTitle, SportBadge, Stat, StatusLabel, WorkoutRow } from "@/components/ui";
+import { redirect } from "next/navigation";
+import { eventDescription } from "@/components/event-summary";
+import { Card, SectionTitle, SportBadge, SportDot, Stat, StatusLabel, WorkoutRow } from "@/components/ui";
 import { addDays, daysBetween, formatDayMonth, mondayOf, weekdayName } from "@/lib/dates";
-import { WORKOUT_TYPE_LABEL } from "@/lib/domain/sports";
+import { SPORT_KEYS, SPORTS, WORKOUT_TYPE_LABEL } from "@/lib/domain/sports";
+import { TEST_CATALOG } from "@/lib/training/tests";
 import { getAppData } from "@/lib/data/repository";
 import { adherence, loadState, weeklySummaries } from "@/lib/training/analytics";
 import { formatDuration } from "@/lib/training/formulas";
@@ -13,8 +16,10 @@ export const dynamic = "force-dynamic";
 const LOAD_COLOR = { basso: "var(--color-muted)", equilibrato: "var(--color-ok)", "in crescita": "var(--color-warn)", alto: "var(--color-bad)" } as const;
 
 export default async function HomePage() {
-  const { today, athlete, events, plan, activities, mode, onboardingCompleted } = await getAppData();
-  const needsProfile = mode === "utente" && !onboardingCompleted && !athlete.sports.length;
+  const { today, athlete, events, plan, activities, mode, onboardingCompleted, plannedTests } = await getAppData();
+  if (mode === "utente" && !onboardingCompleted) redirect("/onboarding");
+  const practiced = SPORT_KEYS.filter((s) => athlete.sports.some((x) => x.sport === s) || activities.some((a) => a.sport === s));
+  const dueTests = plannedTests.filter((t) => t.status === "proposto" || ((t.status === "programmato" || t.status === "rimandato") && t.dueDate && t.dueDate <= addDays(today, 7)));
   const monday = mondayOf(today);
   const week = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   const todays = plan.filter((p) => p.date === today);
@@ -34,14 +39,6 @@ export default async function HomePage() {
         <h1 className="text-3xl font-bold tracking-tight">Ciao, {athlete.name.split(" ")[0]}</h1>
       </header>
 
-      {needsProfile && (
-        <Card className="flex flex-col gap-3 border-run/40">
-          <p className="text-lg font-semibold">Benvenuto! Iniziamo dal tuo profilo</p>
-          <p className="text-sm text-muted">Dimmi che sport fai, quanto tempo hai e qual è il tuo obiettivo. Il programma di allenamento arriverà con le prossime funzioni.</p>
-          <Link href="/profilo/modifica" className="inline-flex min-h-12 w-fit items-center rounded-xl bg-fg px-5 text-sm font-semibold text-bg">Completa il profilo</Link>
-        </Card>
-      )}
-
       {race && (
         <Link href="/profilo" className="group relative overflow-hidden rounded-[var(--radius-card)] border border-line bg-gradient-to-br from-run/20 via-surface to-surface p-5">
           <div className="flex items-center justify-between gap-4">
@@ -50,13 +47,27 @@ export default async function HomePage() {
                 <Flag className="size-3.5" aria-hidden /> Obiettivo principale
               </p>
               <p className="mt-1 truncate text-lg font-semibold">{race.name}</p>
-              <p className="text-sm text-muted">{athlete.goals.primary} · {formatDayMonth(race.date, false)}</p>
+              <p className="text-sm text-muted">{eventDescription(race)}</p>
+              {athlete.goals.primary && <p className="text-sm text-muted">{athlete.goals.primary}</p>}
             </div>
             <p className="num shrink-0 text-right text-6xl font-semibold leading-none">
               {daysBetween(today, race.date)}
               <span className="block text-xs font-medium tracking-wide text-muted">giorni</span>
             </p>
           </div>
+        </Link>
+      )}
+
+      {dueTests.length > 0 && (
+        <Link href="/test" className="block">
+          <Card className="flex items-center justify-between gap-3 border-warn/40 transition-colors hover:border-warn">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-warn">Test consigliati</p>
+              <p className="mt-1 font-semibold">{dueTests.map((t) => TEST_CATALOG[t.kind].label).join(" · ")}</p>
+              <p className="text-sm text-muted">Fallo, rimandalo o inserisci un risultato recente.</p>
+            </div>
+            <ChevronRight className="size-5 shrink-0 text-faint" aria-hidden />
+          </Card>
         </Link>
       )}
 
@@ -104,11 +115,7 @@ export default async function HomePage() {
                 <span className="num text-lg leading-none">{Number(d.slice(8))}</span>
                 <span className="flex h-2 gap-1">
                   {items.map((p) => (
-                    <span
-                      key={p.id}
-                      title={`${p.title} · ${p.status}`}
-                      className={clsx("size-2 rounded-full", p.sport === "run" ? "bg-run" : "bg-bike", p.status === "saltato" && "opacity-30", p.status === "programmato" && "ring-1 ring-inset ring-black/40 opacity-60")}
-                    />
+                    <SportDot key={p.id} sport={p.sport} faded={p.status === "saltato"} className={clsx("size-2", p.status === "programmato" && "opacity-60")} />
                   ))}
                 </span>
               </li>
@@ -118,8 +125,18 @@ export default async function HomePage() {
       </section>
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Corsa questa settimana" value={cur.runKm.toLocaleString("it-IT")} unit="km" note={`Settimana scorsa ${prev.runKm.toLocaleString("it-IT")} km`} accent="var(--color-run)" origin="misurato" />
-        <Stat label="Ciclismo questa settimana" value={formatDuration(cur.bikeMin)} note={`Settimana scorsa ${formatDuration(prev.bikeMin)}`} accent="var(--color-bike)" origin="misurato" />
+        {practiced.filter((sp) => sp !== "gym").map((sp) => {
+          const km = { run: [cur.runKm, prev.runKm], bike: [cur.bikeKm, prev.bikeKm], swim: [cur.swimKm, prev.swimKm] }[sp as "run" | "bike" | "swim"];
+          const mins = { run: [cur.runMin, prev.runMin], bike: [cur.bikeMin, prev.bikeMin], swim: [cur.swimMin, prev.swimMin] }[sp as "run" | "bike" | "swim"];
+          return sp === "bike" ? (
+            <Stat key={sp} label={`${SPORTS[sp].label} questa settimana`} value={formatDuration(mins[0])} note={`Settimana scorsa ${formatDuration(mins[1])}`} accent={SPORTS[sp].colorVar} origin="misurato" />
+          ) : (
+            <Stat key={sp} label={`${SPORTS[sp].label} questa settimana`} value={km[0].toLocaleString("it-IT")} unit="km" note={`Settimana scorsa ${km[1].toLocaleString("it-IT")} km`} accent={SPORTS[sp].colorVar} origin="misurato" />
+          );
+        })}
+        {practiced.includes("gym") && (
+          <Stat label="Palestra questa settimana" value={formatDuration(cur.gymMin)} note={`Settimana scorsa ${formatDuration(prev.gymMin)}`} accent={SPORTS.gym.colorVar} origin="misurato" />
+        )}
         <Stat label="Aderenza 4 settimane" value={adh === null ? "–" : `${Math.round(adh * 100)}`} unit="%" note="Sedute fatte su sedute previste" />
         <Stat
           label="Carico recente"

@@ -8,6 +8,9 @@ export interface WeekSummary {
   runMin: number;
   bikeMin: number;
   bikeKm: number;
+  swimMin: number;
+  swimKm: number;
+  gymMin: number;
   sessions: number;
   load: number;
   planned: number;
@@ -31,6 +34,9 @@ export function weeklySummaries(activities: CompletedActivity[], plan: PlannedWo
       runMin: sum("run", (a) => a.durationMin),
       bikeMin: sum("bike", (a) => a.durationMin),
       bikeKm: Math.round(sum("bike", (a) => a.distanceKm ?? 0) * 10) / 10,
+      swimMin: sum("swim", (a) => a.durationMin),
+      swimKm: Math.round(sum("swim", (a) => a.distanceKm ?? 0) * 100) / 100,
+      gymMin: sum("gym", (a) => a.durationMin),
       sessions: acts.length,
       load: acts.reduce((t, a) => t + (a.feedback ? sessionLoad(a.durationMin, a.feedback.rpe) : 0), 0),
       planned: planned.length,

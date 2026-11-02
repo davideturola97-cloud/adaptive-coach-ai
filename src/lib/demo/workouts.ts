@@ -8,6 +8,8 @@ type Template = Omit<PlannedWorkout, "id" | "date" | "status" | "completedActivi
 
 const SAFETY_RUN = ["Interrompi la seduta in caso di dolore acuto, vertigini o dolore al petto."];
 const SAFETY_BIKE = ["Casco sempre. Su strada evita le parti intense nel traffico.", "Interrompi in caso di dolore acuto, vertigini o dolore al petto."];
+const SAFETY_SWIM = ["In acque libere mai da solo: boa di segnalazione e muta se l'acqua è fredda.", "Esci dall'acqua in caso di crampi forti, vertigini o dolore al petto."];
+const SAFETY_GYM = ["Carichi che ti permettono di mantenere una tecnica pulita in ogni ripetizione.", "Interrompi l'esercizio in caso di dolore articolare."];
 
 function step(label: string, durationMin: number, rpe: [number, number], note?: string, repeat?: number) {
   return { label, durationMin, rpe, note, repeat };
@@ -17,6 +19,8 @@ export function template(type: WorkoutType, scale = 1): Template {
   const m = (min: number) => Math.round((min * scale) / 5) * 5;
   const run = (t: Omit<Template, "sport">): Template => ({ sport: "run" as Sport, ...t });
   const bike = (t: Omit<Template, "sport">): Template => ({ sport: "bike" as Sport, ...t });
+  const swim = (t: Omit<Template, "sport">): Template => ({ sport: "swim" as Sport, ...t });
+  const gym = (t: Omit<Template, "sport">): Template => ({ sport: "gym" as Sport, ...t });
   const s = (warm: number, main: WorkoutStructure["main"], cool: number, recoveries?: string): WorkoutStructure => ({
     warmup: [step("Riscaldamento progressivo", warm, [2, 3])],
     main,
@@ -136,6 +140,86 @@ export function template(type: WorkoutType, scale = 1): Template {
         structure: s(20, [step("20' alla massima potenza sostenibile", 20, [9, 10])], 15),
         technicalTips: ["Serve un misuratore di potenza o un rullo smart."],
         safetyNotes: [...SAFETY_BIKE, "Fai il test solo se sei in salute, riposato e senza dolori."],
+      });
+    case "tecnica_nuoto":
+      return swim({
+        type, title: "Tecnica", objective: "Nuotare in modo più efficiente con meno fatica.",
+        durationMin: m(45), intensity: "Bassa (RPE 3–4)",
+        structure: s(10, [step("Esercizi tecnici 25 m + 25 m nuotata", 25, [3, 4], "Gambe sul fianco, bracciata con pugno chiuso, recupero a 'cerniera'", 8)], 5, "15\" da fermo ogni 50 m"),
+        technicalTips: ["Pensa a una cosa sola per serie: allungamento, respirazione o posizione della testa."],
+        safetyNotes: SAFETY_SWIM,
+      });
+    case "aerobico_nuoto":
+      return swim({
+        type, title: "Aerobico 4 × 400 m", objective: "Costruire la resistenza in acqua.",
+        durationMin: m(50), intensity: "Moderata (RPE 4–5)",
+        structure: s(10, [step("400 m regolari", 8, [4, 5], undefined, 4)], 5, "30\" da fermo tra le frazioni"),
+        technicalTips: ["Respira ogni 3 bracciate se ci riesci: aiuta l'equilibrio."],
+        safetyNotes: SAFETY_SWIM,
+      });
+    case "css_nuoto":
+      return swim({
+        type, title: "Ritmo CSS 8 × 100 m", objective: "Alzare la velocità di soglia in acqua.",
+        durationMin: 50, intensity: "Medio-alta (RPE 6–7)",
+        structure: s(12, [step("100 m al ritmo soglia", 2, [6, 7], "Ritmo che sapresti tenere per 1500 m", 8)], 8, "15–20\" da fermo"),
+        technicalTips: ["Tieni lo stesso tempo su ogni 100: guarda il cronometro a bordo vasca."],
+        safetyNotes: SAFETY_SWIM,
+      });
+    case "ripetute_nuoto":
+      return swim({
+        type, title: "Ripetute 10 × 50 m", objective: "Velocità e potenza di bracciata.",
+        durationMin: 45, intensity: "Alta (RPE 8)",
+        structure: s(12, [step("50 m veloci", 1, [7, 8], undefined, 10)], 8, "30–40\" da fermo"),
+        technicalTips: ["Veloce ma pulito: se la tecnica cede, allunga il recupero."],
+        safetyNotes: SAFETY_SWIM,
+      });
+    case "recupero_nuoto":
+      return swim({
+        type, title: "Nuotata di recupero", objective: "Sciogliere i muscoli dopo giorni intensi.",
+        durationMin: 30, intensity: "Molto bassa (RPE 2–3)",
+        structure: s(5, [step("Nuotata continua, stili misti", 20, [2, 3])], 5),
+        technicalTips: ["Alterna stile libero e dorso."],
+        safetyNotes: SAFETY_SWIM,
+      });
+    case "test_css":
+      return swim({
+        type, title: "Test CSS 400 + 200 m", objective: "Stimare la velocità di soglia in acqua.",
+        durationMin: 50, intensity: "Massimale (RPE 9–10)",
+        structure: s(15, [step("400 m a tutta", 7, [9, 10]), step("Recupero attivo 200–300 m facili", 6, [2, 3]), step("200 m a tutta", 3, [9, 10])], 10),
+        technicalTips: ["Partenza dall'acqua, con spinta dal muro. Fatti prendere i tempi se puoi."],
+        safetyNotes: [...SAFETY_SWIM, "Fai il test solo se sei in salute, riposato e senza dolori."],
+      });
+    case "forza_generale":
+      return gym({
+        type, title: "Forza generale", objective: "Rinforzare gambe, schiena e spalle per reggere il carico degli sport.",
+        durationMin: 50, intensity: "Moderata (RPE 6–7)",
+        structure: s(10, [step("Squat o pressa, stacco rumeno, rematore, spinte: 3 serie × 8–10", 35, [6, 7], "Lascia 2–3 ripetizioni in riserva")], 5, "90\" tra le serie"),
+        technicalTips: ["Movimenti lenti in discesa, decisi in salita."],
+        safetyNotes: SAFETY_GYM,
+      });
+    case "forza_specifica":
+      return gym({
+        type, title: "Forza specifica", objective: "Esercizi mirati ai gesti di corsa, bici e nuoto.",
+        durationMin: 45, intensity: "Moderata (RPE 6–7)",
+        structure: s(10, [step("Affondi, step-up, polpacci, trazioni o lat machine: 3 × 8–12", 30, [6, 7])], 5, "60–90\" tra le serie"),
+        technicalTips: ["Nei periodi vicini alla gara riduci le serie, non la tecnica."],
+        safetyNotes: SAFETY_GYM,
+      });
+    case "core_mobilita":
+      return gym({
+        type, title: "Core e mobilità", objective: "Stabilità del tronco e mobilità di anche e spalle.",
+        durationMin: 30, intensity: "Bassa-moderata (RPE 4–5)",
+        structure: s(5, [step("Plank, dead bug, ponte glutei, mobilità anche e spalle", 20, [4, 5], undefined, 3)], 5),
+        technicalTips: ["Respira durante gli esercizi di core, non trattenere il fiato."],
+        safetyNotes: SAFETY_GYM,
+      });
+    case "prevenzione":
+      return gym({
+        type, title: "Prevenzione infortuni", objective: "Rinforzare i punti deboli tipici degli sport di resistenza.",
+        durationMin: 30, intensity: "Bassa-moderata (RPE 4–5)",
+        structure: s(5, [step("Eccentrici polpacci, abduttori, cuffia dei rotatori, piede", 20, [4, 5])], 5),
+        technicalTips: ["Pochi minuti fatti spesso valgono più di una seduta lunga ogni tanto."],
+        safetyNotes: SAFETY_GYM,
       });
   }
 }

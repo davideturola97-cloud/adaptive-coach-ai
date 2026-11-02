@@ -1,5 +1,5 @@
 import { addDays, mondayOf, todayISO } from "@/lib/dates";
-import type { AthleteProfile, CompletedActivity, Feedback, PlannedWorkout, RaceEvent, TestResult, WorkoutType } from "@/lib/domain/types";
+import type { AthleteProfile, CompletedActivity, Feedback, PlannedTest, PlannedWorkout, RaceEvent, TestResult, WorkoutType } from "@/lib/domain/types";
 import { formatPace, formatTime, ftpFrom20Min, powerZones, thresholdPaceFrom5k } from "@/lib/training/formulas";
 import { template } from "./workouts";
 
@@ -22,11 +22,11 @@ function rng(seed: number) {
 
 // Lun=0 ... Dom=6. null = riposo.
 const WEEK: ((week: number) => WorkoutType | null)[] = [
-  () => null,
+  (w) => (w % 2 ? "core_mobilita" : "forza_generale"),
   (w) => (w % 2 ? "tempo_run" : "ripetute"),
   () => "endurance",
   () => "corsa_facile",
-  (w) => (w % 3 === 0 ? null : "recupero_bici"),
+  (w) => (w % 2 ? "css_nuoto" : "tecnica_nuoto"),
   (w) => (w % 2 ? "soglia" : "sweet_spot"),
   (w) => (w % 4 === 3 ? "progressivo" : "lungo"),
 ];
@@ -39,6 +39,7 @@ export interface DemoData {
   plan: PlannedWorkout[];
   activities: CompletedActivity[];
   tests: TestResult[];
+  plannedTests: PlannedTest[];
 }
 
 export function buildDemoData(now = new Date()): DemoData {
@@ -75,6 +76,8 @@ export function buildDemoData(now = new Date()): DemoData {
           feeling: rpe >= 8 ? "stanco" : rand() > 0.5 ? "buono" : "ottimo",
         };
         const isRun = t.sport === "run";
+        const isSwim = t.sport === "swim";
+        const isGym = t.sport === "gym";
         const paceSec = 330 - w * 1.5 + (rpe >= 7 ? -40 : 0); // il ritmo migliora piano nelle settimane
         const act: CompletedActivity = {
           id: `a-${date}`,
@@ -82,10 +85,10 @@ export function buildDemoData(now = new Date()): DemoData {
           sport: t.sport,
           title: t.title,
           durationMin,
-          distanceKm: isRun ? Math.round(((durationMin * 60) / paceSec) * 10) / 10 : Math.round(durationMin * 0.48 * 10) / 10,
-          avgHr: Math.round(128 + rpe * 5 + rand() * 6),
-          avgPowerW: isRun ? undefined : Math.round(140 + rpe * 12 + w * 1.2),
-          elevationM: Math.round(rand() * (isRun ? 80 : 600)),
+          distanceKm: isGym ? undefined : isSwim ? Math.round(durationMin * 0.04 * 100) / 100 : isRun ? Math.round(((durationMin * 60) / paceSec) * 10) / 10 : Math.round(durationMin * 0.48 * 10) / 10,
+          avgHr: isGym ? undefined : Math.round(128 + rpe * 5 + rand() * 6),
+          avgPowerW: t.sport === "bike" ? Math.round(140 + rpe * 12 + w * 1.2) : undefined,
+          elevationM: isRun || t.sport === "bike" ? Math.round(rand() * (isRun ? 80 : 600)) : undefined,
           source: "demo",
           feedback,
         };
@@ -124,21 +127,28 @@ export function buildDemoData(now = new Date()): DemoData {
     sports: [
       { sport: "run", level: "intermedio", yearsExperience: 4 },
       { sport: "bike", level: "principiante", yearsExperience: 1 },
+      { sport: "swim", level: "principiante", yearsExperience: 1 },
+      { sport: "gym", level: "intermedio", yearsExperience: 3 },
     ],
+    swim: { poolLengthM: 25, openWater: true, wetsuit: true, strokes: ["Stile libero", "Dorso"] },
     weeklyHoursAvailable: 7,
     availableDays: ["Mar", "Mer", "Gio", "Ven", "Sab", "Dom"],
     maxSessionMin: 120,
     equipment: ["Orologio GPS con fascia cardio", "Bici da strada", "Rulli smart"],
     limitations: ["Tendine d'Achille sinistro sensibile dopo le salite"],
-    goals: { primary: "Mezza maratona sotto 1:45", secondary: ["Granfondo di primavera", "Correre con costanza 3 volte a settimana"] },
+    goals: { primary: "Mezza maratona sotto 1:45", secondary: ["Primo triathlon olimpico", "Correre con costanza 3 volte a settimana"] },
     ftpW: { value: ftp, origin: "stimato", date: tests[1].date },
     thresholdPaceSecPerKm: { value: thrPace, origin: "stimato", date: tests[0].date },
   };
 
   const events: RaceEvent[] = [
-    { id: "e-1", name: "Mezza maratona (demo)", date: addDays(monday, 7 * 3 + 6), sport: "run", distanceKm: 21.1, priority: "A" },
-    { id: "e-2", name: "Granfondo (demo)", date: addDays(monday, 7 * 14 + 6), sport: "bike", distanceKm: 110, priority: "B" },
+    { id: "e-1", name: "Mezza maratona (demo)", date: addDays(monday, 7 * 3 + 6), kind: "singolo", sport: "run", distanceKm: 21.1, priority: "A" },
+    { id: "e-2", name: "Triathlon olimpico (demo)", date: addDays(monday, 7 * 14 + 6), kind: "triathlon", triFormat: "olimpico", legs: { swimKm: 1.5, bikeKm: 40, runKm: 10 }, priority: "B" },
   ];
 
-  return { today, athlete, events, plan, activities, tests };
+  const plannedTests: PlannedTest[] = [
+    { id: "pt-css", sport: "swim", kind: "css", status: "proposto", reason: "Non hai ancora un ritmo di soglia in acqua." },
+  ];
+
+  return { today, athlete, events, plan, activities, tests, plannedTests };
 }

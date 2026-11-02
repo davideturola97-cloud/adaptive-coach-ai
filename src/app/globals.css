@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Adaptive Coach AI — tema scuro "pista notturna": grafite profonda, corsa arancio, bici blu. */
+/* Adaptive Coach AI — tema scuro "pista notturna": grafite profonda, nuoto turchese, bici blu, corsa arancio, palestra rosa. */
 @theme {
   --color-bg: #0a0d12;
   --color-surface: #11151c;
@@ -13,6 +13,10 @@
   --color-run-soft: #ff6a3d26;
   --color-bike: #3d9bff;
   --color-bike-soft: #3d9bff26;
+  --color-swim: #22c9b8;
+  --color-swim-soft: #22c9b826;
+  --color-gym: #e879b9;
+  --color-gym-soft: #e879b926;
   --color-ok: #4fd18b;
   --color-warn: #f5b942;
   --color-bad: #f2685f;

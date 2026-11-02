@@ -53,12 +53,56 @@ export function powerZones(ftp: number): PowerZone[] {
 }
 
 /**
- * Ritmo di soglia stimato da un 5 km: tempo equivalente sui 10 km (Riegel) + 4%,
+ * Ritmo di soglia stimato da una prova di corsa: tempo equivalente sui 10 km (Riegel) + 4%,
  * approssimazione del ritmo sostenibile per circa un'ora.
  */
-export function thresholdPaceFrom5k(timeSec: number): number {
-  const tenK = riegel(timeSec, 5, 10);
+export function thresholdPaceFromRun(distanceKm: number, timeSec: number): number {
+  if (distanceKm < 1.5 || distanceKm > 43) throw new Error("Distanza fuori dall'intervallo utile (1,5–42,2 km)");
+  const tenK = riegel(timeSec, distanceKm, 10);
   return (tenK / 10) * 1.04;
+}
+
+export function thresholdPaceFrom5k(timeSec: number): number {
+  return thresholdPaceFromRun(5, timeSec);
+}
+
+/** Test di Cooper -> ritmo di soglia, trattando i 12 minuti come una prova sulla distanza percorsa. */
+export function thresholdPaceFromCooper(meters: number): number {
+  cooperVo2max(meters); // valida l'intervallo
+  return thresholdPaceFromRun(meters / 1000, 12 * 60);
+}
+
+/**
+ * Critical Swim Speed (Wakayoshi, 1992): velocità tra un 400 m e un 200 m a tutta.
+ * Ritmo per 100 m = (T400 − T200) / 2 secondi.
+ */
+export function cssFrom400200(t400Sec: number, t200Sec: number): number {
+  if (t200Sec <= 0 || t400Sec <= t200Sec * 1.7 || t400Sec >= t200Sec * 3) {
+    throw new Error("Tempi non coerenti: il 400 m deve durare poco più del doppio del 200 m");
+  }
+  return (t400Sec - t200Sec) / 2;
+}
+
+/** Ritmo CSS stimato da una prova recente: tempo equivalente sui 1500 m (Riegel), diviso per 15. */
+export function cssFromRecentSwim(distanceM: number, timeSec: number): number {
+  if (distanceM < 200 || distanceM > 5000) throw new Error("Distanza fuori dall'intervallo utile (200–5000 m)");
+  return riegel(timeSec, distanceM / 1000, 1.5) / 15;
+}
+
+export function formatSwimPace(secPer100: number): string {
+  const s = Math.round(secPer100);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")} /100 m`;
+}
+
+/** "mm:ss" o "h:mm:ss" -> secondi. Restituisce null se il testo non è un tempo valido. */
+export function parseTime(text: string): number | null {
+  const parts = text.trim().replace(/[.,]/g, ":").split(":");
+  if (parts.length < 2 || parts.length > 3 || parts.some((p) => !/^\d{1,3}$/.test(p))) return null;
+  const nums = parts.map(Number);
+  const [h, m, s] = parts.length === 3 ? nums : [0, ...nums];
+  if (m >= 60 && parts.length === 3) return null;
+  if (s >= 60) return null;
+  return h * 3600 + m * 60 + s;
 }
 
 /** Carico di una seduta col metodo session-RPE di Foster: minuti × RPE. */

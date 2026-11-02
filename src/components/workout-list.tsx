@@ -3,6 +3,7 @@
 import clsx from "clsx";
 import { useState } from "react";
 import { WorkoutRow } from "@/components/ui";
+import { SPORT_KEYS, SPORTS } from "@/lib/domain/sports";
 import type { PlannedWorkout, Sport } from "@/lib/domain/types";
 
 type Filter = "tutti" | Sport;
@@ -29,7 +30,7 @@ export function WorkoutList({ plan, today }: { plan: PlannedWorkout[]; today: st
           </button>
         ))}
         <span className="mx-1 w-px bg-line" aria-hidden />
-        {([["tutti", "Tutti"], ["run", "Corsa"], ["bike", "Ciclismo"]] as [Filter, string][]).map(([f, label]) => (
+        {([["tutti", "Tutti"], ...SPORT_KEYS.filter((s) => plan.some((p) => p.sport === s)).map((s) => [s, SPORTS[s].label])] as [Filter, string][]).map(([f, label]) => (
           <button key={f} onClick={() => setFilter(f)} aria-pressed={filter === f} className={pill(filter === f)}>
             {label}
           </button>

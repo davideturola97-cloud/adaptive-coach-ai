@@ -1,12 +1,12 @@
 /**
  * Modello di dominio di Adaptive Coach AI.
  *
- * Gli sport sono un elenco chiuso ma estendibile: per aggiungere nuoto,
- * palestra o triathlon basta aggiungere la chiave qui e la sua scheda in
- * `sports.ts`. Il resto dell'app lavora su `Sport` senza casi speciali.
+ * Gli sport sono un elenco chiuso ma estendibile: per aggiungerne uno basta la chiave qui,
+ * la sua scheda in `sports.ts` e una riga nella tabella `sports` del database.
+ * Il triathlon non è uno sport a sé: è un tipo di gara che combina nuoto, bici e corsa.
  */
 
-export type Sport = "run" | "bike";
+export type Sport = "swim" | "bike" | "run" | "gym";
 
 export type Level = "principiante" | "intermedio" | "avanzato";
 
@@ -29,7 +29,19 @@ export type WorkoutType =
   | "sweet_spot"
   | "soglia"
   | "vo2max"
-  | "test_ftp";
+  | "test_ftp"
+  // nuoto
+  | "tecnica_nuoto"
+  | "aerobico_nuoto"
+  | "css_nuoto"
+  | "ripetute_nuoto"
+  | "recupero_nuoto"
+  | "test_css"
+  // palestra (di supporto agli sport praticati)
+  | "forza_generale"
+  | "forza_specifica"
+  | "core_mobilita"
+  | "prevenzione";
 
 /** Una fase della seduta. L'intensità è sempre espressa in RPE; ritmo o potenza solo se esiste un dato affidabile. */
 export interface WorkoutStep {
@@ -96,17 +108,26 @@ export interface TestResult {
   id: string;
   date: string;
   sport: Sport;
-  kind: "5km" | "cooper" | "ftp20" | "ramp" | "dichiarato";
+  kind: TestKind;
   rawValue: string;
   derived: { label: string; value: string; origin: ValueOrigin }[];
 }
 
+export type TestKind = "5km" | "cooper" | "recente_corsa" | "ftp20" | "ramp" | "ftp_nota" | "css" | "recente_nuoto";
+
+export type TriFormat = "sprint" | "olimpico" | "medio" | "lungo" | "personalizzato";
+
+/** Una gara. Se `kind` è "triathlon" le distanze delle frazioni sono in `legs` e `sport` non c'è. */
 export interface RaceEvent {
   id: string;
   name: string;
   date: string;
-  sport: Sport;
+  dateTentative?: boolean;
+  kind: "singolo" | "triathlon";
+  sport?: Sport;
   distanceKm?: number;
+  triFormat?: TriFormat;
+  legs?: { swimKm: number; bikeKm: number; runKm: number };
   priority: "A" | "B" | "C";
 }
 
@@ -131,6 +152,20 @@ export interface AthleteProfile {
   equipment: string[];
   limitations: string[];
   goals: { primary: string; secondary: string[] };
+  swim?: { poolLengthM?: 25 | 50; openWater: boolean; wetsuit: boolean; strokes: string[] };
   ftpW?: { value: number; origin: ValueOrigin; date: string };
   thresholdPaceSecPerKm?: { value: number; origin: ValueOrigin; date: string };
+  cssPaceSecPer100m?: { value: number; origin: ValueOrigin; date: string };
+}
+
+export type PlannedTestStatus = "proposto" | "programmato" | "rimandato" | "rifiutato" | "completato";
+
+/** Un test proposto dal coach. Finché non è fatto, l'app usa gli ultimi parametri affidabili (o l'RPE). */
+export interface PlannedTest {
+  id: string;
+  sport: Sport;
+  kind: TestKind;
+  status: PlannedTestStatus;
+  dueDate?: string;
+  reason: string;
 }

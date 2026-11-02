@@ -86,17 +86,21 @@ const pace = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).
 const inHours = (v: number) => `${v}h`;
 const hoursFromH = (h: number) => hours(h * 60);
 
-export function VolumeChart({ data }: { data: { weekStart: string; runMin: number; bikeMin: number }[] }) {
+export function VolumeChart({ data }: { data: { weekStart: string; runMin: number; bikeMin: number; swimMin: number; gymMin: number }[] }) {
+  const all = [
+    { key: "swimH", min: "swimMin", label: "Nuoto", color: "var(--color-swim)" },
+    { key: "bikeH", min: "bikeMin", label: "Ciclismo", color: "var(--color-bike)" },
+    { key: "runH", min: "runMin", label: "Corsa", color: "var(--color-run)" },
+    { key: "gymH", min: "gymMin", label: "Palestra", color: "var(--color-gym)" },
+  ] as const;
+  const used = all.filter((s) => data.some((d) => d[s.min] > 0));
   return (
     <StackedBars
-      data={data.map((d) => ({ weekStart: d.weekStart, runH: d.runMin / 60, bikeH: d.bikeMin / 60 }))}
+      data={data.map((d) => Object.fromEntries([["weekStart", d.weekStart], ...used.map((s) => [s.key, d[s.min] / 60])]))}
       xKey="weekStart"
       labelFormat={dayMonth}
       yFormat={inHours}
-      series={[
-        { key: "runH", label: "Corsa", color: "var(--color-run)", format: hoursFromH },
-        { key: "bikeH", label: "Ciclismo", color: "var(--color-bike)", format: hoursFromH },
-      ]}
+      series={used.map((s) => ({ key: s.key, label: s.label, color: s.color, format: hoursFromH }))}
     />
   );
 }

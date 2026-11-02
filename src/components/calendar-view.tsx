@@ -3,7 +3,8 @@
 import clsx from "clsx";
 import { ChevronLeft, ChevronRight, Flag } from "lucide-react";
 import { useMemo, useState } from "react";
-import { WorkoutRow } from "@/components/ui";
+import { SportDot, SportLegend, WorkoutRow } from "@/components/ui";
+import { SPORT_KEYS } from "@/lib/domain/sports";
 import { addDays, formatDayMonth, mondayOf, monthTitle, weekdayName } from "@/lib/dates";
 import type { PlannedWorkout, RaceEvent } from "@/lib/domain/types";
 import { formatDuration } from "@/lib/training/formulas";
@@ -127,7 +128,7 @@ export function CalendarView({ plan, events, today }: { plan: PlannedWorkout[]; 
                   <span className={clsx("num text-sm leading-none", d === today && "rounded-full bg-fg px-1.5 py-0.5 text-bg")}>{Number(d.slice(8))}</span>
                   <span className="flex flex-wrap justify-center gap-0.5">
                     {items.map((p) => (
-                      <span key={p.id} className={clsx("size-1.5 rounded-full sm:size-2", p.sport === "run" ? "bg-run" : "bg-bike", p.status === "saltato" && "opacity-30")} />
+                      <SportDot key={p.id} sport={p.sport} className="size-1.5 sm:size-2" faded={p.status === "saltato"} />
                     ))}
                     {ev && <Flag className="size-3 text-run" aria-hidden />}
                   </span>
@@ -143,11 +144,7 @@ export function CalendarView({ plan, events, today }: { plan: PlannedWorkout[]; 
         </>
       )}
 
-      <p className="flex flex-wrap gap-4 text-xs text-muted">
-        <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-run" /> Corsa</span>
-        <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-bike" /> Ciclismo</span>
-        <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-muted opacity-30" /> Saltato</span>
-      </p>
+      <SportLegend sports={SPORT_KEYS.filter((s) => plan.some((p) => p.sport === s))} />
     </div>
   );
 }
