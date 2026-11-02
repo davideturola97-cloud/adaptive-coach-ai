@@ -194,3 +194,46 @@ export function EventFields({ prefix = "", e, onRemove }: { prefix?: string; e?:
     </div>
   );
 }
+
+/** Giorni disponibili, giorni dei lunghi e giorni preferiti per sport. */
+export function DaysFields({ a, practiced }: { a?: AthleteProfile; practiced?: Sport[] }) {
+  const days = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2 text-sm font-medium">
+        Giorni in cui puoi allenarti
+        <div className="flex flex-wrap gap-2">
+          {days.map((d) => <Chip key={d} name="availableDays" value={d} label={d} defaultChecked={a?.availableDays.includes(d)} />)}
+        </div>
+      </div>
+      <div className="flex flex-col gap-2 text-sm font-medium">
+        Giorni per i lunghi
+        <span className="text-xs font-normal text-muted">Qui il coach mette lungo di corsa, uscita lunga in bici e combinati. Di solito sabato e domenica.</span>
+        <div className="flex flex-wrap gap-2">
+          {days.map((d) => <Chip key={d} name="longDays" value={d} label={d} defaultChecked={a ? a.longDays.includes(d) : d === "Sab" || d === "Dom"} />)}
+        </div>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="Ore totali a settimana"><input name="weeklyHoursAvailable" inputMode="decimal" defaultValue={a?.weeklyHoursAvailable ?? ""} placeholder="Es. 8" className={inputCls} /></Field>
+        <Field label="Seduta più lunga nei giorni normali (min)"><input name="maxSessionMin" inputMode="numeric" defaultValue={a?.maxSessionMin ?? ""} placeholder="Es. 75" className={inputCls} /></Field>
+        <Field label="Seduta più lunga nei giorni dei lunghi (min)"><input name="longSessionMaxMin" inputMode="numeric" defaultValue={a?.longSessionMaxMin ?? ""} placeholder="Es. 180" className={inputCls} /></Field>
+      </div>
+      {practiced && practiced.length > 1 && (
+        <details className="rounded-xl border border-line p-3">
+          <summary className="min-h-8 cursor-pointer text-sm font-semibold">Giorni preferiti per sport (facoltativo)</summary>
+          <p className="mt-1 text-xs text-muted">Per esempio il nuoto solo nei giorni in cui la piscina è aperta. Se lasci vuoto, va bene qualsiasi giorno disponibile.</p>
+          <div className="mt-3 flex flex-col gap-3">
+            {practiced.map((k) => (
+              <div key={k} className="flex flex-col gap-2 text-sm font-medium">
+                <span className="flex items-center gap-2" style={{ color: SPORTS[k].colorVar }}><SportIcon sport={k} /> {SPORTS[k].label}</span>
+                <div className="flex flex-wrap gap-2">
+                  {days.map((d) => <Chip key={d} name={`${k}.days`} value={d} label={d} defaultChecked={a?.sportDays[k]?.includes(d)} />)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}

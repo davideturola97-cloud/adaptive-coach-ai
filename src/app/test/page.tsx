@@ -53,7 +53,7 @@ export default async function TestPage({ searchParams }: { searchParams: Promise
         {benvenuto && (
           <Card className="border-ok/40 bg-ok/5">
             <p className="font-semibold">Profilo pronto!</p>
-            <p className="mt-1 text-sm text-muted">Ecco i test che ti consiglio per partire. Se hai già un risultato recente, inseriscilo e salti il test.</p>
+            <p className="mt-1 text-sm text-muted">Ecco i test che ti consiglio per partire. Se hai già un risultato recente, inseriscilo e salti il test. Poi <a href="/programma" className="font-semibold text-fg underline">crea il programma</a>.</p>
           </Card>
         )}
 

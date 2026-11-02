@@ -95,6 +95,13 @@ export default async function HomePage() {
               </Link>
             ))}
           </div>
+        ) : mode === "utente" && !plan.some((p) => p.date >= today) ? (
+          <Link href="/programma" className="block">
+            <Card className="flex flex-col gap-2 border-ok/40 transition-colors hover:border-ok">
+              <p className="font-semibold">Crea il tuo programma</p>
+              <p className="text-sm text-muted">Il coach prepara le settimane attorno alle tue gare e ai tuoi giorni liberi.</p>
+            </Card>
+          </Link>
         ) : (
           <Card>
             <p className="font-semibold">Giorno di riposo</p>

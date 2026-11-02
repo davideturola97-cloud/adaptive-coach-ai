@@ -2,8 +2,7 @@
 
 import clsx from "clsx";
 import { useActionState, useState } from "react";
-import { Chip, EventFields, Field, Fieldset, inputCls, SportsFields } from "@/components/form";
-import { WEEK_DAYS } from "@/lib/domain/profile-schema";
+import { Chip, DaysFields, EventFields, Field, Fieldset, inputCls, SportsFields } from "@/components/form";
 import type { AthleteProfile } from "@/lib/domain/types";
 import { READINESS_QUESTIONS } from "@/lib/training/tests";
 import { completeOnboarding, type OnboardingState } from "./actions";
@@ -72,16 +71,7 @@ export function OnboardingWizard({ a }: { a: AthleteProfile }) {
 
       <div hidden={step !== 2}>
         <Fieldset title="Quanto tempo hai">
-          <div className="flex flex-col gap-2 text-sm font-medium">
-            In quali giorni puoi allenarti?
-            <div className="flex flex-wrap gap-2">
-              {WEEK_DAYS.map((d) => <Chip key={d} name="availableDays" value={d} label={d} defaultChecked={a.availableDays.includes(d)} />)}
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Ore totali a settimana"><input name="weeklyHoursAvailable" inputMode="decimal" defaultValue={a.weeklyHoursAvailable ?? ""} placeholder="Es. 8" className={inputCls} /></Field>
-            <Field label="Seduta più lunga possibile (minuti)"><input name="maxSessionMin" inputMode="numeric" defaultValue={a.maxSessionMin ?? ""} placeholder="Es. 150" className={inputCls} /></Field>
-          </div>
+          <DaysFields a={a.sports.length ? a : { ...a, longDays: ["Sab", "Dom"] }} practiced={a.sports.map((s) => s.sport)} />
           <div className="flex flex-col gap-2 text-sm font-medium">
             Attrezzatura che hai
             <div className="flex flex-wrap gap-2">

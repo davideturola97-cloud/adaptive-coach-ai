@@ -37,11 +37,12 @@ async function as(user: string | null, sql: string, params: unknown[] = []) {
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(SUPABASE_STUB);
-  for (const f of ["0001_schema.sql", "0002_multisport.sql"]) {
+  for (const f of ["0001_schema.sql", "0002_multisport.sql", "0003_plan.sql"]) {
     await db.exec(readFileSync(path.join(__dirname, "migrations", f), "utf8"));
   }
   // Le migrazioni devono poter essere rieseguite senza errori.
   await db.exec(readFileSync(path.join(__dirname, "migrations/0002_multisport.sql"), "utf8"));
+  await db.exec(readFileSync(path.join(__dirname, "migrations/0003_plan.sql"), "utf8"));
   await db.exec(`insert into auth.users (id, email) values ('${ALICE}', 'a@example.com'), ('${BOB}', 'b@example.com');`);
 });
 
@@ -146,6 +147,38 @@ describe("multisport (Milestone 3)", () => {
 
   it("i nuovi tipi di test sono accettati", async () => {
     await as(ALICE, "insert into public.test_results (test_date, sport, kind, raw_value) values ('2026-11-01', 'swim', 'css', '{}'::jsonb)");
+  });
+});
+
+describe("programma (Milestone 4)", () => {
+  const w = (date: string, title = "Corsa facile") => ({ date, sport: "run", type: "corsa_facile", title, objective: "", durationMin: 45, intensity: "Bassa", structure: { warmup: [], main: [], cooldown: [] }, technicalTips: ["a"], safetyNotes: ["b"] });
+
+  it("sostituisce le sedute future e conserva quelle fatte", async () => {
+    await as(ALICE, "insert into public.planned_workouts (workout_date, sport, workout_type, title, duration_min, status) values ('2026-11-03', 'run', 'corsa_facile', 'Fatta', 40, 'completato'), ('2026-11-05', 'run', 'corsa_facile', 'Vecchia', 40, 'programmato')");
+    const r = await as(ALICE, "select public.replace_future_plan('2026-11-04', $1::jsonb, 'Generato') as id", [JSON.stringify([w("2026-11-05", "Nuova"), w("2026-11-07")])]);
+    expect(r.rows[0].id).toBeTruthy();
+    const rows = await as(ALICE, "select title, status from public.planned_workouts where title in ('Fatta','Vecchia','Nuova','Corsa facile') order by workout_date");
+    expect(rows.rows.map((x) => x.title)).toEqual(["Fatta", "Nuova", "Corsa facile"]);
+  });
+
+  it("conserva una versione con le sedute sostituite, per poter annullare", async () => {
+    const v = await as(ALICE, "select reason, jsonb_array_length(previous) as prev, is_current from public.plan_versions order by created_at desc limit 1");
+    expect(v.rows[0]).toMatchObject({ reason: "Generato", prev: 1, is_current: true });
+  });
+
+  it("rifiuta sedute prima della data di partenza", async () => {
+    await expect(as(ALICE, "select public.replace_future_plan('2026-11-10', $1::jsonb, 'x')", [JSON.stringify([w("2026-11-05")])])).rejects.toThrow();
+  });
+
+  it("non tocca il programma degli altri", async () => {
+    await as(BOB, "insert into public.planned_workouts (workout_date, sport, workout_type, title, duration_min) values ('2026-11-20', 'bike', 'endurance', 'Di Bob', 60)");
+    await as(ALICE, "select public.replace_future_plan('2026-11-01', $1::jsonb, 'Rigenerato')", [JSON.stringify([w("2026-11-21")])]);
+    expect((await as(BOB, "select title from public.planned_workouts")).rows).toEqual([{ title: "Di Bob" }]);
+    expect((await as(BOB, "select * from public.plan_versions")).rows).toHaveLength(0);
+  });
+
+  it("gli anonimi non possono usarla", async () => {
+    await expect(as(null, "select public.replace_future_plan('2026-11-01', '[]'::jsonb, 'x')")).rejects.toThrow();
   });
 });
 

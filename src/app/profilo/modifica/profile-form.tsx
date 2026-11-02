@@ -1,8 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { Chip, Field, Fieldset, inputCls, SportsFields } from "@/components/form";
-import { WEEK_DAYS } from "@/lib/domain/profile-schema";
+import { DaysFields, Field, Fieldset, inputCls, SportsFields } from "@/components/form";
 import type { AthleteProfile } from "@/lib/domain/types";
 import { updateProfile, type ProfileState } from "../actions";
 
@@ -33,16 +32,7 @@ export function ProfileForm({ a }: { a: AthleteProfile }) {
       </Fieldset>
 
       <Fieldset title="Disponibilità">
-        <div className="flex flex-col gap-2 text-sm font-medium">
-          Giorni in cui puoi allenarti
-          <div className="flex flex-wrap gap-2">
-            {WEEK_DAYS.map((d) => <Chip key={d} name="availableDays" value={d} label={d} defaultChecked={a.availableDays.includes(d)} />)}
-          </div>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Ore a settimana"><input id="weeklyHoursAvailable" name="weeklyHoursAvailable" inputMode="decimal" defaultValue={a.weeklyHoursAvailable ?? ""} className={inputCls} /></Field>
-          <Field label="Durata massima di una seduta (minuti)"><input id="maxSessionMin" name="maxSessionMin" inputMode="numeric" defaultValue={a.maxSessionMin ?? ""} className={inputCls} /></Field>
-        </div>
+        <DaysFields a={a} practiced={a.sports.map((s) => s.sport)} />
         <Field label="Attrezzatura" hint="Una voce per riga o separate da virgola"><textarea id="equipment" name="equipment" rows={3} defaultValue={a.equipment.join("\n")} className={`${inputCls} py-3`} /></Field>
       </Fieldset>
 

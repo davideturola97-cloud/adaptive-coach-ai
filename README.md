@@ -2,7 +2,8 @@
 
 Allenatore personale per corsa e ciclismo che adatta il programma alla tua settimana.
 
-**Stato: Milestone 3.** Quattro sport (nuoto, ciclismo, corsa, palestra) e gare di triathlon. Onboarding guidato, gare, test iniziali con rinvio e controlli di sicurezza, parametri stimati. Accesso con Supabase e dati protetti per utente.
+**Stato: Milestone 4.** Motore di programmazione con anteprima, conferma e versioni salvate.
+Milestone 3: Quattro sport (nuoto, ciclismo, corsa, palestra) e gare di triathlon. Onboarding guidato, gare, test iniziali con rinvio e controlli di sicurezza, parametri stimati. Accesso con Supabase e dati protetti per utente.
 Senza configurazione Supabase l'app parte in modalità dimostrativa.
 
 Per collegare Supabase segui `docs/SUPABASE.md`.
@@ -30,7 +31,8 @@ src/
   app/                 pagine: Home, Calendario, Allenamenti, Coach AI, Progressi, Profilo
   components/          interfaccia (menu, schede, grafici, calendario)
   lib/domain/          modello dei dati: sport (nuoto, bici, corsa, palestra), gare, validazione
-  lib/training/        formule, analisi e logica dei test, con test automatici
+  lib/training/        formule, modelli di seduta, analisi e logica dei test
+  lib/planning/        motore di programmazione (regole deterministiche, senza AI) e ritmi/watt stimati
   lib/data/            lettura dei dati: Supabase se configurato, altrimenti dati dimostrativi
   lib/supabase/        collegamento a Supabase (sessione, middleware)
   lib/demo/            DATI DIMOSTRATIVI
@@ -44,7 +46,7 @@ docs/FORMULE.md        formule usate e loro limiti
 1. ✅ Progetto Next.js, design, navigazione, dati dimostrativi
 2. ✅ Supabase, autenticazione, profilo atleta, database
 3. ✅ Onboarding e test iniziali (con nuoto, palestra e triathlon)
-4. Motore di programmazione e calendario persistente
+4. ✅ Motore di programmazione e calendario persistente
 5. Completamento attività, feedback e storico
 6. Riprogrammazione con regole deterministiche, anteprima e conferma
 7. Integrazione AI, chat e analisi screenshot

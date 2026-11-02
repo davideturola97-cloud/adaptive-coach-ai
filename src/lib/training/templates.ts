@@ -1,8 +1,9 @@
 import type { PlannedWorkout, Sport, WorkoutStructure, WorkoutType } from "@/lib/domain/types";
 
 /**
- * Modelli di seduta usati SOLO per i dati dimostrativi della Milestone 1.
- * Il vero motore di programmazione arriva con la Milestone 4.
+ * Modelli di seduta. Il motore di programmazione (src/lib/planning) li sceglie e li dimensiona;
+ * `scale` allunga o accorcia la parte continua delle sedute di durata variabile.
+ * Le intensità sono in RPE; ritmi e watt vengono aggiunti dopo, solo se esistono parametri affidabili.
  */
 type Template = Omit<PlannedWorkout, "id" | "date" | "status" | "completedActivityId">;
 
@@ -145,7 +146,7 @@ export function template(type: WorkoutType, scale = 1): Template {
       return swim({
         type, title: "Tecnica", objective: "Nuotare in modo più efficiente con meno fatica.",
         durationMin: m(45), intensity: "Bassa (RPE 3–4)",
-        structure: s(10, [step("Esercizi tecnici 25 m + 25 m nuotata", 25, [3, 4], "Gambe sul fianco, bracciata con pugno chiuso, recupero a 'cerniera'", 8)], 5, "15\" da fermo ogni 50 m"),
+        structure: s(10, [step("Esercizi tecnici 25 m + 25 m nuotata", 3, [3, 4], "Gambe sul fianco, bracciata con pugno chiuso, recupero a 'cerniera'", Math.max(4, Math.round(8 * scale)))], 5, "15\" da fermo ogni 50 m"),
         technicalTips: ["Pensa a una cosa sola per serie: allungamento, respirazione o posizione della testa."],
         safetyNotes: SAFETY_SWIM,
       });
@@ -153,7 +154,7 @@ export function template(type: WorkoutType, scale = 1): Template {
       return swim({
         type, title: "Aerobico 4 × 400 m", objective: "Costruire la resistenza in acqua.",
         durationMin: m(50), intensity: "Moderata (RPE 4–5)",
-        structure: s(10, [step("400 m regolari", 8, [4, 5], undefined, 4)], 5, "30\" da fermo tra le frazioni"),
+        structure: s(10, [step("400 m regolari", 8, [4, 5], undefined, Math.max(2, Math.round(4 * scale)))], 5, "30\" da fermo tra le frazioni"),
         technicalTips: ["Respira ogni 3 bracciate se ci riesci: aiuta l'equilibrio."],
         safetyNotes: SAFETY_SWIM,
       });
@@ -189,6 +190,17 @@ export function template(type: WorkoutType, scale = 1): Template {
         technicalTips: ["Partenza dall'acqua, con spinta dal muro. Fatti prendere i tempi se puoi."],
         safetyNotes: [...SAFETY_SWIM, "Fai il test solo se sei in salute, riposato e senza dolori."],
       });
+    case "brick":
+      return bike({
+        type, title: "Combinato bici + corsa", objective: "Abituare le gambe a correre dopo la bici, come in gara.",
+        durationMin: m(90), intensity: "Moderata (RPE 4–6)",
+        structure: s(10, [
+          step("Bici regolare", m(60), [3, 4], "Ultimi 10' al ritmo gara"),
+          step("Cambio rapido e corsa", Math.max(10, m(15)), [5, 6], "Primi minuti corti e frequenti: le gambe si sciolgono dopo 5-10'"),
+        ], 5),
+        technicalTips: ["Prepara scarpe e cambio prima di partire: allena anche la transizione."],
+        safetyNotes: [...SAFETY_BIKE, ...SAFETY_RUN],
+      });
     case "forza_generale":
       return gym({
         type, title: "Forza generale", objective: "Rinforzare gambe, schiena e spalle per reggere il carico degli sport.",
@@ -209,7 +221,7 @@ export function template(type: WorkoutType, scale = 1): Template {
       return gym({
         type, title: "Core e mobilità", objective: "Stabilità del tronco e mobilità di anche e spalle.",
         durationMin: 30, intensity: "Bassa-moderata (RPE 4–5)",
-        structure: s(5, [step("Plank, dead bug, ponte glutei, mobilità anche e spalle", 20, [4, 5], undefined, 3)], 5),
+        structure: s(5, [step("Circuito: plank, dead bug, ponte glutei, mobilità anche e spalle", 7, [4, 5], undefined, 3)], 5),
         technicalTips: ["Respira durante gli esercizi di core, non trattenere il fiato."],
         safetyNotes: SAFETY_GYM,
       });

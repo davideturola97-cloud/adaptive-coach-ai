@@ -41,6 +41,9 @@ export const profileSchema = z
     weeklyHoursAvailable: optionalNumber(0, 40, "Ore a settimana"),
     maxSessionMin: optionalNumber(10, 600, "Durata massima seduta"),
     availableDays: z.array(z.enum(WEEK_DAYS)).default([]),
+    longDays: z.array(z.enum(WEEK_DAYS)).default([]),
+    longSessionMaxMin: optionalNumber(20, 600, "Durata massima nel giorno del lungo"),
+    sportDays: z.record(z.enum(["swim", "bike", "run", "gym"]), z.array(z.enum(WEEK_DAYS))).default({}),
     equipment: list(20),
     limitations: list(20),
     goalPrimary: z.string().trim().max(200, "Obiettivo troppo lungo"),
@@ -57,7 +60,8 @@ export const profileSchema = z
       canSwim400: z.boolean(),
     }),
   })
-  .refine((p) => SPORT_KEYS.some((k) => p[k].enabled), { message: "Scegli almeno uno sport", path: ["run"] });
+  .refine((p) => SPORT_KEYS.some((k) => p[k].enabled), { message: "Scegli almeno uno sport", path: ["run"] })
+  .refine((p) => p.longDays.every((d) => !p.availableDays.length || p.availableDays.includes(d)), { message: "I giorni dei lunghi devono essere tra i giorni disponibili", path: ["longDays"] });
 
 export type ProfileInput = z.infer<typeof profileSchema>;
 
@@ -83,6 +87,9 @@ export function profileValues(fd: FormData) {
     weeklyHoursAvailable: fd.get("weeklyHoursAvailable") ?? "",
     maxSessionMin: fd.get("maxSessionMin") ?? "",
     availableDays: fd.getAll("availableDays"),
+    longDays: fd.getAll("longDays"),
+    longSessionMaxMin: fd.get("longSessionMaxMin") ?? "",
+    sportDays: Object.fromEntries(SPORT_KEYS.map((k) => [k, fd.getAll(`${k}.days`)]).filter(([, v]) => (v as unknown[]).length)),
     equipment: fd.get("equipment") ?? "",
     limitations: fd.get("limitations") ?? "",
     goalPrimary: fd.get("goalPrimary") ?? "",

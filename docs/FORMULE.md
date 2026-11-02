@@ -37,3 +37,25 @@ di una gara A o B né nei 4 giorni dopo.
 
 Prima di un test massimale l'atleta risponde a 7 domande ispirate al questionario PAR-Q. Con una risposta positiva i test
 massimali non si programmano finché l'atleta non dichiara il via libera del medico; restano disponibili risultati recenti e rinvii.
+
+## Motore di programmazione (src/lib/planning)
+
+Regole fisse, senza AI: con gli stessi dati produce sempre lo stesso programma.
+
+- **Fasi** in base alla prossima gara A o B: base (oltre 8 settimane), costruzione (8–4), rifinitura (3–2, solo gare A),
+  scarico (la settimana prima di una gara A), gara, recupero (la settimana dopo una gara A).
+  Nei periodi di base e costruzione la quarta settimana è di scarico.
+- **Volume**: ore disponibili × livello (0,7 principiante, 0,8 intermedio, 0,88 avanzato) × fase
+  (base 0,85, costruzione 1, rifinitura 0,9, scarico 0,65, gara e recupero 0,5). Mai più del 15% in più
+  rispetto alla settimana di carico precedente; la prima settimana è ridotta del 10%.
+- **Ripartizione** verso la gara obiettivo: mezza o corsa 65% corsa, 22% bici, 13% nuoto; bici 68/18/14;
+  triathlon sprint/olimpico 22% nuoto, 42% bici, 36% corsa; medio/lungo 18/50/32. Solo tra gli sport praticati.
+- **Sedute dure** per settimana: base 1–2, costruzione 2–3, rifinitura 2, scarico e gara 1, recupero 0.
+  Mai due sedute dure in giorni consecutivi (contano anche lunghi e test, anche a cavallo tra due settimane).
+- **Lunghi** nei giorni scelti (default sabato e domenica): bici o combinato nel primo, corsa nell'ultimo.
+  Il lungo cresce al massimo di 15 minuti a settimana.
+- **Gare**: giorno della gara libero, il giorno prima solo attivazione, 1–2 giorni liberi dopo.
+- **Palestra**: 1–2 sedute in base e costruzione, 1 in rifinitura e recupero, nessuna in scarico e gara;
+  evitata il giorno prima di una seduta dura.
+- **Intensità**: RPE. Ritmi (corsa), watt (bici) e passi in vasca (nuoto) compaiono solo se esiste un parametro da test,
+  sempre etichettati "stimato". I principianti senza test non fanno ripetute o tempo run nelle prime 3 settimane.

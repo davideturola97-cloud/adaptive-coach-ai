@@ -1,7 +1,7 @@
 import { addDays, mondayOf, todayISO } from "@/lib/dates";
 import type { AthleteProfile, CompletedActivity, Feedback, PlannedTest, PlannedWorkout, RaceEvent, TestResult, WorkoutType } from "@/lib/domain/types";
 import { formatPace, formatTime, ftpFrom20Min, powerZones, thresholdPaceFrom5k } from "@/lib/training/formulas";
-import { template } from "./workouts";
+import { template } from "@/lib/training/templates";
 
 /**
  * DATI DIMOSTRATIVI. Nessuno di questi numeri appartiene a una persona reale.
@@ -133,7 +133,10 @@ export function buildDemoData(now = new Date()): DemoData {
     swim: { poolLengthM: 25, openWater: true, wetsuit: true, strokes: ["Stile libero", "Dorso"] },
     weeklyHoursAvailable: 7,
     availableDays: ["Mar", "Mer", "Gio", "Ven", "Sab", "Dom"],
-    maxSessionMin: 120,
+    maxSessionMin: 90,
+    longDays: ["Sab", "Dom"],
+    longSessionMaxMin: 150,
+    sportDays: { swim: ["Lun", "Mer", "Ven"] },
     equipment: ["Orologio GPS con fascia cardio", "Bici da strada", "Rulli smart"],
     limitations: ["Tendine d'Achille sinistro sensibile dopo le salite"],
     goals: { primary: "Mezza maratona sotto 1:45", secondary: ["Primo triathlon olimpico", "Correre con costanza 3 volte a settimana"] },

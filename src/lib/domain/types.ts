@@ -30,6 +30,7 @@ export type WorkoutType =
   | "soglia"
   | "vo2max"
   | "test_ftp"
+  | "brick"
   // nuoto
   | "tecnica_nuoto"
   | "aerobico_nuoto"
@@ -153,6 +154,12 @@ export interface AthleteProfile {
   limitations: string[];
   goals: { primary: string; secondary: string[] };
   swim?: { poolLengthM?: 25 | 50; openWater: boolean; wetsuit: boolean; strokes: string[] };
+  /** Giorni in cui mettere lunghi e combinati (es. Sab, Dom). Vuoto = weekend disponibile. */
+  longDays: string[];
+  /** Durata massima nei giorni dei lunghi. Se manca vale `maxSessionMin`. */
+  longSessionMaxMin?: number;
+  /** Giorni preferiti per sport (facoltativo), es. nuoto solo Lun e Mer. */
+  sportDays: Partial<Record<Sport, string[]>>;
   ftpW?: { value: number; origin: ValueOrigin; date: string };
   thresholdPaceSecPerKm?: { value: number; origin: ValueOrigin; date: string };
   cssPaceSecPer100m?: { value: number; origin: ValueOrigin; date: string };
