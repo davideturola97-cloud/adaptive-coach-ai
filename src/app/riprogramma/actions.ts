@@ -14,6 +14,7 @@ const disruptionSchema = z.object({
   painSport: z.enum(["swim", "bike", "run", "gym"]).optional(),
   painSevere: z.boolean().optional(),
   workoutId: z.string().max(64).optional(),
+  preferredDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 /** Le proposte si calcolano sempre sul server, dai dati salvati: il browser manda solo la descrizione dell'imprevisto. */

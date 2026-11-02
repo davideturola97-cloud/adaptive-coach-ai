@@ -106,6 +106,8 @@ export function RescheduleConversation({ today, sports, demo, start }: { today: 
   const [minutes, setMinutes] = useState<number | null>(null);
   const [painSport, setPainSport] = useState<Sport | null>(null);
   const [severe, setSevere] = useState<boolean | null>(null);
+  // undefined = non ancora chiesto, null = "scegli tu", data = giorno scelto dall'atleta
+  const [preferred, setPreferred] = useState<string | null | undefined>(undefined);
   const [result, setResult] = useState<RescheduleResult | { error: string } | null>(null);
   const [applied, setApplied] = useState<{ ok?: string; error?: string; versionId?: string; title?: string } | null>(null);
   const [undone, setUndone] = useState<string | null>(null);
@@ -120,10 +122,12 @@ export function RescheduleConversation({ today, sports, demo, start }: { today: 
       painSport: kind === "dolore" ? (painSport ?? undefined) : undefined,
       painSevere: kind === "dolore" ? Boolean(severe) : undefined,
       workoutId: kind === "saltata" ? start?.workoutId : undefined,
+      preferredDate: preferred ?? undefined,
     };
   };
+  const asksDay = kind !== null && ["nessun_allenamento", "viaggio", "poco_tempo", "stanco"].includes(kind);
   const detailsDone = kind === "poco_tempo" ? minutes !== null : kind === "dolore" ? painSport !== null && severe !== null : true;
-  const ready = Boolean(kind && from && detailsDone);
+  const ready = Boolean(kind && from && detailsDone && (!asksDay || preferred !== undefined));
 
   const ask = () => {
     const d = disruption();
@@ -146,7 +150,7 @@ export function RescheduleConversation({ today, sports, demo, start }: { today: 
     });
   };
   const reset = () => {
-    setKind(null); setFrom(null); setMinutes(null); setPainSport(null); setSevere(null); setResult(null); setApplied(null); setUndone(null);
+    setKind(null); setFrom(null); setMinutes(null); setPainSport(null); setSevere(null); setPreferred(undefined); setResult(null); setApplied(null); setUndone(null);
   };
 
   // Le proposte si calcolano appena la conversazione ha tutti i dati.
@@ -222,6 +226,21 @@ export function RescheduleConversation({ today, sports, demo, start }: { today: 
               ) : <Me>{severe ? "Forte" : "Leggero"}</Me>}
             </>
           )}
+        </>
+      )}
+
+      {asksDay && from && detailsDone && (
+        <>
+          <Coach>Hai un giorno in cui preferiresti spostare l&apos;allenamento? Se no, scelgo io il più adatto.</Coach>
+          {preferred === undefined ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Choice onClick={() => setPreferred(null)}>Scegli tu</Choice>
+              <label className="flex min-h-12 items-center gap-2 rounded-xl border border-line bg-surface px-3 text-sm">
+                Il giorno
+                <input type="date" min={addDays(today, 1)} onChange={(e) => e.target.value && setPreferred(e.target.value)} className="bg-transparent" />
+              </label>
+            </div>
+          ) : <Me>{preferred ? day(preferred) : "Scegli tu"}</Me>}
         </>
       )}
 

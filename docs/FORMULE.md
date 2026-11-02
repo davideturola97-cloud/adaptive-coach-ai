@@ -76,7 +76,7 @@ Il motore propone, l'atleta sceglie: niente cambia senza conferma. Ogni modifica
 
 | Imprevisto | Opzioni proposte |
 |---|---|
-| Non posso allenarmi / viaggio | Spostare le sedute importanti in un giorno sicuro nei 4 giorni successivi (eventualmente al posto di una facile); oppure toglierle |
+| Non posso allenarmi / viaggio | Spostare le sedute importanti nel giorno sicuro più vicino (fino a 3 giorni prima o 4 dopo, eventualmente al posto di una facile); oppure toglierle |
 | Poco tempo | Accorciare (le ripetute perdono ripetizioni, mai intensità); scambiare con una seduta facile di un altro giorno; riposo |
 | Stanchezza | Alleggerire (dura → facile, −30%); rimandare la seduta dura; riposo |
 | Dolore | Togliere l'intensità per 3 giorni (solo se leggero); sostituire con un altro sport facile; riposo. Sempre l'invito a sentire un medico se non passa |
@@ -85,4 +85,6 @@ Il motore propone, l'atleta sceglie: niente cambia senza conferma. Ogni modifica
 
 Regole verificate su ogni proposta (e su 400 imprevisti casuali nei test): nessuna seduta nei giorni bloccati,
 nessuna seduta dura vicino a una gara, mai due sedute dure in giorni consecutivi, carico totale mai superiore a quello previsto.
-Una seduta importante spostata nella settimana dopo si accorcia del 20%.
+Una seduta importante spostata in un'altra settimana si accorcia del 20%.
+Se l'atleta indica un giorno preciso, quella proposta compare per prima se rispetta le regole (in quel caso i giorni disponibili
+del profilo non contano, perché è l'atleta a dire che può); altrimenti il coach spiega il motivo e propone alternative.

@@ -41,6 +41,8 @@ export interface Disruption {
   painSevere?: boolean;
   /** Seduta saltata (saltata). */
   workoutId?: string;
+  /** Giorno in cui l'atleta vorrebbe spostare la seduta (es. "spostala al 18"). */
+  preferredDate?: string;
 }
 
 export interface Brief {
@@ -190,44 +192,62 @@ export function violations(before: PlannedWorkout[], changes: Change[], input: R
 
 /* ---------- Ricerca di un giorno sicuro ---------- */
 
-function findDay(w: PlannedWorkout, plan: PlannedWorkout[], input: RescheduleInput, after: string, excluded: Set<string>): { date: string; displaced?: PlannedWorkout } | null {
+type DayCheck = { ok: true; displaced?: PlannedWorkout } | { ok: false; reason: string };
+
+/**
+ * Il giorno `date` va bene per la seduta `w`? Con `explicit` (giorno chiesto dall'atleta) non si guardano
+ * i giorni disponibili e preferiti, perché è lui a dire che può; le regole di sicurezza restano tutte.
+ */
+function checkDay(w: PlannedWorkout, date: string, plan: PlannedWorkout[], input: RescheduleInput, excluded: Set<string>, explicit = false): DayCheck {
   const { athlete: a, events, today } = input;
   const days = a.availableDays.length ? a.availableDays : ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
   const pref = a.sportDays[w.sport];
   const live = active(plan).filter((o) => o.id !== w.id);
-  for (let i = 1; i <= 4; i++) {
-    const date = addDays(after, i);
-    if (date <= today || excluded.has(date)) continue;
-    const name = weekdayName(date, true);
-    if (!days.includes(name) || (pref?.length && !pref.includes(name))) continue;
-    if (raceBlocked(date, events)) continue;
-    const same = live.filter((o) => o.date === date && o.sport !== "gym");
-    if (same.some((o) => isKey(o))) continue;
-    if (isKey(w)) {
-      const neighbours = live.filter((o) => isKey(o) && Math.abs(daysBetween(o.date, date)) === 1 && !(isLong(o.type) && isLong(w.type)));
-      if (neighbours.length) continue;
-    }
-    if (!same.length) return { date };
-    // Giorno con una seduta facile: la seduta importante prende il suo posto (la facile salta).
-    if (isKey(w) && same.length === 1 && !isKey(same[0])) return { date, displaced: same[0] };
+  const name = weekdayName(date, true);
+  if (date <= today) return { ok: false, reason: "è già passato o è oggi" };
+  if (excluded.has(date)) return { ok: false, reason: "è uno dei giorni in cui non puoi allenarti" };
+  if (!explicit && (!days.includes(name) || (pref?.length && !pref.includes(name)))) return { ok: false, reason: "non è tra i tuoi giorni disponibili" };
+  if (raceBlocked(date, events) && (isKey(w) || events.some((e) => e.date === date))) return { ok: false, reason: "è troppo vicino a una gara" };
+  const same = live.filter((o) => o.date === date && o.sport !== "gym");
+  if (same.some((o) => isKey(o))) return { ok: false, reason: `quel giorno c'è già ${same.find(isKey)!.title.toLowerCase()}, un'altra seduta impegnativa` };
+  if (isKey(w)) {
+    const near = live.find((o) => isKey(o) && Math.abs(daysBetween(o.date, date)) === 1 && !(isLong(o.type) && isLong(w.type)));
+    if (near) return { ok: false, reason: `${daysBetween(near.date, date) > 0 ? "il giorno prima" : "il giorno dopo"} c'è ${near.title.toLowerCase()}: due sedute dure di fila aumentano il rischio di infortunio` };
   }
-  return null;
+  if (!same.length) return { ok: true };
+  // Giorno con una seduta facile: la seduta importante prende il suo posto (la facile salta).
+  if (isKey(w) && same.length === 1) return { ok: true, displaced: same[0] };
+  if (explicit && !isKey(w) && same.length === 1) return { ok: true, displaced: same[0] };
+  return { ok: false, reason: "quel giorno è già occupato" };
+}
+
+/** Cerca il giorno sicuro più vicino all'imprevisto, prima o dopo (fino a 4 giorni dopo e 3 prima). */
+function findDay(w: PlannedWorkout, plan: PlannedWorkout[], input: RescheduleInput, range: { from: string; to: string }, excluded: Set<string>): { date: string; displaced?: PlannedWorkout } | null {
+  const order = [1, -1, 2, -2, 3, -3, 4].map((k) => (k > 0 ? addDays(range.to, k) : addDays(range.from, k)));
+  let fallback: { date: string; displaced?: PlannedWorkout } | null = null;
+  for (const date of order) {
+    const c = checkDay(w, date, plan, input, excluded);
+    if (!c.ok) continue;
+    if (!c.displaced) return { date };
+    fallback ??= { date, displaced: c.displaced };
+  }
+  return fallback;
 }
 
 /**
  * Sposta le sedute: importanti in un giorno sicuro (eventualmente al posto di una facile), le facili solo se c'è un giorno libero.
  * Con `swap`, la seduta facile scavalcata non salta ma si scambia: va nel giorno di partenza, entro `swap.maxMin` minuti.
  */
-function moveChanges(affected: PlannedWorkout[], input: RescheduleInput, after: string, blocked: Set<string>, swap?: { date: string; maxMin: number }): { changes: Change[]; tradeoffs: string[] } {
+function moveChanges(affected: PlannedWorkout[], input: RescheduleInput, range: { from: string; to: string }, blocked: Set<string>, swap?: { date: string; maxMin: number }): { changes: Change[]; tradeoffs: string[] } {
   const changes: Change[] = [];
   const tradeoffs: string[] = [];
   const order = [...affected].sort((x, y) => Number(isKey(y)) - Number(isKey(x)));
   for (const w of order) {
     const current = applyChanges(input.plan, changes);
-    const spot = findDay(w, current, input, after, blocked);
+    const spot = findDay(w, current, input, range, blocked);
     if (!spot || (!isKey(w) && spot.displaced)) {
       changes.push({ op: "elimina", id: w.id, before: brief(w), note: isKey(w) ? "Nessun giorno sicuro nei prossimi giorni" : "Seduta facile: non serve recuperarla" });
-      if (isKey(w)) tradeoffs.push(`${w.title} salta: nei 4 giorni successivi non c'è un giorno che rispetti il recupero.`);
+      if (isKey(w)) tradeoffs.push(`${w.title} salta: nei giorni vicini non c'è un giorno che rispetti il recupero.`);
       continue;
     }
     // Se finisce nella settimana dopo, si accorcia un po' per non caricare troppo quella settimana.
@@ -252,7 +272,7 @@ function moveChanges(affected: PlannedWorkout[], input: RescheduleInput, after: 
 
 /* ---------- Proposte per tipo di imprevisto ---------- */
 
-export function proposeReschedule(input: RescheduleInput): RescheduleResult {
+function baseProposals(input: RescheduleInput): RescheduleResult {
   const { disruption: d, plan, athlete: a } = input;
   const to = d.to && d.to >= d.from ? d.to : d.from;
   const live = active(plan);
@@ -267,7 +287,7 @@ export function proposeReschedule(input: RescheduleInput): RescheduleResult {
     case "nessun_allenamento":
     case "viaggio": {
       if (!inRange.length) return none(`Nessuna seduta in programma ${range}: non c'è niente da cambiare.`);
-      const moved = moveChanges(inRange, input, to, blocked);
+      const moved = moveChanges(inRange, input, { from: d.from, to }, blocked);
       const keyCount = inRange.filter(isKey).length;
       if (moved.changes.some((c) => c.op === "sposta")) {
         proposals.push({
@@ -311,7 +331,7 @@ export function proposeReschedule(input: RescheduleInput): RescheduleResult {
       }
       const keys = tooLong.filter(isKey);
       if (keys.length) {
-        const moved = moveChanges(keys, input, d.from, new Set(), { date: d.from, maxMin: avail });
+        const moved = moveChanges(keys, input, { from: d.from, to: d.from }, new Set(), { date: d.from, maxMin: avail });
         const swapped = moved.changes.some((c) => c.op === "sposta" && c.patch.date === d.from);
         if (moved.changes.some((c) => c.op === "sposta" && c.patch.date !== d.from)) {
           proposals.push({
@@ -351,7 +371,7 @@ export function proposeReschedule(input: RescheduleInput): RescheduleResult {
       });
       const hard = day.filter(isKey);
       if (hard.length) {
-        const moved = moveChanges(hard, input, d.from, new Set(), { date: d.from, maxMin: 40 });
+        const moved = moveChanges(hard, input, { from: d.from, to: d.from }, new Set(), { date: d.from, maxMin: 40 });
         const swapped = moved.changes.some((c) => c.op === "sposta" && c.patch.date === d.from);
         if (moved.changes.some((c) => c.op === "sposta" && c.patch.date !== d.from)) {
           proposals.push({
@@ -461,7 +481,7 @@ export function proposeReschedule(input: RescheduleInput): RescheduleResult {
         };
       }
       const start = w.date < input.today ? input.today : w.date;
-      const moved = moveChanges([{ ...w, status: "programmato" }], { ...input, plan: plan.map((x) => (x.id === w.id ? { ...x, status: "programmato" as const } : x)) }, start, new Set([w.date]));
+      const moved = moveChanges([{ ...w, status: "programmato" }], { ...input, plan: plan.map((x) => (x.id === w.id ? { ...x, status: "programmato" as const } : x)) }, { from: start, to: start }, new Set([w.date]));
       if (moved.changes.some((c) => c.op === "sposta")) {
         proposals.push({
           id: "recupera",
@@ -476,4 +496,61 @@ export function proposeReschedule(input: RescheduleInput): RescheduleResult {
       return { intro: `Hai saltato ${w.title.toLowerCase()} (${WORKOUT_TYPE_LABEL[w.type].toLowerCase()}).`, proposals };
     }
   }
+}
+
+/**
+ * Proposte per un imprevisto. Se l'atleta chiede un giorno preciso ("spostala al 18"),
+ * quella proposta viene per prima quando rispetta le regole; altrimenti il coach spiega perché no.
+ */
+export function proposeReschedule(input: RescheduleInput): RescheduleResult {
+  const base = baseProposals(input);
+  const d = input.disruption;
+  const target = d.preferredDate;
+  if (!target || d.kind === "dolore" || d.kind === "malato") return base;
+
+  const to = d.to && d.to >= d.from ? d.to : d.from;
+  const plan = d.kind === "saltata" ? input.plan.map((x) => (x.id === d.workoutId ? { ...x, status: "programmato" as const } : x)) : input.plan;
+  const live = active(plan);
+  const affected = d.kind === "saltata" ? live.filter((w) => w.id === d.workoutId) : live.filter((w) => w.date >= d.from && w.date <= to && w.sport !== "gym");
+  const main = affected.find(isKey) ?? affected[0];
+  if (!main) return base;
+
+  const blocked = new Set<string>();
+  if (d.kind === "nessun_allenamento" || d.kind === "viaggio") for (let x = d.from; x <= to; x = addDays(x, 1)) blocked.add(x);
+  if (d.kind === "saltata") blocked.add(input.plan.find((x) => x.id === d.workoutId)?.date ?? "");
+  const check = checkDay(main, target, plan, { ...input, plan }, blocked, true);
+  const label = dayLabel(target);
+  if (!check.ok) {
+    return { ...base, intro: `Spostare ${main.title.toLowerCase()} a ${label} non è una buona idea: ${check.reason}. ${base.intro}` };
+  }
+
+  const changes: Change[] = [];
+  const tradeoffs: string[] = [];
+  if (check.displaced) {
+    changes.push({ op: "elimina", id: check.displaced.id, before: brief(check.displaced), note: `Lascia il posto a ${main.title}` });
+    tradeoffs.push(`Salta ${check.displaced.title.toLowerCase()} di ${label}.`);
+  }
+  let patch = patchFrom(main, { date: target });
+  if (mondayOf(target) !== mondayOf(main.date) && isKey(main)) {
+    patch = { ...shortened(main, Math.round(main.durationMin * 0.8), input.athlete), date: target };
+    tradeoffs.push(`Cambia settimana: la accorcio a ${formatDuration(patch.durationMin)} per non sovraccaricare quella settimana.`);
+  }
+  changes.push({ op: "sposta", id: main.id, before: brief(main), after: brief(patch), patch, note: `Spostata a ${label}, come hai chiesto` });
+  if (d.kind === "nessun_allenamento" || d.kind === "viaggio") {
+    for (const w of live.filter((x) => x.date >= d.from && x.date <= to && x.id !== main.id)) {
+      changes.push({ op: "elimina", id: w.id, before: brief(w), note: "Nel giorno in cui non puoi allenarti" });
+    }
+  }
+  if (violations(input.plan, changes, input).length) {
+    return { ...base, intro: `Spostare ${main.title.toLowerCase()} a ${label} non rispetta le regole di recupero. ${base.intro}` };
+  }
+  const preferred: Proposal = {
+    id: "preferito",
+    title: `Sposto a ${label}`,
+    summary: `${main.title} va a ${label}, il giorno che hai scelto.`,
+    changes,
+    reasons: ["È il giorno che hai indicato e rispetta il recupero: nessuna seduta dura il giorno prima o dopo.", "Il carico della settimana non aumenta."],
+    tradeoffs,
+  };
+  return { ...base, intro: `${label.charAt(0).toUpperCase()}${label.slice(1)} va bene per ${main.title.toLowerCase()}. Ecco la proposta, con le alternative:`, proposals: [preferred, ...base.proposals.filter((p) => p.id !== "preferito")] };
 }

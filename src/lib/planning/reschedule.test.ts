@@ -104,6 +104,7 @@ describe("400 imprevisti casuali", () => {
         availableMin: kind === "poco_tempo" ? [15, 30, 45, 60][Math.floor(rnd() * 4)] : undefined,
         painSport: kind === "dolore" ? sports[Math.floor(rnd() * 3)] : undefined,
         painSevere: kind === "dolore" ? rnd() < 0.3 : undefined,
+        preferredDate: rnd() < 0.4 ? addDays(from, Math.floor(rnd() * 9) - 4) : undefined,
       };
       const r = run(d);
       for (const p of r.proposals) {
@@ -113,5 +114,38 @@ describe("400 imprevisti casuali", () => {
       }
     }
     expect(problems.slice(0, 5)).toEqual([]);
+  });
+});
+
+describe("giorno scelto dall'atleta", () => {
+  const key = plan.find((w) => w.date > "2026-11-17" && isHard(w.type) && w.type !== "lungo" && w.type !== "brick")!;
+  const ctx = (preferredDate: string) => ({ kind: "nessun_allenamento" as const, from: key.date, preferredDate });
+
+  it("prova anche i giorni prima dell'imprevisto", () => {
+    const r = run({ kind: "nessun_allenamento", from: key.date });
+    const moved = r.proposals.find((p) => p.id === "sposta")?.changes.find((c) => c.id === key.id);
+    expect(moved).toBeDefined();
+  });
+
+  it("se il giorno scelto è sicuro, la proposta compare per prima", () => {
+    // Cerca un giorno libero, prima della seduta, senza sedute dure accanto.
+    const hard = new Set(plan.filter((w) => isHard(w.type)).map((w) => w.date));
+    const free = [-1, -2, -3, 1, 2, 3].map((k) => addDays(key.date, k)).find((d) => d > today && !plan.some((w) => w.date === d && w.sport !== "gym") && !hard.has(addDays(d, 1)) && !hard.has(addDays(d, -1)));
+    if (!free) return;
+    const r = run(ctx(free));
+    expect(r.proposals[0].id).toBe("preferito");
+    expect(violations(plan, r.proposals[0].changes, { today, athlete, plan, events, disruption: ctx(free) })).toEqual([]);
+  });
+
+  it("se il giorno scelto non è sicuro, spiega perché e propone alternative", () => {
+    const nextToHard = plan.find((w) => isHard(w.type) && w.id !== key.id && w.date > today)!;
+    const r = run(ctx(addDays(nextToHard.date, 1)));
+    if (r.proposals[0]?.id !== "preferito") expect(r.intro).toMatch(/non è una buona idea|non rispetta/);
+  });
+
+  it("un giorno passato non va mai bene", () => {
+    const r = run(ctx("2026-11-10"));
+    expect(r.proposals.map((p) => p.id)).not.toContain("preferito");
+    expect(r.intro).toMatch(/già passato/);
   });
 });

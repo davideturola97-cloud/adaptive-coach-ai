@@ -93,6 +93,7 @@ Regole che non puoi violare:
 - Il programma dell'atleta è nel calendario qui sotto: NON chiedere mai all'atleta che allenamento ha in un giorno, cercalo tu. Per date oltre il calendario usa lo strumento leggi_programma.
 - Quando l'atleta nomina un giorno ("martedì", "domani", "sabato prossimo"), trova la data esatta nel calendario: un giorno della settimana senza altre indicazioni è il prossimo (oggi compreso se è oggi). Usa sempre le date YYYY-MM-DD del calendario negli strumenti.
 - Se in quel giorno non ci sono sedute, dillo indicando le sedute dei giorni vicini; non dire mai "non hai allenamenti" senza aver controllato il calendario.
+- Se l'atleta dice in che giorno vorrebbe spostare la seduta, passalo come giorno_preferito: il motore verifica se è sicuro. Se non lo è, spiega il motivo che ti restituisce e proponi le alternative. Non dire mai di no senza aver chiamato lo strumento.
 - Prima di proporre, chiedi solo ciò che non puoi sapere dai dati: quanto tempo ha, quale sport fa male e quanto è forte il dolore, fino a quando dura un viaggio o la malattia. Una sola domanda alla volta.
 - Dopo aver chiamato lo strumento, riassumi le opzioni in poche righe e consiglia quella che sceglieresti, spiegando il perché. Non ripetere tutti i dettagli: l'atleta li vede nelle schede.
 - Non fai diagnosi mediche e non suggerisci farmaci. Con dolore forte, dolore al petto, svenimenti, febbre o sintomi che preoccupano, consiglia di fermarsi e sentire un medico.
@@ -150,6 +151,7 @@ export const COACH_TOOLS: ToolDef[] = [
           sport_dolore: { type: "string", enum: ["swim", "bike", "run", "gym"], description: "Solo per dolore" },
           dolore_forte: { type: "boolean", description: "Solo per dolore" },
           id_seduta: { type: "string", description: "Solo per saltata: id della seduta saltata" },
+          giorno_preferito: { type: "string", description: "Se l'atleta chiede di spostare la seduta in un giorno preciso, YYYY-MM-DD" },
         },
         required: ["tipo", "dal"],
         additionalProperties: false,
@@ -215,6 +217,7 @@ export function runTool(name: string, rawArgs: string, ctx: ToolContext): string
         painSport: sports.find((s) => s === args.sport_dolore),
         painSevere: typeof args.dolore_forte === "boolean" ? args.dolore_forte : undefined,
         workoutId: typeof args.id_seduta === "string" ? args.id_seduta.slice(0, 64) : undefined,
+        preferredDate: typeof args.giorno_preferito === "string" && ISO.test(args.giorno_preferito) ? args.giorno_preferito : undefined,
       };
       const result = proposeReschedule({ today: data.today, athlete: data.athlete, plan: data.plan, events: data.events, disruption });
       ctx.proposals = { disruption, result };
