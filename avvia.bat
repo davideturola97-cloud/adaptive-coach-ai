@@ -10,14 +10,12 @@ if errorlevel 1 (
   exit /b 1
 )
 
-if not exist node_modules (
-  echo Prima installazione delle librerie: ci vuole qualche minuto...
-  call npm install
-  if errorlevel 1 (
-    echo Installazione non riuscita. Controlla la connessione a internet e riprova.
-    pause
-    exit /b 1
-  )
+echo Controllo delle librerie (la prima volta ci vuole qualche minuto)...
+call npm install --no-audit --no-fund
+if errorlevel 1 (
+  echo Installazione non riuscita. Controlla la connessione a internet e riprova.
+  pause
+  exit /b 1
 )
 
 echo Avvio di Adaptive Coach AI su http://localhost:3000
