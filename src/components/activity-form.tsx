@@ -71,6 +71,8 @@ export interface ActivityDefaults {
   sport?: Sport;
   title?: string;
   durationMin?: number;
+  /** Durata già scritta come tempo (es. 1:05:30), più precisa dei minuti. */
+  durationText?: string;
   distanceKm?: number;
   avgHr?: number;
   avgPowerW?: number;
@@ -120,7 +122,7 @@ export function ActivityForm({ defaults, plannedId, sports, today, demo }: { def
         <Field label="Ora di inizio" hint="Facoltativa"><input name="startTime" type="time" className={inputCls} /></Field>
         {!plannedId && <Field label="Titolo" hint="Facoltativo"><input name="title" defaultValue={defaults.title} maxLength={120} className={inputCls} /></Field>}
         <Field label="Durata" hint="Minuti (es. 45) oppure tempo (es. 1:05:30)">
-          <input name="duration" inputMode="numeric" defaultValue={defaults.durationMin ?? ""} required className={inputCls} />
+          <input name="duration" inputMode="numeric" defaultValue={defaults.durationText ?? defaults.durationMin ?? ""} required className={inputCls} />
         </Field>
         {hasDistance && (
           <Field label={sport === "swim" ? "Distanza (km, es. 1,5)" : "Distanza (km)"} hint="Facoltativa">

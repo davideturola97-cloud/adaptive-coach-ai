@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Split } from "@/lib/domain/types";
-import { analyzeSplits, parsePace } from "./splits";
+import { analyzeSplits, parsePace, totalsFromSplits } from "./splits";
 
 const km = (paces: number[], hr?: number[]): Split[] => paces.map((p, i) => ({ n: i + 1, km: 1, paceSec: p, hr: hr?.[i] }));
 
@@ -47,4 +47,21 @@ describe("valutazione dei parziali", () => {
   it("con meno di 3 parziali niente conclusioni", () => {
     expect(analyzeSplits(km([300, 310]), "run").trend).toBeNull();
   });
+});
+
+describe("totali dagli intertempi", () => {
+  it("somma km e tempi, FC pesata sul tempo", () => {
+    const t = totalsFromSplits([{ n: 1, km: 1, paceSec: 300, hr: 140 }, { n: 2, km: 1, paceSec: 330, hr: 160 }, { n: 3, km: 0.21, paceSec: 300 }])!;
+    expect(t.distanceKm).toBe(2.21);
+    expect(t.durationMin).toBe(11.55); // 300 + 330 + 63 s
+    expect(t.avgPaceSec).toBe(314);
+    expect(t.avgHr).toBe(150); // (140·300 + 160·330) / 630 = 150,5 -> 150
+    expect(t.hrPartial).toBe(true);
+  });
+  it("un passo mancante: niente durata", () => {
+    const t = totalsFromSplits([{ n: 1, km: 1, paceSec: 300 }, { n: 2, km: 1 }])!;
+    expect(t.durationMin).toBeUndefined();
+    expect(t.distanceKm).toBe(2);
+  });
+  it("nessun parziale: null", () => expect(totalsFromSplits([])).toBeNull());
 });

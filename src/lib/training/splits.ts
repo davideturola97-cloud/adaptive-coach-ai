@@ -121,3 +121,39 @@ export function analyzeSplits(splits: Split[], sport: Sport, planned?: Pick<Plan
 
   return { findings, trend, fastest, slowest, avgPaceSec: avg, variabilityPct: cv };
 }
+
+export interface SplitTotals {
+  distanceKm: number;
+  /** Solo se tutti i parziali hanno il passo: altrimenti la somma sarebbe incompleta. */
+  durationMin?: number;
+  avgPaceSec?: number;
+  /** Media pesata sul tempo di ogni parziale (o sui km, se manca il tempo). */
+  avgHr?: number;
+  /** true se la FC c'era solo in una parte dei parziali. */
+  hrPartial: boolean;
+}
+
+/**
+ * Totali ricavati dagli intertempi: distanza = somma dei parziali, durata = somma di passo × km,
+ * passo medio = durata / distanza, FC media pesata sul tempo. Nessun valore stimato: se un passo manca, niente durata.
+ */
+export function totalsFromSplits(splits: Split[]): SplitTotals | null {
+  const valid = splits.filter((s) => s.km > 0);
+  if (!valid.length) return null;
+  const distanceKm = Math.round(valid.reduce((a, s) => a + s.km, 0) * 100) / 100;
+  const complete = valid.every((s) => s.paceSec);
+  const totalSec = complete ? valid.reduce((a, s) => a + s.paceSec! * s.km, 0) : undefined;
+  const withHr = valid.filter((s) => s.hr);
+  let avgHr: number | undefined;
+  if (withHr.length) {
+    const weight = (s: Split) => (s.paceSec ? s.paceSec * s.km : s.km);
+    const w = withHr.reduce((a, s) => a + weight(s), 0);
+    avgHr = Math.round(withHr.reduce((a, s) => a + s.hr! * weight(s), 0) / w);
+  }
+  return {
+    distanceKm,
+    ...(totalSec !== undefined && { durationMin: Math.round((totalSec / 60) * 100) / 100, avgPaceSec: Math.round(totalSec / distanceKm) }),
+    ...(avgHr !== undefined && { avgHr }),
+    hrPartial: withHr.length > 0 && withHr.length < valid.length,
+  };
+}

@@ -100,3 +100,7 @@ Calcolati sui parziali completi (l'ultimo, se più corto, si mostra ma non entra
 - **Seduta facile** (con soglia da test): km più veloci di soglia × 1,2 (lungo × 1,15) meno 5 s sono segnalati come troppo veloci.
 - **Deriva cardiaca**: a ritmo stabile, battito della seconda metà più alto di almeno il 5%.
 - Dagli screenshot: passi al miglio o ai 100 m convertiti al km; passi impossibili scartati, mai stimati.
+- **Totali dagli intertempi** (screenshot): distanza = somma dei parziali; durata = somma di passo × km (solo se ogni parziale ha il passo);
+  passo medio = durata ÷ distanza; FC media pesata sul tempo di ogni parziale. Prevalgono sul riepilogo letto; differenze oltre il 3%
+  (4% per la FC) vengono segnalate. Se i parziali coprono meno del 90% della distanza del riepilogo, la tabella è considerata tagliata
+  e si tiene il riepilogo.

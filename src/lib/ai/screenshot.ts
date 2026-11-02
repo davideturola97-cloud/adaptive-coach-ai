@@ -5,7 +5,7 @@
  */
 import { z } from "zod";
 import type { Split, Sport } from "@/lib/domain/types";
-import { parsePace, plausiblePace } from "@/lib/training/splits";
+import { formatSplitPace, parsePace, plausiblePace, totalsFromSplits } from "@/lib/training/splits";
 import type { ChatClient } from "./openai";
 
 export const ALLOWED_IMAGE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
@@ -105,7 +105,15 @@ const extractionSchema = z.object({
     .catch([]),
 });
 
-export type Extraction = Omit<z.infer<typeof extractionSchema>, "parziali" | "unita_parziali"> & { scartati: string[]; splits: Split[]; splitsUnreadable: number };
+export type Extraction = Omit<z.infer<typeof extractionSchema>, "parziali" | "unita_parziali"> & {
+  scartati: string[];
+  splits: Split[];
+  splitsUnreadable: number;
+  /** Campi calcolati dagli intertempi invece che letti dal riepilogo. */
+  daiParziali: ("durata" | "distanza" | "passo" | "fc")[];
+  /** Differenze tra il riepilogo letto e i totali dei parziali (vince il calcolo sui parziali). */
+  differenze: string[];
+};
 
 /** Converte la tabella letta in parziali al km (secondi per km). Le righe illeggibili restano senza passo. */
 export function toSplits(rows: z.infer<typeof extractionSchema>["parziali"], unit: "km" | "mi" | "100m" | null, sport: Sport | null): { splits: Split[]; unreadable: number } {
@@ -155,18 +163,60 @@ export function normalizeExtraction(raw: unknown, today: string): Extraction | n
   }
   const { parziali, unita_parziali, ...rest } = e;
   const { splits, unreadable } = toSplits(parziali, unita_parziali, e.sport);
-  const base = { ...rest, splits, splitsUnreadable: unreadable };
   let data = e.data;
   if (data && data > today) {
     scartati.push("data (nel futuro)");
     data = null;
   }
   // Coerenza minima: una corsa a più di 30 km/h non è plausibile.
-  if (e.sport === "run" && e.durata_minuti && e.distanza_km && e.distanza_km / (e.durata_minuti / 60) > 30) {
+  let distanza_km = e.distanza_km;
+  if (e.sport === "run" && e.durata_minuti && distanza_km && distanza_km / (e.durata_minuti / 60) > 30) {
     scartati.push("distanza (non coerente con la durata)");
-    return { ...base, data, distanza_km: null, scartati };
+    distanza_km = null;
   }
-  return { ...base, data, scartati };
+  const out: Extraction = { ...rest, data, distanza_km, splits, splitsUnreadable: unreadable, scartati, daiParziali: [], differenze: [] };
+  return e.sport && e.sport !== "gym" ? applySplitTotals(out, e.sport) : out;
+}
+
+/**
+ * Durata, distanza, passo e FC media si ricavano dagli intertempi quando ci sono:
+ * sono i dati che l'atleta ha mandato, riga per riga. Il riepilogo letto serve solo da confronto.
+ * Servono almeno 2 parziali; la durata solo se ogni parziale ha il passo.
+ */
+export function applySplitTotals(x: Extraction, sport: Sport): Extraction {
+  if (x.splits.length < 2) return x;
+  const t = totalsFromSplits(x.splits);
+  if (!t) return x;
+  const out: Extraction = { ...x, daiParziali: [...x.daiParziali], differenze: [...x.differenze] };
+  const differs = (read: number | null, calc: number, tol: number) => read !== null && Math.abs(read - calc) / calc > tol;
+  const fmtMin = (m: number) => `${Math.floor(m / 60) ? `${Math.floor(m / 60)}h ` : ""}${String(Math.round(m % 60)).padStart(2, "0")}'`;
+
+  // Tabella tagliata (screenshot che mostra solo una parte dei km): i totali non si possono ricavare.
+  if (x.distanza_km !== null && t.distanceKm < x.distanza_km * 0.9) {
+    out.differenze.push(`i parziali letti coprono ${t.distanceKm} km su ${x.distanza_km}: per i totali tengo il riepilogo (manda anche lo screenshot con gli altri km)`);
+    return out;
+  }
+  if (differs(x.distanza_km, t.distanceKm, 0.03)) out.differenze.push(`distanza: riepilogo ${x.distanza_km} km, somma dei parziali ${t.distanceKm} km`);
+  out.distanza_km = t.distanceKm;
+  out.daiParziali.push("distanza");
+  if (t.durationMin !== undefined && t.avgPaceSec !== undefined) {
+    if (differs(x.durata_minuti, t.durationMin, 0.03)) out.differenze.push(`durata: riepilogo ${fmtMin(x.durata_minuti!)}, somma dei parziali ${fmtMin(t.durationMin)}`);
+    out.durata_minuti = t.durationMin;
+    out.passo = formatSplitPace(sport, t.avgPaceSec);
+    out.velocita_kmh = sport === "bike" ? Math.round((3600 / t.avgPaceSec) * 10) / 10 : x.velocita_kmh;
+    out.daiParziali.push("durata", "passo");
+  }
+  if (t.avgHr !== undefined && !t.hrPartial) {
+    if (differs(x.fc_media, t.avgHr, 0.04)) out.differenze.push(`FC media: riepilogo ${x.fc_media} bpm, media dei parziali ${t.avgHr} bpm`);
+    out.fc_media = t.avgHr;
+    out.daiParziali.push("fc");
+  } else if (t.avgHr !== undefined && x.fc_media === null) {
+    // FC solo in alcuni parziali e niente nel riepilogo: meglio una media parziale, dichiarata, che niente.
+    out.fc_media = t.avgHr;
+    out.daiParziali.push("fc");
+    out.differenze.push("FC media calcolata solo sui parziali che la riportano");
+  }
+  return out;
 }
 
 export async function readScreenshot(opts: { client: ChatClient; model: string; dataUrl: string; today: string }): Promise<{ extraction: Extraction | null; usage: { input: number; output: number } }> {

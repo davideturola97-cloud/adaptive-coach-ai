@@ -112,6 +112,34 @@ describe("lettura screenshot", () => {
     expect(e.splits[0].paceSec).toBe(298); // 8:00 al miglio = 4:58 al km
     expect(e.splits[1].paceSec).toBeUndefined();
   });
+  it("ricava durata, distanza, passo e FC media dagli intertempi", () => {
+    const parziali = [row(1, "5:00", { fc: 140 }), row(2, "5:10", { fc: 150 }), row(3, "5:20", { fc: 160 }), { ...row(4, "5:00", { fc: 170 }), distanza: 0.5 }];
+    const e = normalizeExtraction({ ...base, durata_minuti: null, distanza_km: null, passo: null, fc_media: null, parziali }, today)!;
+    // 300 + 310 + 320 + 150 = 1080 s su 3,5 km
+    expect(e.distanza_km).toBe(3.5);
+    expect(e.durata_minuti).toBe(18);
+    expect(e.passo).toBe("5:09 /km");
+    // pesata sul tempo: (140·300 + 150·310 + 160·320 + 170·150) / 1080
+    expect(e.fc_media).toBe(153);
+    expect(e.daiParziali).toEqual(["distanza", "durata", "passo", "fc"]);
+    expect(e.differenze).toEqual([]);
+  });
+  it("i parziali prevalgono sul riepilogo e la differenza viene segnalata", () => {
+    const parziali = Array.from({ length: 10 }, (_, i) => row(i + 1, "5:00", { fc: 150 }));
+    const e = normalizeExtraction({ ...base, durata_minuti: 45, distanza_km: 10, fc_media: 150, parziali }, today)!;
+    expect(e.durata_minuti).toBe(50);
+    expect(e.differenze.join(" ")).toMatch(/durata/);
+  });
+  it("senza tutti i passi niente durata; tabella tagliata: resta il riepilogo", () => {
+    const e = normalizeExtraction({ ...base, distanza_km: null, durata_minuti: 30, parziali: [row(1, "5:00"), row(2, null), row(3, "5:10")] }, today)!;
+    expect(e.durata_minuti).toBe(30);
+    expect(e.distanza_km).toBe(3);
+    expect(e.daiParziali).not.toContain("durata");
+    const cut = normalizeExtraction({ ...base, parziali: [row(1, "5:00"), row(2, "5:10"), row(3, "5:20")] }, today)!;
+    expect(cut.distanza_km).toBe(10.1);
+    expect(cut.durata_minuti).toBe(52.5);
+    expect(cut.differenze.join(" ")).toMatch(/coprono 3 km su 10.1/);
+  });
   it("accetta valori plausibili", () => {
     const e = normalizeExtraction(base, today)!;
     expect(e.distanza_km).toBe(10.1);

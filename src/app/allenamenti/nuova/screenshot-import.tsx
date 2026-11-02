@@ -7,7 +7,7 @@ import { ActivityForm } from "@/components/activity-form";
 import { fieldLabel, type Extraction } from "@/lib/ai/screenshot";
 import { SPORTS } from "@/lib/domain/sports";
 import type { Sport } from "@/lib/domain/types";
-import { formatDuration } from "@/lib/training/formulas";
+import { formatDuration, formatTime } from "@/lib/training/formulas";
 import { SplitsView } from "@/components/splits-view";
 
 /** Riduce l'immagine nel browser (max 1600 px, JPEG): meno dati inviati, meno costi, nessun file salvato. */
@@ -48,16 +48,17 @@ export function ScreenshotImport({ today, sports, enabled, demo }: { today: stri
   };
 
   const sport: Sport | undefined = result?.sport && sports.includes(result.sport) ? result.sport : result?.sport ?? undefined;
+  const calc = (f: Extraction["daiParziali"][number]) => (result?.daiParziali.includes(f) ? " · dai parziali" : "");
   const recognized = result
     ? ([
         ["App", result.app],
         ["Sport", result.sport && SPORTS[result.sport].label],
         ["Data", result.data],
-        ["Durata", result.durata_minuti && formatDuration(result.durata_minuti)],
-        ["Distanza", result.distanza_km && `${result.distanza_km.toLocaleString("it-IT")} km`],
-        ["Passo", result.passo],
+        ["Durata", result.durata_minuti && `${result.daiParziali.includes("durata") ? formatTime(result.durata_minuti * 60) : formatDuration(result.durata_minuti)}${calc("durata")}`],
+        ["Distanza", result.distanza_km && `${result.distanza_km.toLocaleString("it-IT")} km${calc("distanza")}`],
+        ["Passo medio", result.passo && `${result.passo}${calc("passo")}`],
         ["Velocità", result.velocita_kmh && `${result.velocita_kmh.toLocaleString("it-IT")} km/h`],
-        ["FC media", result.fc_media && `${result.fc_media} bpm`],
+        ["FC media", result.fc_media && `${result.fc_media} bpm${calc("fc")}`],
         ["Potenza", result.potenza_media_w && `${result.potenza_media_w} W`],
         ["Dislivello", result.dislivello_m !== null && result.dislivello_m !== undefined ? `${result.dislivello_m} m` : null],
         ["Intervalli", result.intervalli],
@@ -102,6 +103,14 @@ export function ScreenshotImport({ today, sports, enabled, demo }: { today: stri
                   </span>
                 </p>
               )}
+              {result.daiParziali.length > 0 && (
+                <p className="mt-3 text-xs text-muted">I valori &quot;dai parziali&quot; li ho calcolati io dagli intertempi che mi hai mandato (somma dei km e dei tempi, FC media pesata sul tempo).</p>
+              )}
+              {result.differenze.length > 0 && (
+                <ul className="mt-2 flex flex-col gap-1 rounded-xl bg-warn/10 px-3 py-2 text-xs text-warn">
+                  {result.differenze.map((d) => <li key={d}>{d.charAt(0).toUpperCase() + d.slice(1)}.</li>)}
+                </ul>
+              )}
               {!result.data && <p className="mt-2 text-xs text-muted">La data non era nello screenshot: ho messo oggi, correggila se serve.</p>}
             </div>
           </div>
@@ -119,6 +128,7 @@ export function ScreenshotImport({ today, sports, enabled, demo }: { today: stri
               sport,
               title: result.titolo ?? undefined,
               durationMin: result.durata_minuti ?? undefined,
+              durationText: result.durata_minuti && result.daiParziali.includes("durata") ? formatTime(result.durata_minuti * 60) : undefined,
               distanceKm: result.distanza_km ?? undefined,
               avgHr: result.fc_media ? Math.round(result.fc_media) : undefined,
               avgPowerW: result.potenza_media_w ? Math.round(result.potenza_media_w) : undefined,
