@@ -147,7 +147,7 @@ export function buildDemoData(now = new Date()): DemoData {
   ];
 
   const plannedTests: PlannedTest[] = [
-    { id: "pt-css", sport: "swim", kind: "css", status: "proposto", reason: "Non hai ancora un ritmo di soglia in acqua." },
+    { id: "pt-css", sport: "swim", kind: "css", status: "programmato", dueDate: addDays(monday, 9), reason: "Non hai ancora un ritmo di soglia in acqua." },
   ];
 
   return { today, athlete, events, plan, activities, tests, plannedTests };
