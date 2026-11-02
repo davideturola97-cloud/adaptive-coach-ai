@@ -41,8 +41,13 @@ export function CoachChat({ conversationId, initial, enabled, demo }: { conversa
   const rec = useRef<Recognition | null>(null);
   const end = useRef<HTMLDivElement>(null);
 
-  useEffect(() => setCanSpeak(Boolean(getRecognition())), []);
-  useEffect(() => end.current?.scrollIntoView({ behavior: "smooth", block: "end" }), [messages, busy]);
+  useEffect(() => {
+    setCanSpeak(Boolean(getRecognition()));
+  }, []);
+  // Le graffe servono: nei browser recenti scrollIntoView restituisce una Promise, che un effetto non deve restituire.
+  useEffect(() => {
+    end.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, busy]);
 
   const send = (value = text) => {
     const v = value.trim();
