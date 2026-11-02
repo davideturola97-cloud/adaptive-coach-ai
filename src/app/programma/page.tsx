@@ -22,6 +22,7 @@ export default async function PlanPage() {
               Programma attuale: <span className="font-semibold">{future.length} sedute</span> fino al {lastDate && formatDayMonth(lastDate, false)}. <Link href="/calendario" className="font-semibold underline">Vedi il calendario</Link>.
             </p>
             <p className="text-muted">Per sostituirlo crea una nuova anteprima qui sotto e premi <span className="font-semibold text-fg">Conferma e salva</span>: le sedute future vengono rimpiazzate.</p>
+            <Link href="/programma/storico" className="font-semibold underline">Storico delle versioni e annullamento</Link>
             {mode === "utente" && <ClearPlan />}
           </Card>
         )}

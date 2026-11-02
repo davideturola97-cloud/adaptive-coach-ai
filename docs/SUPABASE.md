@@ -2,7 +2,7 @@
 
 1. Crea un account gratuito su https://supabase.com e un nuovo progetto (regione: Europe). Annota la password del database.
 2. **SQL Editor** > **New query**: incolla tutto il contenuto di `supabase/migrations/0001_schema.sql` e premi **Run**.
-   Deve comparire "Success. No rows returned". Ripeti con `0002_multisport.sql` (nuoto, palestra, triathlon, test) `0003_plan.sql` (programma e sue versioni) e `0004_activities.sql` (attività, sedute saltate, feedback).
+   Deve comparire "Success. No rows returned". Ripeti con `0002_multisport.sql` (nuoto, palestra, triathlon, test) `0003_plan.sql` (programma e sue versioni) `0004_activities.sql` (attività, sedute saltate, feedback) e `0005_reschedule.sql` (riprogrammazione, storico e annullamento).
    Ogni script si esegue una volta, in ordine; rieseguirlo non fa danni.
 3. **Authentication** > **URL Configuration**:
    - Site URL: `http://localhost:3000`

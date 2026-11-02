@@ -69,3 +69,20 @@ Regole fisse, senza AI: con gli stessi dati produce sempre lo stesso programma.
   dolore indicato in almeno 2 sedute in 14 giorni; RPE di almeno 2 punti sopra il previsto in 3 delle ultime 5 sedute;
   sonno 1–2 su 5 in almeno 3 sedute in 7 giorni. I testi suggeriscono prudenza e, per il dolore persistente,
   di sentire un medico o un fisioterapista. Non sono diagnosi.
+
+## Riprogrammazione (src/lib/planning/reschedule.ts)
+
+Il motore propone, l'atleta sceglie: niente cambia senza conferma. Ogni modifica crea una versione che si può annullare.
+
+| Imprevisto | Opzioni proposte |
+|---|---|
+| Non posso allenarmi / viaggio | Spostare le sedute importanti in un giorno sicuro nei 4 giorni successivi (eventualmente al posto di una facile); oppure toglierle |
+| Poco tempo | Accorciare (le ripetute perdono ripetizioni, mai intensità); scambiare con una seduta facile di un altro giorno; riposo |
+| Stanchezza | Alleggerire (dura → facile, −30%); rimandare la seduta dura; riposo |
+| Dolore | Togliere l'intensità per 3 giorni (solo se leggero); sostituire con un altro sport facile; riposo. Sempre l'invito a sentire un medico se non passa |
+| Malattia | Stop nei giorni di malattia e rientro con 3 giorni facili; oppure solo stop |
+| Seduta saltata | Le facili non si recuperano; le importanti solo se c'è un giorno sicuro |
+
+Regole verificate su ogni proposta (e su 400 imprevisti casuali nei test): nessuna seduta nei giorni bloccati,
+nessuna seduta dura vicino a una gara, mai due sedute dure in giorni consecutivi, carico totale mai superiore a quello previsto.
+Una seduta importante spostata nella settimana dopo si accorcia del 20%.

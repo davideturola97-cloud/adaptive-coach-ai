@@ -78,7 +78,7 @@ export default async function HomePage() {
       )}
 
       <section>
-        <SectionTitle>Oggi</SectionTitle>
+        <SectionTitle hint={<Link href="/riprogramma" className="font-semibold text-warn hover:underline">Ho un imprevisto</Link>}>Oggi</SectionTitle>
         {todays.length ? (
           <div className="flex flex-col gap-3">
             {todays.map((w) => (

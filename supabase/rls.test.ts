@@ -37,13 +37,14 @@ async function as(user: string | null, sql: string, params: unknown[] = []) {
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(SUPABASE_STUB);
-  for (const f of ["0001_schema.sql", "0002_multisport.sql", "0003_plan.sql", "0004_activities.sql"]) {
+  for (const f of ["0001_schema.sql", "0002_multisport.sql", "0003_plan.sql", "0004_activities.sql", "0005_reschedule.sql"]) {
     await db.exec(readFileSync(path.join(__dirname, "migrations", f), "utf8"));
   }
   // Le migrazioni devono poter essere rieseguite senza errori.
   await db.exec(readFileSync(path.join(__dirname, "migrations/0002_multisport.sql"), "utf8"));
   await db.exec(readFileSync(path.join(__dirname, "migrations/0003_plan.sql"), "utf8"));
   await db.exec(readFileSync(path.join(__dirname, "migrations/0004_activities.sql"), "utf8"));
+  await db.exec(readFileSync(path.join(__dirname, "migrations/0005_reschedule.sql"), "utf8"));
   await db.exec(`insert into auth.users (id, email) values ('${ALICE}', 'a@example.com'), ('${BOB}', 'b@example.com');`);
 });
 
@@ -222,6 +223,50 @@ describe("attività e feedback (Milestone 5)", () => {
   it("seduta saltata con motivo", async () => {
     await as(ALICE, "update public.planned_workouts set status = 'saltato', skip_reason = 'Lavoro', skipped_at = now() where id = $1", [planned]);
     expect((await as(ALICE, "select skip_reason from public.planned_workouts where id = $1", [planned])).rows[0]).toEqual({ skip_reason: "Lavoro" });
+  });
+});
+
+describe("riprogrammazione e annullamento (Milestone 6)", () => {
+  const patch = (date: string, title: string) => ({ date, sport: "run", type: "corsa_facile", title, objective: "", durationMin: 40, intensity: "Bassa", structure: { warmup: [], main: [], cooldown: [] }, technicalTips: [], safetyNotes: [] });
+  let a = "";
+  let b = "";
+  let version = "";
+
+  it("applica sposta ed elimina in un colpo solo e ne tiene traccia", async () => {
+    const r = await as(ALICE, "insert into public.planned_workouts (workout_date, sport, workout_type, title, duration_min) values ('2027-01-05', 'run', 'ripetute', 'Ripetute', 55), ('2027-01-06', 'bike', 'endurance', 'Bici', 60) returning id");
+    [a, b] = r.rows.map((x) => String(x.id));
+    const changes = [{ op: "sposta", id: a, patch: patch("2027-01-07", "Ripetute spostate") }, { op: "elimina", id: b }];
+    version = String((await as(ALICE, "select public.apply_plan_changes($1::jsonb, 'Cena di lavoro') as v", [JSON.stringify(changes)])).rows[0].v);
+    const rows = await as(ALICE, "select title, workout_date::text as d from public.planned_workouts where id in ($1, $2)", [a, b]);
+    expect(rows.rows).toEqual([{ title: "Ripetute spostate", d: "2027-01-07" }]);
+  });
+
+  it("annulla l'ultima modifica e ripristina le sedute com'erano", async () => {
+    await as(ALICE, "select public.undo_plan_version($1)", [version]);
+    const rows = await as(ALICE, "select title, workout_date::text as d from public.planned_workouts where id in ($1, $2) order by d", [a, b]);
+    expect(rows.rows).toEqual([{ title: "Ripetute", d: "2027-01-05" }, { title: "Bici", d: "2027-01-06" }]);
+    await expect(as(ALICE, "select public.undo_plan_version($1)", [version])).rejects.toThrow();
+  });
+
+  it("non tocca sedute già fatte o di altri", async () => {
+    await as(ALICE, "update public.planned_workouts set status = 'completato' where id = $1", [a]);
+    await expect(as(ALICE, "select public.apply_plan_changes($1::jsonb, 'x')", [JSON.stringify([{ op: "elimina", id: a }])])).rejects.toThrow();
+    await expect(as(BOB, "select public.apply_plan_changes($1::jsonb, 'x')", [JSON.stringify([{ op: "elimina", id: b }])])).rejects.toThrow();
+    expect((await as(ALICE, "select count(*)::int as n from public.planned_workouts where id = $1", [b])).rows[0].n).toBe(1);
+  });
+
+  it("rifiuta l'annullamento se una seduta è stata registrata nel frattempo", async () => {
+    const v = String((await as(ALICE, "select public.apply_plan_changes($1::jsonb, 'Sposto') as v", [JSON.stringify([{ op: "sposta", id: b, patch: patch("2027-01-08", "Bici spostata") }])])).rows[0].v);
+    await as(ALICE, "update public.planned_workouts set status = 'completato' where id = $1", [b]);
+    await expect(as(ALICE, "select public.undo_plan_version($1)", [v])).rejects.toThrow(/registrate/);
+  });
+
+  it("anche la generazione del programma si può annullare", async () => {
+    const w = [{ date: "2027-03-02", sport: "run", type: "corsa_facile", title: "Nuova", durationMin: 40, structure: {}, technicalTips: [], safetyNotes: [] }];
+    const v = String((await as(ALICE, "select public.replace_future_plan('2027-03-01', $1::jsonb, 'Gen') as v", [JSON.stringify(w)])).rows[0].v);
+    expect((await as(ALICE, "select count(*)::int as n from public.planned_workouts where title = 'Nuova'")).rows[0].n).toBe(1);
+    await as(ALICE, "select public.undo_plan_version($1)", [v]);
+    expect((await as(ALICE, "select count(*)::int as n from public.planned_workouts where title = 'Nuova'")).rows[0].n).toBe(0);
   });
 });
 

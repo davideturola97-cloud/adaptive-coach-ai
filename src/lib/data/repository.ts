@@ -95,3 +95,33 @@ export async function getAppData(): Promise<AppData> {
     plannedTests: (plannedTests.data ?? []).map((t: any): PlannedTest => ({ id: t.id, sport: t.sport, kind: t.kind, status: t.status, dueDate: t.due_date ?? undefined, reason: t.reason })),
   };
 }
+
+export interface PlanVersion {
+  id: string;
+  createdAt: string;
+  reason: string;
+  kind: "generazione" | "modifica" | "annullamento";
+  undone: boolean;
+  changes: number;
+}
+
+/** Ultime versioni del programma (generazioni, modifiche, annullamenti). */
+export async function getPlanVersions(limit = 20): Promise<PlanVersion[]> {
+  if (!isSupabaseConfigured()) return [];
+  const { supabase, user } = await getUser();
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from("plan_versions")
+    .select("id, created_at, reason, kind, undone_at, workouts")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) return [];
+  return (data ?? []).map((v: any) => ({
+    id: v.id,
+    createdAt: v.created_at,
+    reason: v.reason,
+    kind: v.kind ?? "generazione",
+    undone: Boolean(v.undone_at),
+    changes: Array.isArray(v.workouts) ? v.workouts.length : 0,
+  }));
+}

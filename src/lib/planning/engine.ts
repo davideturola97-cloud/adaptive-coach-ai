@@ -148,7 +148,7 @@ function qualityType(sport: Sport, phase: Phase, weekIndex: number, conservative
   return "core_mobilita";
 }
 
-function easyType(sport: Sport, phase: Phase, n: number): WorkoutType {
+export function easyType(sport: Sport, phase: Phase, n: number): WorkoutType {
   const recovery = phase === "recupero" || phase === "gara";
   if (sport === "run") return recovery ? "recupero_corsa" : "corsa_facile";
   if (sport === "bike") return recovery ? "recupero_bici" : "endurance";
@@ -176,7 +176,7 @@ function hardBudget(phase: Phase, beginner: boolean): number {
 }
 
 /** Crea la seduta dal modello, dimensionando quelle di durata variabile. */
-function sized(type: WorkoutType, minutes: number): DraftWorkout {
+export function sized(type: WorkoutType, minutes: number): DraftWorkout {
   const base = BASE_MIN[type];
   const t = template(type, base ? Math.max(0.4, minutes / base) : 1);
   if (base) {

@@ -121,6 +121,7 @@ export default async function WorkoutPage({ params, searchParams }: { params: Pr
         <Card className="flex flex-col gap-3 border-bad/40">
           <p className="font-semibold text-bad">Seduta saltata</p>
           {w.skipReason && <p className="text-sm text-muted">Motivo: {w.skipReason}</p>}
+          <Link href={`/riprogramma?seduta=${w.id}`} className="inline-flex min-h-11 items-center self-start rounded-xl bg-fg px-4 text-sm font-semibold text-bg">Vuoi recuperarla? Chiedi al coach</Link>
           {!demo && (
             <form action={unskipWorkout}>
               <input type="hidden" name="id" value={w.id} />
@@ -128,6 +129,12 @@ export default async function WorkoutPage({ params, searchParams }: { params: Pr
             </form>
           )}
         </Card>
+      )}
+
+      {w.status === "programmato" && w.date >= today && (
+        <Link href={`/riprogramma?seduta=${w.id}`} className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-warn/40 bg-warn/5 px-4 text-sm font-semibold text-warn">
+          Ho un imprevisto con questa seduta <span aria-hidden>→</span>
+        </Link>
       )}
 
       {w.status === "programmato" && (
