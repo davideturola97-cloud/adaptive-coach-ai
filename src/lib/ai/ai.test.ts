@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AthleteProfile, PlannedWorkout, RaceEvent } from "@/lib/domain/types";
 import { generatePlan } from "@/lib/planning/engine";
-import { type CoachData, runCoach, runTool, systemPrompt } from "./coach";
+import { type CoachData, dayByDay, runCoach, runTool, systemPrompt } from "./coach";
 import { limitMessage } from "./limits";
 import { type ChatClient, type ChatRequest, openAiClient } from "./openai";
 import { vi } from "vitest";
@@ -26,6 +26,21 @@ describe("prompt di sistema", () => {
     expect(p).toContain("Reggio");
     expect(p).toContain("Achille sinistro");
     expect(p).toContain(plan[0].id);
+  });
+});
+
+describe("calendario per il coach", () => {
+  const cal = dayByDay(data);
+  it("ogni giorno ha nome italiano, data e sedute; oggi e domani sono indicati", () => {
+    expect(cal).toMatch(/lunedì 16 novembre = 2026-11-16 \[OGGI\]/);
+    expect(cal).toMatch(/martedì 17 novembre = 2026-11-17 \[domani\]/);
+    for (const w of plan.filter((p) => p.date <= "2026-12-07")) expect(cal).toContain(w.id);
+  });
+  it("i giorni senza sedute sono scritti come riposo", () => {
+    expect(cal.split("\n").some((l) => l.includes("riposo, nessuna seduta"))).toBe(true);
+  });
+  it("il prompt vieta di chiedere all'atleta il proprio programma", () => {
+    expect(systemPrompt(data)).toMatch(/NON chiedere mai all'atleta che allenamento ha/);
   });
 });
 

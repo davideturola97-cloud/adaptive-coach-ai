@@ -30,6 +30,32 @@ function workoutLine(w: PlannedWorkout) {
   return `${w.date} (${d(w.date)}) · ${SPORTS[w.sport].label} · ${w.title} [${WORKOUT_TYPE_LABEL[w.type]}] · ${formatDuration(w.durationMin)} · ${w.intensity} · stato: ${w.status} · id: ${w.id}`;
 }
 
+const WEEKDAY_FULL = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
+
+/**
+ * Calendario esplicito giorno per giorno: nome del giorno in italiano, "oggi/domani/ieri" e sedute.
+ * Così l'AI non deve calcolare le date da sola (era la causa di "non hai allenamenti" detto per errore).
+ */
+export function dayByDay(x: CoachData, pastDays = 7, nextDays = 21): string {
+  const rel: Record<number, string> = { [-1]: "ieri", 0: "OGGI", 1: "domani", 2: "dopodomani" };
+  const lines: string[] = [];
+  for (let i = -pastDays; i <= nextDays; i++) {
+    const date = addDays(x.today, i);
+    const wd = WEEKDAY_FULL[new Date(`${date}T12:00:00Z`).getUTCDay()];
+    const tag = rel[i] ? ` [${rel[i]}]` : i > 0 && i < 7 ? ` [prossimo ${wd}]` : "";
+    const ws = x.plan.filter((w) => w.date === date);
+    const acts = x.activities.filter((a) => a.date === date && !x.plan.some((w) => w.completedActivityId === a.id));
+    const races = x.events.filter((e) => e.date === date);
+    const parts = [
+      ...races.map((e) => `GARA ${e.name} (${e.priority})`),
+      ...ws.map((w) => `${w.title} (${SPORTS[w.sport].label.toLowerCase()}, ${WORKOUT_TYPE_LABEL[w.type]}, ${formatDuration(w.durationMin)}, ${w.status}, id ${w.id})`),
+      ...acts.map((a) => `attività fuori programma: ${a.title || SPORTS[a.sport].label} ${formatDuration(a.durationMin)}`),
+    ];
+    lines.push(`- ${wd} ${formatDayMonth(date, false)} = ${date}${tag}: ${parts.join("; ") || "riposo, nessuna seduta"}`);
+  }
+  return lines.join("\n");
+}
+
 /** Riassunto dei dati dell'atleta per il prompt di sistema: solo i suoi dati, solo il necessario. */
 export function athleteContext(x: CoachData): string {
   const a = x.athlete;
@@ -40,7 +66,7 @@ export function athleteContext(x: CoachData): string {
     a.cssPaceSecPer100m && `CSS nuoto ${formatSwimPace(a.cssPaceSecPer100m.value)} (${a.cssPaceSecPer100m.origin})`,
   ].filter(Boolean).join("; ") || "nessun test: intensità in RPE";
   const races = x.events.filter((e) => e.date >= x.today).map((e) => `${e.name} (${e.kind === "triathlon" ? "triathlon" : e.sport ? SPORTS[e.sport].label : ""}, gara ${e.priority}) il ${e.date}${e.dateTentative ? " (data provvisoria)" : ""}`).join("; ") || "nessuna";
-  const next = x.plan.filter((w) => w.date >= x.today && w.date <= addDays(x.today, 13)).map(workoutLine).join("\n") || "nessuna seduta in programma";
+  const calendar = dayByDay(x);
   const load = loadState(x.activities, x.today);
   const signals = feedbackSignals(x.activities, x.plan, x.today).map((s) => `${s.title}: ${s.detail}`).join("\n") || "nessuno";
   return [
@@ -52,7 +78,7 @@ export function athleteContext(x: CoachData): string {
     `Parametri: ${params}.`,
     `Carico recente (stima): ${load.state ?? "dati insufficienti"}.`,
     `Segnali dai feedback: ${signals}`,
-    `Programma dei prossimi 14 giorni:\n${next}`,
+    `Calendario giorno per giorno (ultimi 7 giorni e prossimi 21), con le sedute del programma:\n${calendar}`,
   ].join("\n");
 }
 
@@ -64,7 +90,10 @@ Regole che non puoi violare:
 - Usi solo i dati qui sotto e quelli che leggi con gli strumenti. Non inventare numeri, sedute, test o risultati. Se un dato manca, dillo.
 - Distingui sempre i valori misurati da quelli stimati.
 - Non modifichi mai il programma. Per qualsiasi cambiamento usa lo strumento proponi_riprogrammazione: le proposte compaiono all'atleta con il pulsante "Applica" e solo lui decide. Non dire mai di aver cambiato qualcosa.
-- Prima di proporre, se mancano informazioni importanti (quale giorno, quanto tempo ha, quale sport fa male, quanto è forte il dolore), fai una domanda breve. Una sola domanda alla volta.
+- Il programma dell'atleta è nel calendario qui sotto: NON chiedere mai all'atleta che allenamento ha in un giorno, cercalo tu. Per date oltre il calendario usa lo strumento leggi_programma.
+- Quando l'atleta nomina un giorno ("martedì", "domani", "sabato prossimo"), trova la data esatta nel calendario: un giorno della settimana senza altre indicazioni è il prossimo (oggi compreso se è oggi). Usa sempre le date YYYY-MM-DD del calendario negli strumenti.
+- Se in quel giorno non ci sono sedute, dillo indicando le sedute dei giorni vicini; non dire mai "non hai allenamenti" senza aver controllato il calendario.
+- Prima di proporre, chiedi solo ciò che non puoi sapere dai dati: quanto tempo ha, quale sport fa male e quanto è forte il dolore, fino a quando dura un viaggio o la malattia. Una sola domanda alla volta.
 - Dopo aver chiamato lo strumento, riassumi le opzioni in poche righe e consiglia quella che sceglieresti, spiegando il perché. Non ripetere tutti i dettagli: l'atleta li vede nelle schede.
 - Non fai diagnosi mediche e non suggerisci farmaci. Con dolore forte, dolore al petto, svenimenti, febbre o sintomi che preoccupano, consiglia di fermarsi e sentire un medico.
 - Un singolo feedback negativo non è sovrallenamento né una malattia: non trarre conclusioni allarmanti.
@@ -215,7 +244,7 @@ export async function runCoach(opts: { client: ChatClient; model: string; data: 
   ];
   const usage = { input: 0, output: 0 };
   for (let round = 0; round < 5; round++) {
-    const res = await opts.client({ model: opts.model, messages, tools: round < 4 ? COACH_TOOLS : undefined, max_tokens: 700, temperature: 0.4 });
+    const res = await opts.client({ model: opts.model, messages, tools: round < 4 ? COACH_TOOLS : undefined, max_tokens: 700, temperature: 0.3 });
     usage.input += res.usage.input;
     usage.output += res.usage.output;
     const calls = res.message.tool_calls ?? [];
