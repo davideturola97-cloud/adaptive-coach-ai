@@ -75,3 +75,15 @@ describe("nuoto nel profilo", () => {
     expect(profileFromForm(form({ ...base, "swim.poolLengthM": "33" })).success).toBe(false);
   });
 });
+
+describe("giorni per i lunghi e per sport", () => {
+  it("accetta giorni preferiti tra quelli disponibili", () => {
+    const r = profileFromForm(form({ ...base, "swim.enabled": "on", "swim.days": ["Mar", "Gio"], longDays: ["Dom"] }));
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.sportDays.swim).toEqual(["Mar", "Gio"]);
+  });
+  it("rifiuta giorni preferiti o dei lunghi fuori dai disponibili", () => {
+    expect(profileFromForm(form({ ...base, "swim.enabled": "on", "swim.days": ["Lun"] })).success).toBe(false);
+    expect(profileFromForm(form({ ...base, longDays: ["Sab"] })).success).toBe(false);
+  });
+});

@@ -61,7 +61,11 @@ export const profileSchema = z
     }),
   })
   .refine((p) => SPORT_KEYS.some((k) => p[k].enabled), { message: "Scegli almeno uno sport", path: ["run"] })
-  .refine((p) => p.longDays.every((d) => !p.availableDays.length || p.availableDays.includes(d)), { message: "I giorni dei lunghi devono essere tra i giorni disponibili", path: ["longDays"] });
+  .refine((p) => p.longDays.every((d) => !p.availableDays.length || p.availableDays.includes(d)), { message: "I giorni dei lunghi devono essere tra i giorni disponibili", path: ["longDays"] })
+  .refine((p) => Object.values(p.sportDays).every((ds) => (ds ?? []).every((d) => !p.availableDays.length || p.availableDays.includes(d))), {
+    message: "I giorni preferiti di uno sport devono essere tra i giorni disponibili",
+    path: ["sportDays"],
+  });
 
 export type ProfileInput = z.infer<typeof profileSchema>;
 
