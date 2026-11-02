@@ -79,6 +79,7 @@ export interface PlannedWorkout {
   safetyNotes: string[];
   status: WorkoutStatus;
   completedActivityId?: string;
+  skipReason?: string;
 }
 
 export interface Feedback {

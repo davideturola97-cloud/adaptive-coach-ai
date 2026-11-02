@@ -59,3 +59,13 @@ Regole fisse, senza AI: con gli stessi dati produce sempre lo stesso programma.
   evitata il giorno prima di una seduta dura.
 - **Intensità**: RPE. Ritmi (corsa), watt (bici) e passi in vasca (nuoto) compaiono solo se esiste un parametro da test,
   sempre etichettati "stimato". I principianti senza test non fanno ripetute o tempo run nelle prime 3 settimane.
+
+## Feedback e segnali (src/lib/training/feedback.ts)
+
+- **Duplicati**: un'attività è considerata la stessa se ha stesso sport, stesso giorno e durata entro il 10% (minimo 5 minuti).
+  L'app chiede conferma prima di salvarla; il database rifiuta anche due attività con la stessa impronta
+  (sport, giorno, durata arrotondata a 5 minuti) salvo conferma esplicita.
+- **Segnali**: un singolo feedback non genera mai un avviso. Servono episodi ripetuti:
+  dolore indicato in almeno 2 sedute in 14 giorni; RPE di almeno 2 punti sopra il previsto in 3 delle ultime 5 sedute;
+  sonno 1–2 su 5 in almeno 3 sedute in 7 giorni. I testi suggeriscono prudenza e, per il dolore persistente,
+  di sentire un medico o un fisioterapista. Non sono diagnosi.

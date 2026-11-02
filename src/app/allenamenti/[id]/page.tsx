@@ -1,4 +1,7 @@
-import { ArrowLeft, HeartPulse, ShieldAlert, Lightbulb } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ShieldAlert, Lightbulb } from "lucide-react";
+import { ActivityForm, SkipForm } from "@/components/activity-form";
+import { ActivitySummary } from "@/components/activity-summary";
+import { unskipWorkout } from "../actions";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card, OriginTag, SectionTitle, SportBadge, StatusLabel } from "@/components/ui";
@@ -33,9 +36,11 @@ function Step({ s }: { s: WorkoutStep }) {
   );
 }
 
-export default async function WorkoutPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function WorkoutPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ salvato?: string }> }) {
   const { id } = await params;
-  const { plan, activities } = await getAppData();
+  const { plan, activities, today, mode, athlete } = await getAppData();
+  const { salvato } = await searchParams;
+  const demo = mode === "demo";
   const w = plan.find((p) => p.id === id);
   if (!w) notFound();
   const done = w.completedActivityId ? activities.find((a) => a.id === w.completedActivityId) : undefined;
@@ -104,21 +109,50 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
         </section>
       </div>
 
-      {done && (
-        <section>
-          <SectionTitle hint="dati dimostrativi">Attività svolta</SectionTitle>
-          <Card className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div><p className="text-xs text-muted">Durata</p><p className="num text-2xl font-semibold">{formatDuration(done.durationMin)}</p></div>
-            {done.distanceKm !== undefined && <div><p className="text-xs text-muted">Distanza</p><p className="num text-2xl font-semibold">{done.distanceKm.toLocaleString("it-IT")} km</p></div>}
-            {done.avgHr && <div><p className="flex items-center gap-1 text-xs text-muted"><HeartPulse className="size-3.5" aria-hidden />FC media</p><p className="num text-2xl font-semibold">{done.avgHr} bpm</p></div>}
-            {done.avgPowerW && <div><p className="text-xs text-muted">Potenza media</p><p className="num text-2xl font-semibold">{done.avgPowerW} W</p></div>}
-            {done.feedback && (
-              <div className="col-span-2 border-t border-line pt-3 sm:col-span-4">
-                <p className="text-xs text-muted">Il tuo feedback</p>
-                <p className="mt-1 text-sm">RPE {done.feedback.rpe}/10 · fatica muscolare {done.feedback.muscleFatigue}/5 · fatica cardio {done.feedback.cardioFatigue}/5 · sensazioni: {done.feedback.feeling}</p>
-              </div>
-            )}
-          </Card>
+      {salvato && (
+        <p role="status" className="flex items-center gap-2 rounded-xl border border-ok/40 bg-ok/10 px-4 py-3 text-sm text-ok">
+          <CheckCircle2 className="size-5" aria-hidden /> Attività salvata. Grazie del feedback: il coach ne terrà conto.
+        </p>
+      )}
+
+      {done && <ActivitySummary a={done} back={`/allenamenti/${w.id}`} editable={!demo} />}
+
+      {w.status === "saltato" && (
+        <Card className="flex flex-col gap-3 border-bad/40">
+          <p className="font-semibold text-bad">Seduta saltata</p>
+          {w.skipReason && <p className="text-sm text-muted">Motivo: {w.skipReason}</p>}
+          {!demo && (
+            <form action={unskipWorkout}>
+              <input type="hidden" name="id" value={w.id} />
+              <button className="min-h-11 rounded-xl border border-line px-4 text-sm font-semibold hover:border-faint">Annulla: non l&apos;ho saltata</button>
+            </form>
+          )}
+        </Card>
+      )}
+
+      {w.status === "programmato" && (
+        <section className="flex flex-col gap-3">
+          <SectionTitle>Registra la seduta</SectionTitle>
+          <details open={w.date <= today} className="rounded-[var(--radius-card)] border border-ok/40 bg-surface p-4 sm:p-5">
+            <summary className="flex min-h-10 cursor-pointer items-center gap-2 font-semibold text-ok">
+              <CheckCircle2 className="size-5" aria-hidden /> L&apos;ho fatta
+            </summary>
+            <div className="mt-4">
+              <ActivityForm
+                plannedId={w.id}
+                defaults={{ date: w.date <= today ? w.date : today, sport: w.sport, durationMin: w.durationMin, distanceKm: w.distanceKm }}
+                sports={athlete.sports.map((s) => s.sport)}
+                today={today}
+                demo={demo}
+              />
+            </div>
+          </details>
+          {!demo && (
+            <details className="rounded-[var(--radius-card)] border border-line bg-surface p-4 sm:p-5">
+              <summary className="min-h-10 cursor-pointer font-semibold text-muted">Non l&apos;ho fatta</summary>
+              <div className="mt-4"><SkipForm id={w.id} /></div>
+            </details>
+          )}
         </section>
       )}
     </article>

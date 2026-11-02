@@ -7,6 +7,8 @@ import { Card, SectionTitle, SportBadge, SportDot, Stat, StatusLabel, WorkoutRow
 import { addDays, daysBetween, formatDayMonth, mondayOf, weekdayName } from "@/lib/dates";
 import { SPORT_KEYS, SPORTS, WORKOUT_TYPE_LABEL } from "@/lib/domain/sports";
 import { TEST_CATALOG } from "@/lib/training/tests";
+import { Signals } from "@/components/signals";
+import { feedbackSignals } from "@/lib/training/feedback";
 import { getAppData } from "@/lib/data/repository";
 import { adherence, loadState, weeklySummaries } from "@/lib/training/analytics";
 import { formatDuration } from "@/lib/training/formulas";
@@ -19,6 +21,8 @@ export default async function HomePage() {
   const { today, athlete, events, plan, activities, mode, onboardingCompleted, plannedTests } = await getAppData();
   if (mode === "utente" && !onboardingCompleted) redirect("/onboarding");
   const practiced = SPORT_KEYS.filter((s) => athlete.sports.some((x) => x.sport === s) || activities.some((a) => a.sport === s));
+  const signals = feedbackSignals(activities, plan, today);
+  const firstUnlogged = plan.find((p) => p.status === "programmato" && p.date < today && p.date >= addDays(today, -7));
   const dueTests = plannedTests.filter((t) => t.status === "proposto" || ((t.status === "programmato" || t.status === "rimandato") && t.dueDate && t.dueDate <= addDays(today, 7)));
   const monday = mondayOf(today);
   const week = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
@@ -57,6 +61,8 @@ export default async function HomePage() {
           </div>
         </Link>
       )}
+
+      <Signals signals={signals} registerHref={firstUnlogged ? `/allenamenti/${firstUnlogged.id}` : undefined} />
 
       {dueTests.length > 0 && (
         <Link href="/test" className="block">

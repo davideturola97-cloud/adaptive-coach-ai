@@ -88,6 +88,7 @@ export async function getAppData(): Promise<AppData> {
       id: p.id, date: p.workout_date, sport: p.sport, type: p.workout_type as WorkoutType, title: p.title, objective: p.objective,
       durationMin: p.duration_min, distanceKm: num(p.distance_km), intensity: p.intensity, structure: p.structure,
       technicalTips: p.technical_tips, safetyNotes: p.safety_notes, status: p.status as WorkoutStatus, completedActivityId: byPlan.get(p.id),
+      skipReason: p.skip_reason ?? undefined,
     })),
     activities,
     tests: (tests.data ?? []).map((t: any): TestResult => ({ id: t.id, date: t.test_date, sport: t.sport, kind: t.kind, rawValue: t.raw_value?.text ?? "", derived: t.derived ?? [] })),

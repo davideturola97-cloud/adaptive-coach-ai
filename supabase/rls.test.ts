@@ -37,12 +37,13 @@ async function as(user: string | null, sql: string, params: unknown[] = []) {
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(SUPABASE_STUB);
-  for (const f of ["0001_schema.sql", "0002_multisport.sql", "0003_plan.sql"]) {
+  for (const f of ["0001_schema.sql", "0002_multisport.sql", "0003_plan.sql", "0004_activities.sql"]) {
     await db.exec(readFileSync(path.join(__dirname, "migrations", f), "utf8"));
   }
   // Le migrazioni devono poter essere rieseguite senza errori.
   await db.exec(readFileSync(path.join(__dirname, "migrations/0002_multisport.sql"), "utf8"));
   await db.exec(readFileSync(path.join(__dirname, "migrations/0003_plan.sql"), "utf8"));
+  await db.exec(readFileSync(path.join(__dirname, "migrations/0004_activities.sql"), "utf8"));
   await db.exec(`insert into auth.users (id, email) values ('${ALICE}', 'a@example.com'), ('${BOB}', 'b@example.com');`);
 });
 
@@ -179,6 +180,48 @@ describe("programma (Milestone 4)", () => {
 
   it("gli anonimi non possono usarla", async () => {
     await expect(as(null, "select public.replace_future_plan('2026-11-01', '[]'::jsonb, 'x')")).rejects.toThrow();
+  });
+});
+
+describe("attività e feedback (Milestone 5)", () => {
+  const fb = { rpe: 6, muscle_fatigue: 3, cardio_fatigue: 2, feeling: "buono", notes: "ok" };
+  let planned = "";
+
+  it("registra attività, collega la seduta e salva il feedback insieme", async () => {
+    const p = await as(ALICE, "insert into public.planned_workouts (workout_date, sport, workout_type, title, duration_min) values ('2026-12-01', 'run', 'corsa_facile', 'Da fare', 45) returning id");
+    planned = String(p.rows[0].id);
+    const act = { activity_date: "2026-12-01", sport: "run", title: "Corsa", duration_min: 47, distance_km: 8.2, source: "manuale", dedupe_key: "run|2026-12-01|45", planned_workout_id: planned };
+    await as(ALICE, "select public.record_activity($1::jsonb, $2::jsonb)", [JSON.stringify(act), JSON.stringify(fb)]);
+    expect((await as(ALICE, "select status from public.planned_workouts where id = $1", [planned])).rows[0]).toEqual({ status: "completato" });
+    const f = await as(ALICE, "select f.rpe from public.feedback f join public.activities a on a.id = f.activity_id where a.planned_workout_id = $1", [planned]);
+    expect(f.rows).toEqual([{ rpe: 6 }]);
+  });
+
+  it("una seduta non può avere due attività", async () => {
+    const act = { activity_date: "2026-12-01", sport: "run", title: "Doppia", duration_min: 30, source: "manuale", planned_workout_id: planned };
+    await expect(as(ALICE, "select public.record_activity($1::jsonb, null)", [JSON.stringify(act)])).rejects.toThrow();
+  });
+
+  it("feedback non valido: niente salvato (tutto o niente)", async () => {
+    const before = (await as(ALICE, "select count(*)::int as n from public.activities")).rows[0].n;
+    const act = { activity_date: "2026-12-02", sport: "bike", title: "x", duration_min: 60, source: "manuale" };
+    await expect(as(ALICE, "select public.record_activity($1::jsonb, $2::jsonb)", [JSON.stringify(act), JSON.stringify({ ...fb, rpe: 15 })])).rejects.toThrow();
+    expect((await as(ALICE, "select count(*)::int as n from public.activities")).rows[0].n).toBe(before);
+  });
+
+  it("non si può collegare la seduta di un altro", async () => {
+    const act = { activity_date: "2026-12-01", sport: "run", title: "Furbo", duration_min: 30, source: "manuale", planned_workout_id: planned };
+    await expect(as(BOB, "select public.record_activity($1::jsonb, null)", [JSON.stringify(act)])).rejects.toThrow();
+  });
+
+  it("cancellando l'attività la seduta torna da fare", async () => {
+    await as(ALICE, "delete from public.activities where planned_workout_id = $1", [planned]);
+    expect((await as(ALICE, "select status from public.planned_workouts where id = $1", [planned])).rows[0]).toEqual({ status: "programmato" });
+  });
+
+  it("seduta saltata con motivo", async () => {
+    await as(ALICE, "update public.planned_workouts set status = 'saltato', skip_reason = 'Lavoro', skipped_at = now() where id = $1", [planned]);
+    expect((await as(ALICE, "select skip_reason from public.planned_workouts where id = $1", [planned])).rows[0]).toEqual({ skip_reason: "Lavoro" });
   });
 });
 

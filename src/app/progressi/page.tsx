@@ -3,6 +3,8 @@ import { Card, OriginTag, PageHeader, SectionTitle, SportBadge } from "@/compone
 import { addDays, formatDayMonth } from "@/lib/dates";
 import { getAppData } from "@/lib/data/repository";
 import { weeklySummaries } from "@/lib/training/analytics";
+import { Signals } from "@/components/signals";
+import { feedbackSignals } from "@/lib/training/feedback";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +31,7 @@ export default async function ProgressPage() {
       <PageHeader title="Progressi" subtitle="Ultime 10 settimane. I valori stimati sono sempre segnalati." />
 
       <div className="flex flex-col gap-6">
+        <Signals signals={feedbackSignals(activities, plan, today).filter((s) => s.id !== "registrare")} />
         <Card>
           <SectionTitle hint="ore per settimana">Volume di allenamento</SectionTitle>
           <VolumeChart data={weeks} />
