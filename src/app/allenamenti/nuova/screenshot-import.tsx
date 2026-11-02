@@ -60,7 +60,7 @@ export function ScreenshotImport({ today, sports, enabled, demo }: { today: stri
         ["Velocità", result.velocita_kmh && `${result.velocita_kmh.toLocaleString("it-IT")} km/h`],
         ["FC media", result.fc_media && `${result.fc_media} bpm${calc("fc")}`],
         ["Potenza", result.potenza_media_w && `${result.potenza_media_w} W`],
-        ["Dislivello", result.dislivello_m !== null && result.dislivello_m !== undefined ? `${result.dislivello_m} m` : null],
+        ["Dislivello", result.dislivello_m !== null && result.dislivello_m !== undefined ? `${result.dislivello_m} m${calc("dislivello")}` : null],
         ["Intervalli", result.intervalli],
       ] as const).filter(([, v]) => v)
     : [];
@@ -104,7 +104,7 @@ export function ScreenshotImport({ today, sports, enabled, demo }: { today: stri
                 </p>
               )}
               {result.daiParziali.length > 0 && (
-                <p className="mt-3 text-xs text-muted">I valori &quot;dai parziali&quot; li ho calcolati io dagli intertempi che mi hai mandato (somma dei km e dei tempi, FC media pesata sul tempo).</p>
+                <p className="mt-3 text-xs text-muted">I valori &quot;dai parziali&quot; li ho calcolati io dagli intertempi che mi hai mandato (somma dei km e dei tempi, FC media pesata sul tempo, dislivello come somma delle salite).</p>
               )}
               {result.differenze.length > 0 && (
                 <ul className="mt-2 flex flex-col gap-1 rounded-xl bg-warn/10 px-3 py-2 text-xs text-warn">

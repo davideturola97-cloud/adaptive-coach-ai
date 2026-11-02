@@ -110,7 +110,7 @@ export type Extraction = Omit<z.infer<typeof extractionSchema>, "parziali" | "un
   splits: Split[];
   splitsUnreadable: number;
   /** Campi calcolati dagli intertempi invece che letti dal riepilogo. */
-  daiParziali: ("durata" | "distanza" | "passo" | "fc")[];
+  daiParziali: ("durata" | "distanza" | "passo" | "fc" | "dislivello")[];
   /** Differenze tra il riepilogo letto e i totali dei parziali (vince il calcolo sui parziali). */
   differenze: string[];
 };
@@ -175,7 +175,29 @@ export function normalizeExtraction(raw: unknown, today: string): Extraction | n
     distanza_km = null;
   }
   const out: Extraction = { ...rest, data, distanza_km, splits, splitsUnreadable: unreadable, scartati, daiParziali: [], differenze: [] };
-  return e.sport && e.sport !== "gym" ? applySplitTotals(out, e.sport) : out;
+  return relevantUnreadable(e.sport && e.sport !== "gym" ? applySplitTotals(out, e.sport) : out);
+}
+
+/** Campi che contano per ogni sport: gli altri, se mancano, non sono un problema. */
+const RELEVANT: Record<Sport, (typeof FIELDS)[number][]> = {
+  run: ["sport", "data", "durata_minuti", "distanza_km", "passo", "fc_media", "dislivello_m"],
+  swim: ["sport", "data", "durata_minuti", "distanza_km", "passo", "fc_media"],
+  bike: ["sport", "data", "durata_minuti", "distanza_km", "velocita_kmh", "fc_media", "potenza_media_w", "dislivello_m"],
+  gym: ["sport", "data", "durata_minuti", "fc_media"],
+};
+
+/**
+ * "Non leggibili" mostra solo ciò che manca davvero: niente campi già ricavati dagli intertempi
+ * e niente campi che per quello sport non servono (la potenza nella corsa, la velocità se c'è il passo).
+ */
+export function relevantUnreadable(x: Extraction): Extraction {
+  const filled: Partial<Record<(typeof FIELDS)[number], unknown>> = {
+    sport: x.sport, data: x.data, durata_minuti: x.durata_minuti, distanza_km: x.distanza_km, passo: x.passo,
+    velocita_kmh: x.velocita_kmh, fc_media: x.fc_media, potenza_media_w: x.potenza_media_w, dislivello_m: x.dislivello_m, intervalli: x.intervalli,
+  };
+  const keep = x.sport ? RELEVANT[x.sport] : FIELDS;
+  const illeggibili = [...new Set(x.illeggibili)].filter((f) => keep.includes(f) && (filled[f] === null || filled[f] === undefined));
+  return { ...x, illeggibili };
 }
 
 /**
@@ -215,6 +237,11 @@ export function applySplitTotals(x: Extraction, sport: Sport): Extraction {
     out.fc_media = t.avgHr;
     out.daiParziali.push("fc");
     out.differenze.push("FC media calcolata solo sui parziali che la riportano");
+  }
+  // Dislivello positivo: somma delle salite dei parziali, solo se il riepilogo non lo riporta e ogni parziale ha il dato.
+  if (x.dislivello_m === null && sport !== "swim" && x.splits.every((s) => s.elevM !== undefined)) {
+    out.dislivello_m = x.splits.reduce((a, s) => a + Math.max(0, s.elevM!), 0);
+    out.daiParziali.push("dislivello");
   }
   return out;
 }

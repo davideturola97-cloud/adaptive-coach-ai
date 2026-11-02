@@ -140,6 +140,15 @@ describe("lettura screenshot", () => {
     expect(cut.durata_minuti).toBe(52.5);
     expect(cut.differenze.join(" ")).toMatch(/coprono 3 km su 10.1/);
   });
+  it("non segnala come illeggibili i campi ricavati dai parziali o inutili per lo sport", () => {
+    const parziali = [row(1, "5:00", { dislivello_m: 5 }), row(2, "5:10", { dislivello_m: -3 }), row(3, "5:20", { dislivello_m: 4 })];
+    const illeggibili = ["durata_minuti", "passo", "velocita_kmh", "fc_media", "potenza_media_w", "dislivello_m"];
+    const e = normalizeExtraction({ ...base, durata_minuti: null, distanza_km: null, passo: null, fc_media: null, dislivello_m: null, illeggibili, parziali }, today)!;
+    expect(e.dislivello_m).toBe(9);
+    expect(e.illeggibili).toEqual([]);
+    const noSplits = normalizeExtraction({ ...base, fc_media: null, illeggibili: ["fc_media", "potenza_media_w"] }, today)!;
+    expect(noSplits.illeggibili).toEqual(["fc_media"]);
+  });
   it("accetta valori plausibili", () => {
     const e = normalizeExtraction(base, today)!;
     expect(e.distanza_km).toBe(10.1);
