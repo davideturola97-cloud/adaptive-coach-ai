@@ -37,7 +37,7 @@ async function as(user: string | null, sql: string, params: unknown[] = []) {
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(SUPABASE_STUB);
-  for (const f of ["0001_schema.sql", "0002_multisport.sql", "0003_plan.sql", "0004_activities.sql", "0005_reschedule.sql", "0006_coach_ai.sql", "0007_splits.sql"]) {
+  for (const f of ["0001_schema.sql", "0002_multisport.sql", "0003_plan.sql", "0004_activities.sql", "0005_reschedule.sql", "0006_coach_ai.sql", "0007_splits.sql", "0008_auth_throttle.sql"]) {
     await db.exec(readFileSync(path.join(__dirname, "migrations", f), "utf8"));
   }
   // Le migrazioni devono poter essere rieseguite senza errori.
@@ -47,6 +47,7 @@ beforeAll(async () => {
   await db.exec(readFileSync(path.join(__dirname, "migrations/0005_reschedule.sql"), "utf8"));
   await db.exec(readFileSync(path.join(__dirname, "migrations/0006_coach_ai.sql"), "utf8"));
   await db.exec(readFileSync(path.join(__dirname, "migrations/0007_splits.sql"), "utf8"));
+  await db.exec(readFileSync(path.join(__dirname, "migrations/0008_auth_throttle.sql"), "utf8"));
   await db.exec(`insert into auth.users (id, email) values ('${ALICE}', 'a@example.com'), ('${BOB}', 'b@example.com');`);
 });
 
@@ -320,5 +321,24 @@ describe("cancellazione account", () => {
 
   it("gli anonimi non possono chiamarla", async () => {
     await expect(as(null, "select public.delete_my_account()")).rejects.toThrow();
+  });
+});
+
+describe("limite ai tentativi di accesso", () => {
+  const K1 = "a".repeat(64);
+  const K2 = "b".repeat(64);
+  it("conta e registra i tentativi solo tramite le funzioni", async () => {
+    await as(null, "select public.auth_attempts_record($1)", [[K1, K2]]);
+    await as(null, "select public.auth_attempts_record($1)", [[K1]]);
+    const r = await as(null, "select public.auth_attempts_count($1, 900) as c", [[K1, K2]]);
+    expect(r.rows[0].c).toEqual([2, 1]);
+  });
+  it("la tabella non è accessibile direttamente", async () => {
+    await expect(as(null, "select * from public.auth_attempts")).rejects.toThrow();
+    await expect(as(ALICE, "delete from public.auth_attempts")).rejects.toThrow();
+  });
+  it("rifiuta chiavi non valide o troppe chiavi", async () => {
+    await expect(as(null, "select public.auth_attempts_record($1)", [["mario@example.com"]])).rejects.toThrow();
+    await expect(as(null, "select public.auth_attempts_count($1, 900)", [[K1, K1, K1]])).rejects.toThrow();
   });
 });

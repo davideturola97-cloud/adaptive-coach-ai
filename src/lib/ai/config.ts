@@ -1,3 +1,4 @@
+import "server-only";
 /**
  * Configurazione dell'AI, letta solo sul server. La chiave non ha il prefisso NEXT_PUBLIC_:
  * Next.js non la include mai nel codice inviato al browser.

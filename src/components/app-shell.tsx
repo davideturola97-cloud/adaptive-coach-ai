@@ -22,7 +22,7 @@ export function AppShell({ children, demo }: { children: React.ReactNode; demo: 
   const pathname = usePathname();
 
   // Pagina di accesso: niente menu.
-  if (pathname.startsWith("/accedi")) return <main className="px-4 sm:px-6">{children}</main>;
+  if (["/accedi", "/privacy", "/offline"].some((p) => pathname.startsWith(p))) return <main className="px-4 sm:px-6">{children}</main>;
 
   return (
     <div className="min-h-dvh md:grid md:grid-cols-[15rem_1fr]">

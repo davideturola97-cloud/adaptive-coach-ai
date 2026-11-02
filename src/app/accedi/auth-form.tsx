@@ -38,7 +38,7 @@ export function AuthForm({ linkError }: { linkError: boolean }) {
         {mode === "registrati" && (
           <label className="flex items-start gap-3 text-sm text-muted">
             <input id="consent" name="consent" type="checkbox" required className="mt-1 size-5 accent-run" />
-            Acconsento al trattamento dei miei dati di allenamento e salute per far funzionare il coach. Posso esportarli o cancellarli in qualsiasi momento dal Profilo.
+            Acconsento al trattamento dei miei dati di allenamento e salute per far funzionare il coach. Posso esportarli o cancellarli in qualsiasi momento dal Profilo. <a href="/privacy" target="_blank" className="font-semibold text-fg underline">Leggi come li trattiamo</a>.
           </label>
         )}
 

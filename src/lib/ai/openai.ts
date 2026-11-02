@@ -1,3 +1,4 @@
+import "server-only";
 /**
  * Chiamata minima all'API Chat Completions di OpenAI con fetch (nessuna dipendenza).
  * Il client è iniettabile: i test usano un client finto e non spendono nulla.

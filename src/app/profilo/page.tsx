@@ -8,6 +8,7 @@ import { eventDescription } from "@/components/event-summary";
 import { sportLabel } from "@/lib/domain/sports";
 import { formatPace, formatSwimPace, powerZones } from "@/lib/training/formulas";
 import { deleteAccount } from "./actions";
+import { InstallApp } from "@/components/pwa";
 
 export const dynamic = "force-dynamic";
 
@@ -159,7 +160,16 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
         )}
 
         <section>
+          <SectionTitle>App sul telefono</SectionTitle>
+          <Card className="flex flex-col gap-3">
+            <p className="text-sm text-muted">Installa Coach sulla schermata Home: si apre a schermo intero come un&apos;app, su iPhone e Android.</p>
+            <InstallApp />
+          </Card>
+        </section>
+
+        <section>
           <SectionTitle>I tuoi dati</SectionTitle>
+          <p className="mb-3 text-sm text-muted">Come li trattiamo: <Link href="/privacy" className="font-semibold text-fg underline">privacy</Link>.</p>
           {demo ? (
             <p className="text-sm text-muted">Esportazione e cancellazione sono disponibili quando accedi con il tuo account.</p>
           ) : (

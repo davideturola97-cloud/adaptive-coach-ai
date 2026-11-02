@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseEnv } from "./env";
 
-const PUBLIC_PATHS = ["/accedi", "/auth"];
+const PUBLIC_PATHS = ["/accedi", "/auth", "/offline", "/privacy"];
 
 /** Rinnova la sessione a ogni richiesta e manda alla pagina di accesso chi non è collegato. */
 export async function updateSession(request: NextRequest) {

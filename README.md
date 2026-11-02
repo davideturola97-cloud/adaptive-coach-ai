@@ -2,7 +2,9 @@
 
 Allenatore personale per corsa e ciclismo che adatta il programma alla tua settimana.
 
-**Stato: Milestone 7.** Chat con il coach AI (accesso controllato ai dati, proposte tramite il motore di regole, conferma obbligatoria), lettura degli screenshot delle attività, dettatura vocale, limiti di uso giornalieri.
+**Stato: Milestone 8 — completa.** App installabile su iPhone e Android, pronta per Vercel (guida in `docs/DEPLOY.md`), intestazioni di sicurezza, limite ai tentativi di accesso, pagina privacy, test end-to-end su tre schermi.
+
+Milestone 7: Chat con il coach AI (accesso controllato ai dati, proposte tramite il motore di regole, conferma obbligatoria), lettura degli screenshot delle attività, dettatura vocale, limiti di uso giornalieri.
 Per attivare l'AI segui `docs/OPENAI.md`.
 Milestone 6: Riprogrammazione degli imprevisti con conversazione guidata, anteprima prima/dopo, conferma, storico delle versioni e annullamento.
 Milestone 5: Sedute segnate come fatte o saltate, attività inserite a mano con controllo dei duplicati, feedback dopo ogni seduta, storico e segnali dai feedback ripetuti.
@@ -27,6 +29,7 @@ Per collegare Supabase segui `docs/SUPABASE.md`.
 | `npm run dev` | Avvia l'app in sviluppo su http://localhost:3000 |
 | `npm test` | Test automatici: formule, analisi, validazione e regole di sicurezza del database |
 | `npm run check` | Tipi, lint, test e build di produzione in sequenza |
+| `npm run e2e` | Test nel browser su Android, iPhone e computer (la prima volta: `npx playwright install chromium`) |
 
 ## Struttura
 
@@ -44,6 +47,8 @@ src/
 supabase/migrations/   schema del database e regole di sicurezza (RLS)
 supabase/rls.test.ts   test delle regole di sicurezza su un Postgres in memoria
 docs/FORMULE.md        formule usate e loro limiti
+docs/DEPLOY.md         mettere l'app online e installarla sul telefono
+e2e/                   test nel browser (Android, iPhone, computer)
 ```
 
 ## Milestone
@@ -55,4 +60,4 @@ docs/FORMULE.md        formule usate e loro limiti
 5. ✅ Completamento attività, feedback e storico
 6. ✅ Riprogrammazione con regole deterministiche, anteprima e conferma
 7. ✅ Integrazione AI, chat e analisi screenshot
-8. Test end-to-end, sicurezza, PWA e deployment
+8. ✅ Test end-to-end, sicurezza, PWA e deployment
