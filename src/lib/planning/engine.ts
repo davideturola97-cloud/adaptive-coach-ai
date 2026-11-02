@@ -215,6 +215,8 @@ export function generatePlan(input: PlanInput): PlanDraft {
   const prevLong: Partial<Record<Sport, number>> = {};
   /** Giorni con seduta dura in tutto il programma: il lunedì guarda anche la domenica prima. */
   const allHard = new Set<string>();
+  /** Settimane in cui uno sport non ha trovato nessun giorno: diventa un solo avviso per sport. */
+  const missing = new Map<Sport, string[]>();
 
   if (!endurance.length && !practiced.includes("gym")) {
     return { startDate, endDate: startDate, weeks, workouts, warnings: ["Scegli almeno uno sport nel profilo."] };
@@ -358,7 +360,9 @@ export function generatePlan(input: PlanInput): PlanDraft {
       if (replaced >= 0) slots.splice(replaced, 1);
     }
     if (activationDay && usable.includes(activationDay) && raceThisWeek) {
-      const s: Sport = raceThisWeek.sport && practiced.includes(raceThisWeek.sport) ? raceThisWeek.sport : practiced.includes("run") ? "run" : endurance[0];
+      // Attivazione nello sport della gara (o corsa), se quel giorno è tra i giorni preferiti dello sport.
+      const pref: Sport[] = [raceThisWeek.sport, "run", ...endurance].filter((x): x is Sport => Boolean(x) && practiced.includes(x as Sport));
+      const s = pref.find((x) => sportOk(x, activationDay));
       if (s) take(activationDay, { sport: s, role: "attivazione", type: easyType(s, "gara", 0), minutes: 25, priority: 0 });
     }
 
@@ -374,14 +378,14 @@ export function generatePlan(input: PlanInput): PlanDraft {
         take(day, l);
         continue;
       }
-      // Nessun giorno dei lunghi libero: diventa una seduta facile.
-      warnings.push(`Settimana del ${formatDayMonth(weekStart, false)}: nessun giorno dei lunghi libero per ${SPORTS[l.sport].label.toLowerCase()}, la seduta lunga diventa facile.`);
+      // Nessun giorno dei lunghi libero: diventa una seduta facile. Si avvisa solo se lo sport poteva usare i giorni dei lunghi.
+      if (freeLongDays.some((d) => sportOk(l.sport, d))) warnings.push(`Settimana del ${formatDayMonth(weekStart, false)}: nessun giorno dei lunghi libero per ${SPORTS[l.sport].label.toLowerCase()}, la seduta lunga diventa facile.`);
       slots.push({ ...l, role: "facile", type: easyType(l.sport, phase, 0), minutes: Math.min(l.minutes, maxSession), priority: 5 });
     }
 
     // Sedute di qualità: il più lontano possibile dalle altre sedute dure, mai in giorni consecutivi.
-    // Gli sport con giorni vincolati (es. piscina) scelgono per primi.
-    const constrained = (sp: Sport) => (a.sportDays[sp]?.length ? 0 : 1);
+    // Gli sport con meno giorni possibili (es. piscina aperta solo due giorni) scelgono per primi.
+    const constrained = (sp: Sport) => usable.filter((d) => sportOk(sp, d)).length;
     for (const q of slots.filter((x) => x.role === "qualita").sort((x, y) => constrained(x.sport) - constrained(y.sport))) {
       const candidates = usable.filter((d) => !used.has(d) && !nearHard(d) && sportOk(q.sport, d) && !(raceThisWeek && d > raceThisWeek.date));
       const score = (d: string) => Math.min(...[...allHard].map((h) => Math.abs(daysBetween(h, d))), 9);
@@ -394,15 +398,26 @@ export function generatePlan(input: PlanInput): PlanDraft {
     const easy = slots.filter((x) => x.role === "facile").sort((x, y) => constrained(x.sport) - constrained(y.sport) || x.priority - y.priority);
     const dropped: Slot[] = [];
     for (const e of easy) {
-      const day =
-        usable.find((d) => !used.has(d) && sportOk(e.sport, d)) ??
-        // Doppia seduta: un nuoto facile si affianca a un'altra seduta, preferendo i giorni senza sedute dure.
-        (e.sport === "swim"
-          ? [...usable]
-              .filter((d) => sportOk("swim", d) && (used.get(d) ?? 0) === 1 && !placed.some((p) => p.date === d && p.slot.sport === "swim"))
-              .sort((x, y) => Number(hardDays.has(x)) - Number(hardDays.has(y)))[0]
-          : undefined);
-      if (day) take(day, e);
+      const free = usable.find((d) => !used.has(d) && sportOk(e.sport, d));
+      if (free) {
+        take(free, e);
+        continue;
+      }
+      // Nessun giorno libero: la seduta si unisce a una seduta facile o lunga dello stesso sport, che si allunga.
+      const host = placed
+        .filter((p) => p.slot.sport === e.sport && (p.slot.role === "facile" || p.slot.role === "lungo"))
+        .map((p) => ({ p, cap: p.slot.role === "lungo" ? maxLong : maxSession }))
+        .filter(({ p, cap }) => p.slot.minutes < cap)
+        .sort((x, y) => x.p.slot.minutes - y.p.slot.minutes)[0];
+      if (host) {
+        host.p.slot.minutes = Math.min(host.cap, host.p.slot.minutes + e.minutes);
+        continue;
+      }
+      // Ultima possibilità: doppia seduta in un giorno con una sola seduta, preferendo quelli senza sedute dure.
+      const double = usable
+        .filter((d) => sportOk(e.sport, d) && (used.get(d) ?? 0) === 1 && !placed.some((p) => p.date === d && p.slot.sport === e.sport))
+        .sort((x, y) => Number(hardDays.has(x)) - Number(hardDays.has(y)))[0];
+      if (double) take(double, e);
       else dropped.push(e);
     }
 
@@ -412,13 +427,20 @@ export function generatePlan(input: PlanInput): PlanDraft {
       const day =
         free.find((d) => !used.has(d) && !hardDays.has(addDays(d, 1)) && sportOk("gym", d)) ??
         free.find((d) => !hardDays.has(d) && !hardDays.has(addDays(d, 1)) && sportOk("gym", d)) ??
-        free.find((d) => !hardDays.has(d) && sportOk("gym", d));
+        free.find((d) => !hardDays.has(d) && sportOk("gym", d)) ??
+        free.find((d) => sportOk("gym", d));
       if (day) take(day, g);
       else dropped.push(g);
     }
-    if (dropped.length) {
-      const what = [...new Set(dropped.map((d) => SPORTS[d.sport].label.toLowerCase()))].join(", ");
-      warnings.push(`Settimana del ${formatDayMonth(weekStart, false)}: ${dropped.length === 1 ? "una seduta" : `${dropped.length} sedute`} di ${what} non trova posto. Controlla i giorni preferiti di quello sport o aggiungi un giorno disponibile.`);
+    // Si avvisa solo se uno sport resta senza nessuna seduta nella settimana: altrimenti la seduta in più
+    // si perde in silenzio (i giorni scelti non bastano, ma lo sport è comunque allenato).
+    const unplaced = dropped.filter((d) => !placed.some((p) => p.slot.sport === d.sport));
+    dropped.length = 0;
+    dropped.push(...unplaced);
+    // Nelle settimane di gara o recupero, e nella prima settimana parziale, è normale saltare uno sport.
+    const partialFirst = w === 0 && startDate !== weekStart;
+    if (phase !== "gara" && phase !== "recupero" && !partialFirst) {
+      for (const d of dropped) missing.set(d.sport, [...(missing.get(d.sport) ?? []), weekStart]);
     }
 
     // Creazione delle sedute
@@ -430,7 +452,7 @@ export function generatePlan(input: PlanInput): PlanDraft {
       if (slot.role === "attivazione") {
         wkt.title = "Attivazione pre-gara";
         wkt.objective = "Sciogliere le gambe e arrivare fresco alla gara.";
-        wkt.structure = { ...wkt.structure, main: [{ label: "Corsa molto facile con 3-4 allunghi di 20″", durationMin: 15, rpe: [2, 3] }] };
+        wkt.structure = { ...wkt.structure, main: [{ label: `${SPORTS[wkt.sport].label} molto facile con 3-4 accelerazioni di 20″`, durationMin: 15, rpe: [2, 3] }] };
         wkt.durationMin = 25;
       }
       created.push({ w: wkt, slot });
@@ -475,6 +497,14 @@ export function generatePlan(input: PlanInput): PlanDraft {
       race: raceThisWeek,
       bySport,
     });
+  }
+
+  for (const [sp, ws] of missing) {
+    const label = SPORTS[sp].label;
+    warnings.push(
+      `${label}: in ${ws.length === 1 ? "una settimana" : `${ws.length} settimane`} (dal ${formatDayMonth(ws[0], false)}) non c'è un giorno libero. ` +
+        `Controlla i giorni preferiti di ${label.toLowerCase()} o aggiungi un giorno disponibile.`,
+    );
   }
 
   const endDate = addDays(mondayOf(startDate), 7 * nWeeks - 1);
