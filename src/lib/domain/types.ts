@@ -129,6 +129,8 @@ export interface CompletedActivity {
   splits?: Split[];
   /** Palestra: carichi e ripetizioni fatti davvero. */
   gymLog?: GymLogEntry[];
+  /** L'atleta non ricorda lo sforzo: non chiedere più l'RPE. */
+  feedbackSkipped?: boolean;
   feedback?: Feedback;
 }
 

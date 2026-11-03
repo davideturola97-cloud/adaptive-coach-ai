@@ -13,7 +13,8 @@ import { getAppData } from "@/lib/data/repository";
 import { adherence, loadState, weeklySummaries } from "@/lib/training/analytics";
 import { formatDuration } from "@/lib/training/formulas";
 import { MorningCheckin, StravaAutoSync, WeeklyReviewCard } from "@/components/today";
-import { AddFeedbackForm } from "@/components/strava";
+import { AddFeedbackForm, SkipFeedbackButton } from "@/components/strava";
+import { waitingFeedback } from "@/lib/training/waiting";
 import { readinessAdvice } from "@/lib/training/readiness";
 import { proposeReschedule } from "@/lib/planning/reschedule";
 import { weeklyReview } from "@/lib/planning/weekly-review";
@@ -80,7 +81,7 @@ export default async function HomePage() {
   const advice = checkin ? readinessAdvice(checkin, plan.filter((p) => p.date === today), checkins) : undefined;
   const firstProposal = advice?.disruption ? proposeReschedule({ today, athlete, plan, events, disruption: advice.disruption }).proposals.find((p) => p.changes.length) : undefined;
   // Attività da Strava che aspettano lo sforzo percepito.
-  const waiting = activities.filter((a) => a.source === "strava" && !a.feedback).sort((x, y) => y.date.localeCompare(x.date));
+  const waiting = waitingFeedback(activities, today);
   // Revisione della settimana (da sabato a lunedì).
   const ref = paceReference(athlete, activities, plan, today);
   const review = mode === "utente" || demo ? weeklyReview({ ...data, thresholdSec: ref?.thresholdSec }) : null;
@@ -140,7 +141,8 @@ export default async function HomePage() {
             <p className="text-sm">
               <b>{waiting[0].title || "Attività"}</b> <span className="text-muted">· {weekdayName(waiting[0].date)} {formatDayMonth(waiting[0].date, false)} · da Strava</span>
             </p>
-            <AddFeedbackForm activityId={waiting[0].id} />
+            <AddFeedbackForm key={waiting[0].id} activityId={waiting[0].id} />
+            <SkipFeedbackButton activityId={waiting[0].id} disabled={demo} />
           </Card>
         </section>
       )}

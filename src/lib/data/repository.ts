@@ -94,6 +94,7 @@ async function loadAppData(): Promise<AppData> {
       splits: Array.isArray(a.splits) ? a.splits : undefined,
       externalId: a.external_id ?? undefined,
       gymLog: Array.isArray(a.gym_log) ? a.gym_log : undefined,
+      feedbackSkipped: Boolean(a.feedback_skipped),
       feedback: f ? { rpe: f.rpe, muscleFatigue: f.muscle_fatigue, cardioFatigue: f.cardio_fatigue, sleepQuality: f.sleep_quality ?? undefined, feeling: f.feeling, pain: f.pain ?? undefined, notes: f.notes ?? undefined } : undefined,
     };
   });

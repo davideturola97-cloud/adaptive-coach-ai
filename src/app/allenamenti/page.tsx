@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/ui";
 import { WorkoutList, type HistoryItem } from "@/components/workout-list";
 import { getAppData } from "@/lib/data/repository";
 import { StravaImport } from "@/components/strava";
+import { waitingFeedback } from "@/lib/training/waiting";
 import { stravaStatus } from "@/lib/strava/service";
 import { getUser } from "@/lib/supabase/server";
 
@@ -13,7 +14,7 @@ export default async function WorkoutsPage() {
   const { plan, today, activities, mode } = await getAppData();
   const strava = mode === "demo" ? null : await stravaStatus((await getUser()).supabase);
   // Attività importate che aspettano lo sforzo percepito: senza RPE il coach non può valutare il carico.
-  const waiting = activities.filter((a) => a.source === "strava" && !a.feedback).sort((x, y) => y.date.localeCompare(x.date));
+  const waiting = waitingFeedback(activities, today);
   // Storico: attività svolte (con o senza seduta), sedute saltate e sedute passate ancora da registrare.
   const linked = new Set(plan.map((p) => p.completedActivityId).filter(Boolean));
   const history: HistoryItem[] = [

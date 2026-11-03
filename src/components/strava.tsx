@@ -2,9 +2,9 @@
 
 import { RefreshCw } from "lucide-react";
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { importStrava, type ImportState } from "@/app/strava/actions";
-import { addFeedback, type FeedbackState } from "@/app/allenamenti/actions";
+import { addFeedback, skipFeedback, type FeedbackState } from "@/app/allenamenti/actions";
 import { sportLabel } from "@/lib/domain/sports";
 import type { Sport } from "@/lib/domain/types";
 import { FeedbackFields } from "./activity-form";
@@ -77,5 +77,24 @@ export function AddFeedbackForm({ activityId }: { activityId: string }) {
         {pending ? "Salvataggio..." : "Salva feedback"}
       </button>
     </form>
+  );
+}
+
+/** Salta l'RPE di un'attività di cui non si ricorda lo sforzo. */
+export function SkipFeedbackButton({ activityId, disabled }: { activityId: string; disabled?: boolean }) {
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string>();
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        type="button"
+        disabled={pending || disabled}
+        onClick={() => start(async () => { const r = await skipFeedback(activityId); if (!r.ok) setError(r.error); })}
+        className="min-h-11 self-start rounded-xl px-3 text-sm font-semibold text-muted underline disabled:opacity-50"
+      >
+        {pending ? "Un attimo..." : "Non lo ricordo, salta"}
+      </button>
+      {error && <p role="alert" className="text-sm text-bad">{error}</p>}
+    </div>
   );
 }

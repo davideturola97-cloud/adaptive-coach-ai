@@ -129,3 +129,14 @@ export async function addFeedback(_: FeedbackState, fd: FormData): Promise<Feedb
   revalidatePath("/", "layout");
   return { saved: true };
 }
+
+/** "Non lo ricordo": l'attività resta, ma l'app non chiede più lo sforzo percepito. */
+export async function skipFeedback(activityId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!/^[0-9a-f-]{36}$/.test(activityId)) return { ok: false, error: "Attività non valida." };
+  const { supabase, user } = await getUser();
+  if (!user) return { ok: false, error: "Sessione scaduta: accedi di nuovo." };
+  const { error } = await supabase.from("activities").update({ feedback_skipped: true }).eq("id", activityId);
+  if (error) return { ok: false, error: "Non riuscito. Hai eseguito lo script 0013_feedback_skipped.sql su Supabase?" };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
