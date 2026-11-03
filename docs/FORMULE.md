@@ -189,3 +189,17 @@ Arrotondati a 5 secondi. Sono indicazioni: con caldo, salite o stanchezza comand
 
 Miglioramento realistico g = 0,4% per settimana di preparazione (esclusa l'ultima), massimo 4%, dimezzato con affidabilità bassa.
 Sicuro = estremo lento della previsione; possibile = previsione × (1 − g/2); ambizioso = previsione × (1 − g) × 0,985.
+
+## Scheda di palestra a giorni fissi (src/lib/training/gym-schedule.ts)
+
+L'atleta sceglie giorni, gruppi muscolari e durata (Profilo → Scheda di palestra). Il motore la rispetta:
+la palestra va nei giorni scelti e non toglie tempo alla resistenza; il giorno dopo gambe pesanti o total body
+non si mettono sedute chiave di corsa o bici (ripetute, soglia, lungo, test); nella settimana di gara, nei 4 giorni
+prima, le gambe diventano parte alta o mobilità. Consigli (prossime 2 settimane):
+
+- gambe il giorno prima di una seduta chiave → spostarle lo stesso giorno di una seduta di qualità (dopo) o in un giorno
+  senza seduta chiave il giorno dopo; in alternativa 2 serie leggere;
+- gambe a 1–4 giorni da una gara A/B → solo parte alta o mobilità; il giorno prima della gara → saltare;
+- gambe il giorno dopo il lungo → carichi moderati; spalle/dorsali il giorno prima di nuoto di qualità → leggere;
+- scheda: due sedute di gambe pesanti → una diventa richiamo leggero; nessuna seduta di gambe con corsa o bici → aggiungerla;
+  niente core → 10' di core; 4 o più giorni → serie lontane dal cedimento.

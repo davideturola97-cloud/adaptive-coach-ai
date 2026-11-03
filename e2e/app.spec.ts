@@ -128,3 +128,12 @@ test("progressi: previsioni di gara", async ({ page }) => {
   await expect(page.getByText(/affidabilità (alta|media|bassa)/).first()).toBeVisible();
   await noHorizontalScroll(page);
 });
+
+test("scheda di palestra: giorni, gruppi e consigli del coach", async ({ page }) => {
+  await page.goto("/profilo/palestra");
+  await expect(page.getByRole("heading", { name: "Scheda di palestra" })).toBeVisible();
+  await expect(page.getByText("Consigli del coach")).toBeVisible();
+  await expect(page.getByText(/Venerdì gambe e sabato/).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Salva la scheda" })).toBeDisabled();
+  await noHorizontalScroll(page);
+});

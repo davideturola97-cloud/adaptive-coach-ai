@@ -163,6 +163,12 @@ export interface AthleteSport {
 }
 
 /** Profilo atleta. I campi facoltativi possono mancare finché l'atleta non completa l'onboarding. */
+export interface GymDay {
+  day: string; // "Lun" ... "Dom"
+  groups: string[]; // es. ["petto", "tricipiti"]
+  durationMin: number;
+}
+
 export interface AthleteProfile {
   name: string;
   birthDate?: string;
@@ -183,6 +189,8 @@ export interface AthleteProfile {
   longSessionMaxMin?: number;
   /** Giorni preferiti per sport (facoltativo), es. nuoto solo Lun e Mer. */
   sportDays: Partial<Record<Sport, string[]>>;
+  /** Scheda di palestra a giorni fissi scelta dall'atleta (se c'è, il motore la rispetta invece di proporre la sua). */
+  gymSchedule?: GymDay[];
   ftpW?: { value: number; origin: ValueOrigin; date: string };
   thresholdPaceSecPerKm?: { value: number; origin: ValueOrigin; date: string };
   cssPaceSecPer100m?: { value: number; origin: ValueOrigin; date: string };

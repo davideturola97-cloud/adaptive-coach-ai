@@ -37,7 +37,7 @@ async function as(user: string | null, sql: string, params: unknown[] = []) {
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(SUPABASE_STUB);
-  for (const f of ["0001_schema.sql", "0002_multisport.sql", "0003_plan.sql", "0004_activities.sql", "0005_reschedule.sql", "0006_coach_ai.sql", "0007_splits.sql", "0008_auth_throttle.sql", "0009_strava.sql"]) {
+  for (const f of ["0001_schema.sql", "0002_multisport.sql", "0003_plan.sql", "0004_activities.sql", "0005_reschedule.sql", "0006_coach_ai.sql", "0007_splits.sql", "0008_auth_throttle.sql", "0009_strava.sql", "0010_gym_schedule.sql"]) {
     await db.exec(readFileSync(path.join(__dirname, "migrations", f), "utf8"));
   }
   // Le migrazioni devono poter essere rieseguite senza errori.
@@ -49,6 +49,7 @@ beforeAll(async () => {
   await db.exec(readFileSync(path.join(__dirname, "migrations/0007_splits.sql"), "utf8"));
   await db.exec(readFileSync(path.join(__dirname, "migrations/0008_auth_throttle.sql"), "utf8"));
   await db.exec(readFileSync(path.join(__dirname, "migrations/0009_strava.sql"), "utf8"));
+  await db.exec(readFileSync(path.join(__dirname, "migrations/0010_gym_schedule.sql"), "utf8"));
   await db.exec(`insert into auth.users (id, email) values ('${ALICE}', 'a@example.com'), ('${BOB}', 'b@example.com');`);
 });
 

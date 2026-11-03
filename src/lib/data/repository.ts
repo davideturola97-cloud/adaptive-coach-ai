@@ -26,6 +26,7 @@ function mapProfile(p: any, sports: any[]): AthleteProfile {
     longDays: p?.long_days ?? [],
     longSessionMaxMin: num(p?.long_session_max_min),
     sportDays: p?.sport_days ?? {},
+    gymSchedule: Array.isArray(p?.gym_schedule) && p.gym_schedule.length ? p.gym_schedule : undefined,
     equipment: p?.equipment ?? [],
     limitations: p?.limitations ?? [],
     goals: { primary: p?.goal_primary ?? "", secondary: p?.goals_secondary ?? [] },

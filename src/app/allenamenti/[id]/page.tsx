@@ -10,6 +10,8 @@ import { WORKOUT_TYPE_LABEL } from "@/lib/domain/sports";
 import type { WorkoutStep } from "@/lib/domain/types";
 import { getAppData } from "@/lib/data/repository";
 import { formatDuration } from "@/lib/training/formulas";
+import { gymAdvice } from "@/lib/training/gym-schedule";
+import { GymAdviceList } from "@/components/gym-advice";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +40,7 @@ function Step({ s }: { s: WorkoutStep }) {
 
 export default async function WorkoutPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ salvato?: string }> }) {
   const { id } = await params;
-  const { plan, activities, today, mode, athlete } = await getAppData();
+  const { plan, activities, today, mode, athlete, events } = await getAppData();
   const { salvato } = await searchParams;
   const demo = mode === "demo";
   const w = plan.find((p) => p.id === id);
@@ -77,6 +79,16 @@ export default async function WorkoutPage({ params, searchParams }: { params: Pr
           <>L&apos;intensità è indicata con la scala RPE da 1 a 10 (sforzo percepito). I passi al km compariranno dopo qualche corsa registrata o un test.</>
         )}
       </Card>
+
+      {w.sport === "gym" && athlete.gymSchedule?.length ? (() => {
+        const adv = gymAdvice(athlete.gymSchedule, plan, events, athlete, today).filter((x) => x.date === w.date);
+        return adv.length ? (
+          <section>
+            <SectionTitle>Consiglio del coach</SectionTitle>
+            <GymAdviceList advice={adv} />
+          </section>
+        ) : null;
+      })() : null}
 
       <section>
         <SectionTitle>Struttura</SectionTitle>

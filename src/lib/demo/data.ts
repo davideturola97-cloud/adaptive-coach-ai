@@ -148,6 +148,10 @@ export function buildDemoData(now = new Date()): DemoData {
     longDays: ["Sab", "Dom"],
     longSessionMaxMin: 150,
     sportDays: { swim: ["Lun", "Mer", "Ven"] },
+    gymSchedule: [
+      { day: "Lun", groups: ["petto", "tricipiti", "core"], durationMin: 60 },
+      { day: "Ven", groups: ["gambe"], durationMin: 60 },
+    ],
     equipment: ["Orologio GPS con fascia cardio", "Bici da strada", "Rulli smart"],
     limitations: ["Tendine d'Achille sinistro sensibile dopo le salite"],
     goals: { primary: "Mezza maratona sotto 1:45", secondary: ["Primo triathlon olimpico", "Correre con costanza 3 volte a settimana"] },

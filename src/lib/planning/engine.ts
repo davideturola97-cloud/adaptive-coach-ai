@@ -17,6 +17,7 @@ import { template } from "@/lib/training/templates";
 import { applyTargets } from "./targets";
 import { buildSession, fitLevel, maxLevel, FAMILIES, type Family } from "./library";
 import { trainingState, type TrainingHistory } from "./progression";
+import { gymLabel, legLoad } from "@/lib/training/gym-schedule";
 
 export type Phase = "base" | "costruzione" | "rifinitura" | "scarico" | "gara" | "recupero";
 
@@ -323,7 +324,9 @@ export function generatePlan(input: PlanInput): PlanDraft {
     const focus = raceFocus(target);
     const longTri = target?.kind === "triathlon" && (target.triFormat === "medio" || target.triFormat === "lungo");
     const shares = sportShares(focus, practiced, Boolean(longTri));
-    const gymList = practiced.includes("gym") ? gymTypes(phase, levelOf("gym")) : [];
+    // Con una scheda di palestra dell'atleta, la palestra la decide lui: il motore non ne propone altre.
+    const ownGym = a.gymSchedule?.length ? a.gymSchedule : null;
+    const gymList = practiced.includes("gym") && !ownGym ? gymTypes(phase, levelOf("gym")) : [];
     const gymMin = gymList.length * 40;
     const endMin = Math.max(0, targetMin - gymMin);
     const sportMin: Partial<Record<Sport, number>> = Object.fromEntries(endurance.map((s) => [s, endMin * (shares[s] ?? 0)]));
@@ -342,6 +345,11 @@ export function generatePlan(input: PlanInput): PlanDraft {
     const prevRace = events.find((e) => e.priority !== "C" && e.date < weekStart && daysBetween(e.date, weekStart) <= 2);
     if (prevRace) for (let i = 1; i <= 2; i++) blocked.add(addDays(prevRace.date, i));
     const usable = days.filter((d) => isAvail(d) && !blocked.has(d));
+    /** Giorni con gambe pesanti nella scheda dell'atleta: il giorno dopo niente sedute chiave di corsa o bici. */
+    const legDays = new Set(ownGym ? ALL_DAYS.map((_, i) => addDays(weekStart, i)).filter((d) => { const g = ownGym.find((x) => x.day === weekdayName(d, true)); return g && (legLoad(g) === "pesante" || legLoad(g) === "medio"); }) : []);
+    // Anche la domenica della settimana prima conta per il lunedì.
+    if (ownGym?.some((x) => x.day === "Dom" && (legLoad(x) === "pesante" || legLoad(x) === "medio"))) legDays.add(addDays(weekStart, -1));
+    const afterLegs = (sp: Sport, d: string) => (sp === "run" || sp === "bike") && legDays.has(addDays(d, -1));
     const sportOk = (s: Sport, d: string) => !a.sportDays[s]?.length || a.sportDays[s]!.includes(weekdayName(d, true));
 
     // 4. Ruoli
@@ -454,7 +462,8 @@ export function generatePlan(input: PlanInput): PlanDraft {
     const freeLongDays = usable.filter((d) => longDays.includes(weekdayName(d, true)));
     for (const l of longs) {
       const ok = (d: string) => !used.has(d) && sportOk(l.sport, d) && !testDays.some((t) => Math.abs(daysBetween(t, d)) <= 1);
-      const day = (l.sport === "run" ? [...freeLongDays].reverse() : freeLongDays).find(ok);
+      const order = l.sport === "run" ? [...freeLongDays].reverse() : freeLongDays;
+      const day = order.find((d) => ok(d) && !afterLegs(l.sport, d)) ?? order.find(ok);
       if (day) {
         take(day, l);
         continue;
@@ -471,7 +480,7 @@ export function generatePlan(input: PlanInput): PlanDraft {
     // tra loro né accanto ad altre sedute dure), poi quella con le sedute più distanziate. Le settimane hanno al
     // massimo 3–4 sedute di qualità e 7 giorni: la ricerca completa è immediata.
     const qs = slots.filter((x) => x.role === "qualita").sort((x, y) => x.priority - y.priority || constrained(x.sport) - constrained(y.sport));
-    const free = (q: Slot) => usable.filter((d) => !used.has(d) && (!isHard(q.type) || !nearHard(d)) && sportOk(q.sport, d) && !(raceThisWeek && d > raceThisWeek.date));
+    const free = (q: Slot) => usable.filter((d) => !used.has(d) && (!isHard(q.type) || (!nearHard(d) && !afterLegs(q.sport, d))) && sportOk(q.sport, d) && !(raceThisWeek && d > raceThisWeek.date));
     let best: { days: (string | null)[]; placed: number; spread: number; prio: number } = { days: qs.map(() => null), placed: 0, spread: -1, prio: 0 };
     const search = (i: number, chosen: (string | null)[]) => {
       if (i === qs.length) {
@@ -614,9 +623,39 @@ export function generatePlan(input: PlanInput): PlanDraft {
       created.push({ w: wkt, slot });
     }
 
+    // Scheda di palestra dell'atleta: nei suoi giorni, sempre. Nella settimana di gara le gambe diventano parte alta o mobilità.
+    if (ownGym) {
+      for (const d of days) {
+        const g = ownGym.find((x) => x.day === weekdayName(d, true));
+        if (!g || (raceThisWeek && (d === raceThisWeek.date || d === addDays(raceThisWeek.date, 1)))) continue;
+        const nearRace = raceThisWeek && d < raceThisWeek.date && daysBetween(d, raceThisWeek.date) <= 4 && legLoad(g);
+        const upper = g.groups.filter((x) => !["gambe", "glutei e femorali", "parte bassa", "polpacci", "total body"].includes(x));
+        const groups = nearRace ? (upper.length ? upper : ["mobilità", "core"]) : g.groups;
+        const dur = Math.max(20, Math.min(120, g.durationMin || 60));
+        const base = sized(legLoad({ groups }) ? "forza_specifica" : "forza_generale", dur);
+        created.push({
+          w: {
+            ...base,
+            date: d,
+            title: nearRace ? `${gymLabel({ groups })} (settimana di gara)` : gymLabel(g),
+            objective: nearRace ? "Settimana di gara: niente gambe, per arrivare con le gambe fresche." : "La tua scheda di palestra: il programma di resistenza è costruito intorno a questi giorni.",
+            durationMin: dur,
+            structure: {
+              warmup: [{ label: "Riscaldamento e mobilità", durationMin: 10, rpe: [2, 3] }],
+              main: [{ label: groups.join(", "), durationMin: dur - 15, rpe: [6, 7], note: legLoad({ groups }) ? "1–2 ripetizioni di margine: niente cedimento nelle settimane di carico" : undefined }],
+              cooldown: [{ label: "Allungamento", durationMin: 5, rpe: [1, 2] }],
+            },
+          },
+          slot: { sport: "gym", role: "palestra", type: "forza_generale", minutes: dur, priority: 1 },
+        });
+      }
+      created.sort((x, y) => x.w.date.localeCompare(y.w.date));
+    }
+
     // Tetto della settimana: prima si accorciano le sedute facili, poi si tolgono le meno importanti.
     const cap = Math.min(availMin, Math.round(targetMin * 1.1));
-    const total = () => created.reduce((t, c) => t + c.w.durationMin, 0);
+    // La palestra della scheda dell'atleta non toglie tempo alla resistenza: è una sua scelta, fuori dal conto.
+    const total = () => created.reduce((t, c) => t + (ownGym && c.slot.role === "palestra" ? 0 : c.w.durationMin), 0);
     // Sedute già alla durata minima del loro modello: non si accorciano più (evita un ciclo infinito).
     const atMinimum = new Set<DraftWorkout>();
     while (total() > cap) {
@@ -635,7 +674,7 @@ export function generatePlan(input: PlanInput): PlanDraft {
       }
       const removable = created
         .map((c, i) => ({ c, i }))
-        .filter(({ c }) => c.slot.role === "facile" || c.slot.role === "palestra")
+        .filter(({ c }) => c.slot.role === "facile" || (c.slot.role === "palestra" && !ownGym))
         .sort((x, y) => y.c.slot.priority - x.c.slot.priority)[0];
       if (!removable) break;
       created.splice(removable.i, 1);

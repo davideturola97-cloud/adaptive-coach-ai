@@ -163,6 +163,22 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
           </section>
         )}
 
+        <section>
+          <SectionTitle>Scheda di palestra</SectionTitle>
+          <Card className="flex flex-col gap-3">
+            {a.gymSchedule?.length ? (
+              <ul className="flex flex-col gap-1 text-sm">
+                {a.gymSchedule.map((g) => <li key={g.day}><b>{g.day}</b> · {g.groups.join(", ")} · {g.durationMin}&apos;</li>)}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted">Hai una scheda a giorni fissi (es. lunedì petto e tricipiti, giovedì gambe)? Inseriscila: il coach ci costruisce intorno il programma e ti avvisa dei conflitti.</p>
+            )}
+            <Link href="/profilo/palestra" className="inline-flex min-h-11 items-center self-start rounded-xl border border-line px-4 text-sm font-semibold hover:border-faint">
+              {a.gymSchedule?.length ? "Modifica la scheda e leggi i consigli" : "Inserisci la scheda"}
+            </Link>
+          </Card>
+        </section>
+
         <section id="strava" className="scroll-mt-4">
           <SectionTitle>Strava</SectionTitle>
           <StravaSection status={strStatus} esito={strava} demo={demo} />

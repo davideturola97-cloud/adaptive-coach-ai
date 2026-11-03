@@ -13,6 +13,7 @@ import { feedbackSignals } from "@/lib/training/feedback";
 import { formatDuration, formatPace, formatSwimPace } from "@/lib/training/formulas";
 import { analyzeSplits } from "@/lib/training/splits";
 import { analyzeActivity } from "@/lib/training/analysis";
+import { gymAdvice } from "@/lib/training/gym-schedule";
 import { formatRaceTime, predictRaces, raceGoals } from "@/lib/training/predictions";
 import { TEST_CATALOG } from "@/lib/training/tests";
 import type { ChatClient, ChatMessage, ToolDef } from "./openai";
@@ -195,7 +196,11 @@ export function runTool(name: string, rawArgs: string, ctx: ToolContext): string
       if (!ISO.test(from) || !ISO.test(to) || to < from) return "Date non valide.";
       const end = to > addDays(from, 31) ? addDays(from, 31) : to;
       const rows = data.plan.filter((w) => w.date >= from && w.date <= end).map(workoutLine);
-      return rows.length ? rows.join("\n") : "Nessuna seduta in quel periodo.";
+      const gs = data.athlete.gymSchedule;
+      const gym = gs?.length
+        ? `\nScheda di palestra dell'atleta (giorni fissi): ${gs.map((g) => `${g.day} ${g.groups.join(" e ")} ${g.durationMin}'`).join("; ")}.\nConsigli sulla scheda: ${gymAdvice(gs, data.plan, data.events, data.athlete, data.today).map((x) => `[${x.level}] ${x.text}`).join(" ")}`
+        : "";
+      return (rows.length ? rows.join("\n") : "Nessuna seduta in quel periodo.") + gym;
     }
     case "leggi_attivita": {
       const days = Math.min(60, Math.max(1, Number(args.giorni) || 14));
