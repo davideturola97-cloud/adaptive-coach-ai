@@ -81,6 +81,7 @@ async function loadAppData(): Promise<AppData> {
       distanceKm: num(a.distance_km), avgHr: num(a.avg_hr), avgPowerW: num(a.avg_power_w), elevationM: num(a.elevation_m), source: a.source,
       splits: Array.isArray(a.splits) ? a.splits : undefined,
       externalId: a.external_id ?? undefined,
+      gymLog: Array.isArray(a.gym_log) ? a.gym_log : undefined,
       feedback: f ? { rpe: f.rpe, muscleFatigue: f.muscle_fatigue, cardioFatigue: f.cardio_fatigue, sleepQuality: f.sleep_quality ?? undefined, feeling: f.feeling, pain: f.pain ?? undefined, notes: f.notes ?? undefined } : undefined,
     };
   });

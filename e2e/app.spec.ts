@@ -50,7 +50,7 @@ test("una seduta svolta mostra dati, analisi e intertempi", async ({ page }) => 
   for (let i = 1; i <= 14; i++) {
     const d = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
     await page.goto(`/allenamenti/w-${d}`);
-    if (await page.getByText("Attività svolta").isVisible().catch(() => false)) break;
+    if (await page.getByText("Analisi dell'allenamento").isVisible().catch(() => false)) break;
   }
   await expect(page.getByText("Analisi dell'allenamento")).toBeVisible();
   await noHorizontalScroll(page);
@@ -138,5 +138,12 @@ test("scheda di palestra: giorni, gruppi e consigli del coach", async ({ page })
   await page.getByRole("button", { name: "Aggiungi esercizio" }).first().click();
   await expect(page.getByLabel("Esercizio").nth(4)).toBeVisible();
   await expect(page.getByRole("button", { name: "Salva la scheda" })).toBeDisabled();
+  await noHorizontalScroll(page);
+});
+
+test("palestra: progressione dei carichi dalle sedute registrate", async ({ page }) => {
+  await page.goto("/profilo/palestra");
+  await expect(page.getByText("Progressione dei carichi")).toBeVisible();
+  await expect(page.getByText(/Panca piana/).first()).toBeVisible();
   await noHorizontalScroll(page);
 });

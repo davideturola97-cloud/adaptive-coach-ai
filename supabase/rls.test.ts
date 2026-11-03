@@ -37,7 +37,7 @@ async function as(user: string | null, sql: string, params: unknown[] = []) {
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(SUPABASE_STUB);
-  for (const f of ["0001_schema.sql", "0002_multisport.sql", "0003_plan.sql", "0004_activities.sql", "0005_reschedule.sql", "0006_coach_ai.sql", "0007_splits.sql", "0008_auth_throttle.sql", "0009_strava.sql", "0010_gym_schedule.sql"]) {
+  for (const f of ["0001_schema.sql", "0002_multisport.sql", "0003_plan.sql", "0004_activities.sql", "0005_reschedule.sql", "0006_coach_ai.sql", "0007_splits.sql", "0008_auth_throttle.sql", "0009_strava.sql", "0010_gym_schedule.sql", "0011_gym_log.sql"]) {
     await db.exec(readFileSync(path.join(__dirname, "migrations", f), "utf8"));
   }
   // Le migrazioni devono poter essere rieseguite senza errori.
@@ -50,6 +50,7 @@ beforeAll(async () => {
   await db.exec(readFileSync(path.join(__dirname, "migrations/0008_auth_throttle.sql"), "utf8"));
   await db.exec(readFileSync(path.join(__dirname, "migrations/0009_strava.sql"), "utf8"));
   await db.exec(readFileSync(path.join(__dirname, "migrations/0010_gym_schedule.sql"), "utf8"));
+  await db.exec(readFileSync(path.join(__dirname, "migrations/0011_gym_log.sql"), "utf8"));
   await db.exec(`insert into auth.users (id, email) values ('${ALICE}', 'a@example.com'), ('${BOB}', 'b@example.com');`);
 });
 
@@ -374,5 +375,18 @@ describe("Strava", () => {
     await as(CARLA, "select public.add_feedback($1, $2)", [id, { ...fb, rpe: 7 }]);
     const r = await as(CARLA, "select rpe from public.feedback where activity_id = $1", [id]);
     expect(r.rows).toEqual([{ rpe: 7 }]);
+  });
+});
+
+describe("registro della palestra", () => {
+  const EVA = "55555555-5555-5555-5555-555555555555";
+  beforeAll(async () => {
+    await db.exec(`insert into auth.users (id, email) values ('${EVA}', 'e@example.com') on conflict do nothing;`);
+  });
+  it("record_activity salva carichi e ripetizioni", async () => {
+    const log = [{ name: "Squat", sets: 4, reps: "8", loadKg: 70, done: true }];
+    await as(EVA, "select public.record_activity($1, null)", [{ activity_date: "2026-11-05", sport: "gym", title: "Gambe", duration_min: 60, source: "manuale", gym_log: log }]);
+    const r = await as(EVA, "select gym_log from public.activities");
+    expect(r.rows[0].gym_log).toEqual(log);
   });
 });

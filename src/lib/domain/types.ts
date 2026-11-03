@@ -55,6 +55,8 @@ export interface WorkoutStep {
   note?: string;
   /** Zona di passo della corsa per questa fase (es. "soglia", "mezza"); "rpe" = solo sensazioni, nessun passo. */
   zone?: string;
+  /** Esercizio della scheda di palestra (serie, ripetizioni, carico previsti). */
+  exercise?: GymExercise;
 }
 
 export interface WorkoutStructure {
@@ -125,6 +127,8 @@ export interface CompletedActivity {
   /** Identificativo dell'attività di origine, es. "strava:123456". */
   externalId?: string;
   splits?: Split[];
+  /** Palestra: carichi e ripetizioni fatti davvero. */
+  gymLog?: GymLogEntry[];
   feedback?: Feedback;
 }
 
@@ -170,6 +174,15 @@ export interface GymExercise {
   loadKg?: number;
   restSec?: number;
   note?: string;
+}
+
+/** Un esercizio fatto: carico usato, ripetizioni per serie e se tutte le serie sono riuscite. */
+export interface GymLogEntry {
+  name: string;
+  sets: number;
+  reps: string;
+  loadKg?: number;
+  done: boolean;
 }
 
 export interface GymDay {

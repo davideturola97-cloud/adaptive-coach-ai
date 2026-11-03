@@ -8,6 +8,7 @@ import { sportLabel } from "@/lib/domain/sports";
 import { getUser } from "@/lib/supabase/server";
 import { dedupeKey, findSimilar, matchPlanned } from "@/lib/training/feedback";
 import { formatDuration } from "@/lib/training/formulas";
+import { parseGymLog } from "@/lib/training/gym-parse";
 
 export type LogState = { errors?: string[]; duplicate?: string };
 
@@ -51,6 +52,7 @@ export async function logActivity(_: LogState, fd: FormData): Promise<LogState> 
       dedupe_key: fd.get("confirmDuplicate") === "1" ? null : dedupeKey(a.sport, a.date, a.durationMin),
       planned_workout_id: plannedId ?? null,
       splits: splitsFromForm(fd.get("splits")) ?? null,
+      ...(a.sport === "gym" && parseGymLog(fd.get("gymLog")) && { gym_log: parseGymLog(fd.get("gymLog")) }),
     },
     p_feedback: {
       rpe: f.rpe,
@@ -64,7 +66,7 @@ export async function logActivity(_: LogState, fd: FormData): Promise<LogState> 
   });
   if (error) {
     if (/duplicate|unique/i.test(error.message)) return { duplicate: "Esiste già un'attività quasi identica (stesso sport, giorno e durata). È la stessa?" };
-    return { errors: ["Salvataggio non riuscito. Hai eseguito lo script 0004_activities.sql su Supabase?"] };
+    return { errors: [fd.get("gymLog") ? "Salvataggio non riuscito. Hai eseguito lo script 0011_gym_log.sql su Supabase?" : "Salvataggio non riuscito. Hai eseguito lo script 0004_activities.sql su Supabase?"] };
   }
   revalidatePath("/", "layout");
   redirect(plannedId ? `/allenamenti/${plannedId}?salvato=1` : `/attivita/${id}?salvato=1`);

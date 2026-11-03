@@ -636,7 +636,7 @@ export function generatePlan(input: PlanInput): PlanDraft {
         // Esercizi della scheda: vicino alla gara senza quelli per le gambe; in scarico e settimana di gara meno serie.
         const light = phase === "scarico" || phase === "gara" || phase === "recupero";
         const exs = (g.exercises ?? []).filter((e) => !(nearRace && isLegExercise(e))).map((e) => (light ? reduceExercise(e, 0.6) : e));
-        const exSteps = exs.map((e) => ({ label: e.name, durationMin: exerciseMinutes(e), rpe: [6, 8] as [number, number], note: exerciseLine(e), zone: "rpe" }));
+        const exSteps = exs.map((e) => ({ label: e.name, durationMin: exerciseMinutes(e), rpe: [6, 8] as [number, number], note: exerciseLine(e), zone: "rpe", exercise: e }));
         const lightNote = light ? `${PHASE_LABEL[phase]}: serie ridotte al 60%, stessi carichi. ` : "";
         created.push({
           w: {

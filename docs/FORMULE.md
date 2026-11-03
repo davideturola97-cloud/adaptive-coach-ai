@@ -203,3 +203,10 @@ prima, le gambe diventano parte alta o mobilità. Consigli (prossime 2 settimane
 - gambe il giorno dopo il lungo → carichi moderati; spalle/dorsali il giorno prima di nuoto di qualità → leggere;
 - scheda: due sedute di gambe pesanti → una diventa richiamo leggero; nessuna seduta di gambe con corsa o bici → aggiungerla;
   niente core → 10' di core; 4 o più giorni → serie lontane dal cedimento.
+
+## Progressione dei carichi in palestra (src/lib/training/gym-progress.ts)
+
+Dopo ogni seduta di palestra si registrano carico, ripetizioni e se tutte le serie sono riuscite (modulo già compilato).
+Doppia progressione: si sale quando tutte le serie riescono al massimo delle ripetizioni previste per 2 sedute di fila
+(1 se le ripetizioni sono un numero fisso). Aumento +2,5 kg (parte alta, esercizi piccoli), +5 kg (squat, stacchi, leg press,
+hip thrust), arrotondato a 2,5 kg. Due sedute di fila non riuscite: −5%. Gara A entro 3 settimane: carichi delle gambe invariati.

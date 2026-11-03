@@ -14,6 +14,7 @@ import { formatDuration, formatPace, formatSwimPace } from "@/lib/training/formu
 import { analyzeSplits } from "@/lib/training/splits";
 import { analyzeActivity } from "@/lib/training/analysis";
 import { gymAdvice } from "@/lib/training/gym-schedule";
+import { scheduleProgress } from "@/lib/training/gym-progress";
 import { formatRaceTime, predictRaces, raceGoals } from "@/lib/training/predictions";
 import { TEST_CATALOG } from "@/lib/training/tests";
 import type { ChatClient, ChatMessage, ToolDef } from "./openai";
@@ -198,7 +199,7 @@ export function runTool(name: string, rawArgs: string, ctx: ToolContext): string
       const rows = data.plan.filter((w) => w.date >= from && w.date <= end).map(workoutLine);
       const gs = data.athlete.gymSchedule;
       const gym = gs?.length
-        ? `\nScheda di palestra dell'atleta (giorni fissi): ${gs.map((g) => `${g.day} ${g.groups.join(" e ")} ${g.durationMin}'${g.exercises?.length ? ` [${g.exercises.map((e) => `${e.name} ${e.sets}×${e.reps}${e.loadKg ? ` ${e.loadKg} kg` : ""}${e.restSec ? ` rec ${e.restSec}s` : ""}`).join(", ")}]` : ""}`).join("; ")}.\nConsigli sulla scheda: ${gymAdvice(gs, data.plan, data.events, data.athlete, data.today).map((x) => `[${x.level}] ${x.text}`).join(" ")}`
+        ? `\nScheda di palestra dell'atleta (giorni fissi): ${gs.map((g) => `${g.day} ${g.groups.join(" e ")} ${g.durationMin}'${g.exercises?.length ? ` [${g.exercises.map((e) => `${e.name} ${e.sets}×${e.reps}${e.loadKg ? ` ${e.loadKg} kg` : ""}${e.restSec ? ` rec ${e.restSec}s` : ""}`).join(", ")}]` : ""}`).join("; ")}.\nConsigli sulla scheda: ${gymAdvice(gs, data.plan, data.events, data.athlete, data.today).map((x) => `[${x.level}] ${x.text}`).join(" ")}\nProgressione dei carichi: ${scheduleProgress(gs, data.activities, data.events, data.today).map((x) => `${x.name} (${x.day}): ${x.action}${x.loadKg !== undefined ? ` ${x.loadKg} kg` : ""}, ${x.reason}`).join("; ")}`
         : "";
       return (rows.length ? rows.join("\n") : "Nessuna seduta in quel periodo.") + gym;
     }

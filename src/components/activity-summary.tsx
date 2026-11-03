@@ -51,7 +51,23 @@ export function ActivitySummary({ a, back, editable, planned, athlete, history }
         {a.avgPowerW && <Item label="Potenza media" value={`${a.avgPowerW} W`} />}
         {a.elevationM !== undefined && a.elevationM > 0 && <Item label="Dislivello" value={`${a.elevationM} m`} />}
       </div>
-      <ActivityAnalysisCard a={a} planned={planned} athlete={athlete} history={history} />
+      {a.gymLog?.length ? (
+        <div className="flex flex-col gap-1 border-t border-line pt-3 text-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Esercizi</p>
+          <ul className="flex flex-col">
+            {a.gymLog.map((e, i) => (
+              <li key={i} className="flex justify-between gap-3 border-b border-line py-1.5 last:border-0">
+                <span>{e.name}</span>
+                <span className="num text-right">
+                  {e.sets} × {e.reps}{e.loadKg ? ` · ${String(e.loadKg).replace(".", ",")} kg` : ""}
+                  {!e.done && <span className="text-warn"> · non tutte riuscite</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {a.sport !== "gym" && <ActivityAnalysisCard a={a} planned={planned} athlete={athlete} history={history} />}
       {a.splits?.length ? <div className="border-t border-line pt-3"><SplitsView splits={a.splits} sport={a.sport} planned={planned} athlete={athlete} /></div> : null}
       {f && (
         <div className="flex flex-col gap-2 border-t border-line pt-3 text-sm">

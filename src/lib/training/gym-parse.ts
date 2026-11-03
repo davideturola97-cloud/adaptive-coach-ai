@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { GymExercise } from "@/lib/domain/types";
+import type { GymExercise, GymLogEntry } from "@/lib/domain/types";
 
 const num = (min: number, max: number) =>
   z.preprocess((v) => (v === "" || v === null || v === undefined ? undefined : Number(String(v).replace(",", "."))), z.number().min(min).max(max).optional());
@@ -39,3 +39,29 @@ export function parseExercises(raw: FormDataEntryValue | null, day: string): Gym
   return out;
 }
 
+
+const logSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+  sets: z.preprocess((v) => Number(v), z.number().int().min(1).max(10)),
+  reps: z.string().trim().min(1).max(12),
+  loadKg: num(0, 500),
+  done: z.preprocess((v) => v === true || v === "true", z.boolean()),
+});
+
+/** Registro della seduta di palestra dal modulo. Valori sbagliati: la riga si scarta (non blocca il salvataggio). */
+export function parseGymLog(raw: FormDataEntryValue | null): GymLogEntry[] | undefined {
+  if (typeof raw !== "string" || !raw) return undefined;
+  try {
+    const rows = JSON.parse(raw);
+    if (!Array.isArray(rows)) return undefined;
+    const out = rows.slice(0, 20).flatMap((r) => {
+      const p = logSchema.safeParse(r);
+      if (!p.success) return [];
+      const e = p.data;
+      return [{ name: e.name, sets: e.sets, reps: e.reps, ...(e.loadKg !== undefined && { loadKg: e.loadKg }), done: e.done }];
+    });
+    return out.length ? out : undefined;
+  } catch {
+    return undefined;
+  }
+}

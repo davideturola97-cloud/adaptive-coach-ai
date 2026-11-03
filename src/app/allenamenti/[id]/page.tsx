@@ -11,6 +11,8 @@ import type { WorkoutStep } from "@/lib/domain/types";
 import { getAppData } from "@/lib/data/repository";
 import { formatDuration } from "@/lib/training/formulas";
 import { gymAdvice } from "@/lib/training/gym-schedule";
+import { suggestLoad } from "@/lib/training/gym-progress";
+import { weekdayName as wd } from "@/lib/dates";
 import { GymAdviceList } from "@/components/gym-advice";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +48,16 @@ export default async function WorkoutPage({ params, searchParams }: { params: Pr
   const w = plan.find((p) => p.id === id);
   if (!w) notFound();
   const done = w.completedActivityId ? activities.find((a) => a.id === w.completedActivityId) : undefined;
+  // Palestra: esercizi della seduta (o della scheda per quel giorno) con il carico consigliato dalla progressione.
+  const gymExs = w.sport === "gym"
+    ? (w.structure.main.map((s) => s.exercise).filter(Boolean).length
+        ? w.structure.main.map((s) => s.exercise!).filter(Boolean)
+        : athlete.gymSchedule?.find((g) => g.day === wd(w.date, true))?.exercises ?? [])
+    : [];
+  const gymExercises = gymExs.map((e) => {
+    const s = suggestLoad(e, activities, events, today);
+    return { exercise: e, suggestKg: s.loadKg, hint: s.action === "aumenta" || s.action === "riduci" ? `Coach: ${s.reason}` : undefined };
+  });
 
   return (
     <article className="flex flex-col gap-6">
@@ -173,7 +185,7 @@ export default async function WorkoutPage({ params, searchParams }: { params: Pr
             <div className="mt-4">
               <ActivityForm
                 plannedId={w.id}
-                defaults={{ date: w.date <= today ? w.date : today, sport: w.sport, durationMin: w.durationMin, distanceKm: w.distanceKm }}
+                defaults={{ date: w.date <= today ? w.date : today, sport: w.sport, durationMin: w.durationMin, distanceKm: w.distanceKm, gymExercises }}
                 sports={athlete.sports.map((s) => s.sport)}
                 today={today}
                 demo={demo}

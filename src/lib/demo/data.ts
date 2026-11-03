@@ -102,6 +102,14 @@ export function buildDemoData(now = new Date()): DemoData {
           feedback,
           // Intertempi dimostrativi per le corse: leggera progressione con un po' di variabilità.
           splits: isRun ? demoSplits(Math.floor((durationMin * 60) / paceSec), paceSec, 128 + rpe * 5, rand) : undefined,
+          // Palestra del lunedì: registro dei carichi della scheda dimostrativa, con una lenta progressione.
+          gymLog: isGym && d === 0 && w >= 6
+            ? [
+                { name: "Panca piana", sets: 4, reps: "8", loadKg: 55 + Math.min(5, (w - 6) * 2.5), done: true },
+                { name: "Spinte con manubri", sets: 3, reps: "10", loadKg: 20, done: w % 2 === 0 },
+                { name: "Pushdown ai cavi", sets: 3, reps: "12", loadKg: 25, done: true },
+              ]
+            : undefined,
         };
         activities.push(act);
         workout.completedActivityId = act.id;

@@ -7,6 +7,7 @@ import { FEELINGS } from "@/lib/domain/activity-schema";
 import { SPORT_KEYS, SPORTS } from "@/lib/domain/sports";
 import type { Sport } from "@/lib/domain/types";
 import { Field, inputCls } from "./form";
+import { GymLogFields, type GymLogDefault } from "./gym-log-fields";
 
 const RPE_HINT: Record<number, string> = {
   1: "Riposo", 2: "Molto facile", 3: "Facile", 4: "Comodo", 5: "Moderato",
@@ -81,6 +82,8 @@ export interface ActivityDefaults {
   source?: "manuale" | "screenshot";
   /** Intertempi letti dallo screenshot. */
   splits?: import("@/lib/domain/types").Split[];
+  /** Palestra: esercizi della scheda da registrare, con il carico consigliato. */
+  gymExercises?: GymLogDefault[];
 }
 
 export function ActivityForm({ defaults, plannedId, sports, today, demo }: { defaults: ActivityDefaults; plannedId?: string; sports: Sport[]; today: string; demo?: boolean }) {
@@ -133,6 +136,8 @@ export function ActivityForm({ defaults, plannedId, sports, today, demo }: { def
         {sport === "bike" && <Field label="Potenza media (W)" hint="Facoltativa"><input name="avgPowerW" inputMode="numeric" defaultValue={defaults.avgPowerW ?? ""} className={inputCls} /></Field>}
         {(sport === "bike" || sport === "run") && <Field label="Dislivello (m)" hint="Facoltativo"><input name="elevationM" inputMode="numeric" defaultValue={defaults.elevationM ?? ""} className={inputCls} /></Field>}
       </div>
+
+      {sport === "gym" && defaults.gymExercises?.length ? <GymLogFields items={defaults.gymExercises} /> : null}
 
       <div className="rounded-[var(--radius-card)] border border-line bg-surface/40 p-4 sm:p-5">
         <h3 className="mb-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted">Com&apos;è andata</h3>
