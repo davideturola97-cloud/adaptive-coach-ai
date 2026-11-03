@@ -37,7 +37,7 @@ async function as(user: string | null, sql: string, params: unknown[] = []) {
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(SUPABASE_STUB);
-  for (const f of ["0001_schema.sql", "0002_multisport.sql", "0003_plan.sql", "0004_activities.sql", "0005_reschedule.sql", "0006_coach_ai.sql", "0007_splits.sql", "0008_auth_throttle.sql", "0009_strava.sql", "0010_gym_schedule.sql", "0011_gym_log.sql"]) {
+  for (const f of ["0001_schema.sql", "0002_multisport.sql", "0003_plan.sql", "0004_activities.sql", "0005_reschedule.sql", "0006_coach_ai.sql", "0007_splits.sql", "0008_auth_throttle.sql", "0009_strava.sql", "0010_gym_schedule.sql", "0011_gym_log.sql", "0012_daily.sql"]) {
     await db.exec(readFileSync(path.join(__dirname, "migrations", f), "utf8"));
   }
   // Le migrazioni devono poter essere rieseguite senza errori.
@@ -51,6 +51,7 @@ beforeAll(async () => {
   await db.exec(readFileSync(path.join(__dirname, "migrations/0009_strava.sql"), "utf8"));
   await db.exec(readFileSync(path.join(__dirname, "migrations/0010_gym_schedule.sql"), "utf8"));
   await db.exec(readFileSync(path.join(__dirname, "migrations/0011_gym_log.sql"), "utf8"));
+  await db.exec(readFileSync(path.join(__dirname, "migrations/0012_daily.sql"), "utf8"));
   await db.exec(`insert into auth.users (id, email) values ('${ALICE}', 'a@example.com'), ('${BOB}', 'b@example.com');`);
 });
 
@@ -388,5 +389,20 @@ describe("registro della palestra", () => {
     await as(EVA, "select public.record_activity($1, null)", [{ activity_date: "2026-11-05", sport: "gym", title: "Gambe", duration_min: 60, source: "manuale", gym_log: log }]);
     const r = await as(EVA, "select gym_log from public.activities");
     expect(r.rows[0].gym_log).toEqual(log);
+  });
+});
+
+describe("controllo del mattino", () => {
+  const FEDE = "66666666-6666-6666-6666-666666666666";
+  const GINO = "77777777-7777-7777-7777-777777777777";
+  beforeAll(async () => {
+    await db.exec(`insert into auth.users (id, email) values ('${FEDE}', 'f@example.com'), ('${GINO}', 'g@example.com') on conflict do nothing;`);
+  });
+  it("uno al giorno, visibile solo al proprietario, valori controllati", async () => {
+    await as(FEDE, "insert into public.daily_checkins (checkin_date, sleep, fatigue, pain) values ('2026-11-03', 2, 4, 'leggero')");
+    await expect(as(FEDE, "insert into public.daily_checkins (checkin_date, sleep, fatigue) values ('2026-11-03', 3, 3)")).rejects.toThrow();
+    await expect(as(FEDE, "insert into public.daily_checkins (checkin_date, sleep, fatigue) values ('2026-11-04', 9, 3)")).rejects.toThrow();
+    expect((await as(GINO, "select * from public.daily_checkins")).rows).toEqual([]);
+    expect((await as(FEDE, "select sleep from public.daily_checkins")).rows).toEqual([{ sleep: 2 }]);
   });
 });

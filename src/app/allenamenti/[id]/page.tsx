@@ -176,7 +176,7 @@ export default async function WorkoutPage({ params, searchParams }: { params: Pr
       )}
 
       {w.status === "programmato" && (
-        <section className="flex flex-col gap-3">
+        <section id="registra" className="flex scroll-mt-4 flex-col gap-3">
           <SectionTitle>Registra la seduta</SectionTitle>
           <details open={w.date <= today} className="rounded-[var(--radius-card)] border border-ok/40 bg-surface p-4 sm:p-5">
             <summary className="flex min-h-10 cursor-pointer items-center gap-2 font-semibold text-ok">

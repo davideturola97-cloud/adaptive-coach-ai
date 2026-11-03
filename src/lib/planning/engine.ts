@@ -63,6 +63,8 @@ export interface PlanInput {
   history?: TrainingHistory;
   /** Ritmo di soglia attuale (s/km), per stimare la durata delle frazioni a distanza. */
   thresholdSec?: number;
+  /** Revisione settimanale: moltiplica il volume della prima settimana (es. 0,85 dopo una settimana pesante). */
+  firstWeekFactor?: number;
 }
 
 const ALL_DAYS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
@@ -317,6 +319,7 @@ export function generatePlan(input: PlanInput): PlanDraft {
     if (isLoad && prevLoadTarget > 0) targetMin = Math.min(targetMin, prevLoadTarget * ramp);
     if (w === 0 && isLoad && !st.weeklyMin) targetMin *= 0.9; // prima settimana prudente se non conosciamo il volume reale
     if (phase === "scarico" && prevLoadTarget > 0) targetMin = Math.min(targetMin, prevLoadTarget * 0.7);
+    if (w === 0 && input.firstWeekFactor) targetMin *= Math.min(1.1, Math.max(0.5, input.firstWeekFactor));
     targetMin = Math.round(Math.min(targetMin, availMin) / 5) * 5;
     if (isLoad) prevLoadTarget = targetMin;
 

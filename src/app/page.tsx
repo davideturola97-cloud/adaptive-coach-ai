@@ -5,21 +5,85 @@ import { redirect } from "next/navigation";
 import { eventDescription } from "@/components/event-summary";
 import { Card, SectionTitle, SportBadge, SportDot, Stat, StatusLabel, WorkoutRow } from "@/components/ui";
 import { addDays, daysBetween, formatDayMonth, mondayOf, weekdayName } from "@/lib/dates";
-import { SPORT_KEYS, SPORTS, WORKOUT_TYPE_LABEL } from "@/lib/domain/sports";
+import { SPORT_KEYS, SPORTS } from "@/lib/domain/sports";
 import { TEST_CATALOG } from "@/lib/training/tests";
 import { Signals } from "@/components/signals";
 import { feedbackSignals } from "@/lib/training/feedback";
 import { getAppData } from "@/lib/data/repository";
 import { adherence, loadState, weeklySummaries } from "@/lib/training/analytics";
 import { formatDuration } from "@/lib/training/formulas";
+import { MorningCheckin, StravaAutoSync, WeeklyReviewCard } from "@/components/today";
+import { AddFeedbackForm } from "@/components/strava";
+import { readinessAdvice } from "@/lib/training/readiness";
+import { proposeReschedule } from "@/lib/planning/reschedule";
+import { weeklyReview } from "@/lib/planning/weekly-review";
+import { paceReference } from "@/lib/training/run-paces";
+import type { PlannedWorkout, WorkoutStep } from "@/lib/domain/types";
+
+/** Una riga per fase: "6 × 3' · 4:25 – 4:35 /km". */
+function stepLine(s: WorkoutStep): string {
+  const what = [s.repeat ? `${s.repeat} ×` : "", s.distanceKm ? (s.distanceKm < 1 ? `${Math.round(s.distanceKm * 1000)} m` : `${String(s.distanceKm).replace(".", ",")} km`) : s.durationMin ? formatDuration(s.durationMin) : ""].filter(Boolean).join(" ");
+  const how = s.exercise ? s.note : s.target?.value ?? `RPE ${s.rpe[0] === s.rpe[1] ? s.rpe[0] : `${s.rpe[0]}–${s.rpe[1]}`}`;
+  return [s.exercise ? s.label : `${s.label}${what ? ` ${what}` : ""}`, how].filter(Boolean).join(" · ");
+}
+
+function TodayWorkout({ w }: { w: PlannedWorkout }) {
+  const st = w.structure;
+  const rows: { k: string; v: string }[] = [
+    ...st.warmup.map((s) => ({ k: "Riscaldamento", v: stepLine(s) })),
+    ...st.main.map((s) => ({ k: s.exercise ? "Esercizio" : "Parte centrale", v: stepLine(s) })),
+    ...(st.recoveries ? [{ k: "Recuperi", v: `${st.recoveries}${st.recoveryTarget ? ` · ${st.recoveryTarget.value}` : ""}` }] : []),
+    ...st.cooldown.map((s) => ({ k: "Defaticamento", v: stepLine(s) })),
+  ];
+  return (
+    <Card className="flex flex-col gap-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <SportBadge sport={w.sport} />
+          <h2 className="mt-2 text-xl font-bold">{w.title}</h2>
+          <p className="mt-1 text-sm text-muted">{formatDuration(w.durationMin)} · {w.intensity}</p>
+        </div>
+        <StatusLabel status={w.status} />
+      </div>
+      <ol className="flex flex-col gap-1.5 border-t border-line pt-3 text-sm">
+        {rows.map((r, i) => (
+          <li key={i} className="flex flex-col sm:flex-row sm:gap-3">
+            <span className="w-32 shrink-0 text-xs uppercase tracking-wide text-faint">{r.k}</span>
+            <span>{r.v}</span>
+          </li>
+        ))}
+      </ol>
+      {w.paceSource && <p className="text-xs text-faint">Passi stimati da: {w.paceSource}</p>}
+      {w.status === "programmato" ? (
+        <div className="grid grid-cols-2 gap-2">
+          <Link href={`/allenamenti/${w.id}#registra`} className="flex min-h-12 items-center justify-center rounded-xl bg-ok font-semibold text-bg">Fatto</Link>
+          <Link href={`/allenamenti/${w.id}`} className="flex min-h-12 items-center justify-center rounded-xl border border-line font-semibold">Dettagli</Link>
+        </div>
+      ) : (
+        <Link href={`/allenamenti/${w.id}`} className="text-sm font-semibold underline">Vedi la seduta</Link>
+      )}
+    </Card>
+  );
+}
 
 export const dynamic = "force-dynamic";
 
 const LOAD_COLOR = { basso: "var(--color-muted)", equilibrato: "var(--color-ok)", "in crescita": "var(--color-warn)", alto: "var(--color-bad)" } as const;
 
 export default async function HomePage() {
-  const { today, athlete, events, plan, activities, mode, onboardingCompleted, plannedTests } = await getAppData();
+  const data = await getAppData();
+  const { today, athlete, events, plan, activities, mode, onboardingCompleted, plannedTests, checkins } = data;
   if (mode === "utente" && !onboardingCompleted) redirect("/onboarding");
+  const demo = mode === "demo";
+  // Controllo del mattino: se fatto, il consiglio del coach (e la proposta concreta) per oggi.
+  const checkin = checkins.find((c) => c.date === today);
+  const advice = checkin ? readinessAdvice(checkin, plan.filter((p) => p.date === today), checkins) : undefined;
+  const firstProposal = advice?.disruption ? proposeReschedule({ today, athlete, plan, events, disruption: advice.disruption }).proposals.find((p) => p.changes.length) : undefined;
+  // Attività da Strava che aspettano lo sforzo percepito.
+  const waiting = activities.filter((a) => a.source === "strava" && !a.feedback).sort((x, y) => y.date.localeCompare(x.date));
+  // Revisione della settimana (da sabato a lunedì).
+  const ref = paceReference(athlete, activities, plan, today);
+  const review = mode === "utente" || demo ? weeklyReview({ ...data, thresholdSec: ref?.thresholdSec }) : null;
   const practiced = SPORT_KEYS.filter((s) => athlete.sports.some((x) => x.sport === s) || activities.some((a) => a.sport === s));
   const signals = feedbackSignals(activities, plan, today);
   const firstUnlogged = plan.find((p) => p.status === "programmato" && p.date < today && p.date >= addDays(today, -7));
@@ -62,6 +126,35 @@ export default async function HomePage() {
         </Link>
       )}
 
+      {!demo && <StravaAutoSync />}
+
+      <section>
+        <SectionTitle>Come stai oggi</SectionTitle>
+        <MorningCheckin existing={checkin} advice={advice} proposal={firstProposal && { id: firstProposal.id, title: firstProposal.title, summary: firstProposal.summary }} demo={demo} />
+      </section>
+
+      {waiting.length > 0 && (
+        <section>
+          <SectionTitle hint={waiting.length > 1 ? <Link href="/allenamenti" className="font-semibold hover:underline">altre {waiting.length - 1}</Link> : undefined}>Com&apos;è andata?</SectionTitle>
+          <Card className="flex flex-col gap-3">
+            <p className="text-sm">
+              <b>{waiting[0].title || "Attività"}</b> <span className="text-muted">· {weekdayName(waiting[0].date)} {formatDayMonth(waiting[0].date, false)} · da Strava</span>
+            </p>
+            <AddFeedbackForm activityId={waiting[0].id} />
+          </Card>
+        </section>
+      )}
+
+      {review && (
+        <WeeklyReviewCard
+          target={review.targetMonday}
+          summary={review.summary}
+          decision={review.decision}
+          changes={review.changes.map((c) => ({ day: `${weekdayName(c.date)} ${formatDayMonth(c.date, false)}`, before: c.before, after: c.after }))}
+          demo={demo}
+        />
+      )}
+
       <Signals signals={signals} registerHref={firstUnlogged ? `/allenamenti/${firstUnlogged.id}` : undefined} />
 
       {dueTests.length > 0 && (
@@ -81,25 +174,7 @@ export default async function HomePage() {
         <SectionTitle hint={<Link href="/riprogramma" className="font-semibold text-warn hover:underline">Ho un imprevisto</Link>}>Oggi</SectionTitle>
         {todays.length ? (
           <div className="flex flex-col gap-3">
-            {todays.map((w) => (
-              <Link key={w.id} href={`/allenamenti/${w.id}`} className="block">
-                <Card className="flex flex-col gap-4 transition-colors hover:border-faint">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <SportBadge sport={w.sport} />
-                      <h2 className="mt-2 text-xl font-bold">{w.title}</h2>
-                      <p className="mt-1 text-sm text-muted">{w.objective}</p>
-                    </div>
-                    <ChevronRight className="mt-1 size-5 shrink-0 text-faint" aria-hidden />
-                  </div>
-                  <dl className="grid grid-cols-3 gap-3 border-t border-line pt-4 text-sm">
-                    <div><dt className="text-xs text-muted">Durata</dt><dd className="num text-2xl font-semibold">{formatDuration(w.durationMin)}</dd></div>
-                    <div><dt className="text-xs text-muted">Tipo</dt><dd className="mt-1 font-semibold">{WORKOUT_TYPE_LABEL[w.type]}</dd></div>
-                    <div><dt className="text-xs text-muted">Intensità</dt><dd className="mt-1 font-semibold">{w.intensity}</dd></div>
-                  </dl>
-                </Card>
-              </Link>
-            ))}
+            {todays.map((w) => <TodayWorkout key={w.id} w={w} />)}
           </div>
         ) : mode === "utente" && !plan.some((p) => p.date >= today) ? (
           <Link href="/programma" className="block">

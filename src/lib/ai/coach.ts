@@ -27,6 +27,8 @@ export interface CoachData {
   events: RaceEvent[];
   tests: TestResult[];
   plannedTests: PlannedTest[];
+  /** Controlli del mattino recenti (sonno, fatica, dolori). */
+  checkins?: { date: string; sleep: number; fatigue: number; pain: string; painWhere?: string }[];
 }
 
 const d = (iso: string) => `${weekdayName(iso, true)} ${formatDayMonth(iso)}`;
@@ -216,7 +218,8 @@ export function runTool(name: string, rawArgs: string, ctx: ToolContext): string
           return `${a.date} · ${SPORTS[a.sport].label} · ${a.title} · ${formatDuration(a.durationMin)}${a.distanceKm ? ` · ${a.distanceKm} km` : ""}${a.avgHr ? ` · FC ${a.avgHr}` : ""}${a.avgPowerW ? ` · ${a.avgPowerW} W` : ""} (misurato)${fb}${an}${sp}`;
         });
       const skipped = data.plan.filter((w) => w.status === "saltato" && w.date > addDays(data.today, -days)).map((w) => `${w.date} · saltata: ${w.title}${w.skipReason ? ` (${w.skipReason})` : ""}`);
-      return [...rows, ...skipped].join("\n") || "Nessuna attività registrata in quel periodo.";
+      const mornings = (data.checkins ?? []).filter((c) => c.date > addDays(data.today, -days)).map((c) => `${c.date} · mattina: sonno ${c.sleep}/5, fatica ${c.fatigue}/5${c.pain !== "nessuno" ? `, dolore ${c.pain}${c.painWhere ? ` (${c.painWhere})` : ""}` : ""}`);
+      return [...rows, ...skipped, ...mornings].join("\n") || "Nessuna attività registrata in quel periodo.";
     }
     case "leggi_test": {
       const t = data.tests.map((x) => `${x.date} · ${TEST_CATALOG[x.kind]?.label ?? x.kind}: ${x.rawValue} → ${x.derived.map((y) => `${y.label} ${y.value} (${y.origin})`).join(", ")}`);

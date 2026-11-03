@@ -1,13 +1,23 @@
 import "server-only";
 import { paceReference, withRunPaces } from "@/lib/training/run-paces";
-import { todayISO } from "@/lib/dates";
+import type { CheckIn } from "@/lib/training/readiness";
+import { addDays, todayISO } from "@/lib/dates";
 import { buildDemoData, type DemoData } from "@/lib/demo/data";
 import type { AthleteProfile, CompletedActivity, Level, PlannedTest, PlannedWorkout, RaceEvent, Sport, TestResult, ValueOrigin, WorkoutStatus, WorkoutType } from "@/lib/domain/types";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { getUser } from "@/lib/supabase/server";
 
 export type Readiness = { flagged: boolean; doctorCleared: boolean; date: string } | null;
-export type AppData = DemoData & { mode: "demo" | "utente"; email?: string; onboardingCompleted: boolean; readiness: Readiness };
+export type AppData = DemoData & {
+  mode: "demo" | "utente";
+  email?: string;
+  onboardingCompleted: boolean;
+  readiness: Readiness;
+  /** Controlli del mattino degli ultimi 14 giorni, dal più recente. */
+  checkins: CheckIn[];
+  /** Lunedì dell'ultima settimana rivista dal coach. */
+  reviewedWeek?: string;
+};
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- le righe arrivano da Supabase senza tipi generati */
 const num = (v: any) => (v === null || v === undefined ? undefined : Number(v));
@@ -56,7 +66,7 @@ export async function getAppData(): Promise<AppData> {
 }
 
 async function loadAppData(): Promise<AppData> {
-  if (!isSupabaseConfigured()) return { ...buildDemoData(), mode: "demo", onboardingCompleted: true, readiness: { flagged: false, doctorCleared: false, date: todayISO() } };
+  if (!isSupabaseConfigured()) return { ...buildDemoData(), mode: "demo", onboardingCompleted: true, readiness: { flagged: false, doctorCleared: false, date: todayISO() }, checkins: [] };
 
   const { supabase, user } = await getUser();
   if (!user) throw new Error("Utente non collegato");
@@ -71,6 +81,8 @@ async function loadAppData(): Promise<AppData> {
     supabase.from("planned_tests").select("*").order("created_at"),
     supabase.from("readiness_checks").select("flagged, doctor_cleared, created_at").order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
+  // Tabelle recenti: se la migrazione non è ancora stata eseguita, l'app funziona lo stesso senza.
+  const checkinRows = await supabase.from("daily_checkins").select("*").gte("checkin_date", addDays(todayISO(), -14)).order("checkin_date", { ascending: false });
   const failed = [profile, sports, events, plan, acts, tests, plannedTests].find((r) => r.error);
   if (failed?.error) throw new Error(`Lettura dati non riuscita: ${failed.error.message}`);
 
@@ -93,6 +105,8 @@ async function loadAppData(): Promise<AppData> {
     onboardingCompleted: Boolean(profile.data?.onboarding_completed),
     readiness: readiness.data ? { flagged: readiness.data.flagged, doctorCleared: readiness.data.doctor_cleared, date: String(readiness.data.created_at).slice(0, 10) } : null,
     today: todayISO(),
+    checkins: (checkinRows.error ? [] : checkinRows.data ?? []).map((c: any): CheckIn => ({ date: c.checkin_date, sleep: c.sleep, fatigue: c.fatigue, pain: c.pain, painWhere: c.pain_where ?? undefined })),
+    reviewedWeek: profile.data?.plan_reviewed_week ?? undefined,
     athlete: mapProfile(profile.data, sports.data ?? []),
     events: (events.data ?? []).map((e: any): RaceEvent => ({
       id: e.id, name: e.name, date: e.event_date, dateTentative: Boolean(e.date_tentative), kind: e.kind ?? "singolo",

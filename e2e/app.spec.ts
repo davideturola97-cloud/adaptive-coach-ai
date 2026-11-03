@@ -147,3 +147,13 @@ test("palestra: progressione dei carichi dalle sedute registrate", async ({ page
   await expect(page.getByText(/Panca piana/).first()).toBeVisible();
   await noHorizontalScroll(page);
 });
+
+test("home: controllo del mattino e consiglio del coach", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByText("Come stai stamattina?")).toBeVisible();
+  await page.locator('input[name="sleep"][value="2"]').check({ force: true });
+  await page.locator('input[name="fatigue"][value="4"]').check({ force: true });
+  await page.getByRole("button", { name: "Fatto", exact: true }).click();
+  await expect(page.getByText(/dormito male|Non sei al meglio|Via libera|riposo/i).first()).toBeVisible();
+  await noHorizontalScroll(page);
+});

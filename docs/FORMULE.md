@@ -210,3 +210,22 @@ Dopo ogni seduta di palestra si registrano carico, ripetizioni e se tutte le ser
 Doppia progressione: si sale quando tutte le serie riescono al massimo delle ripetizioni previste per 2 sedute di fila
 (1 se le ripetizioni sono un numero fisso). Aumento +2,5 kg (parte alta, esercizi piccoli), +5 kg (squat, stacchi, leg press,
 hip thrust), arrotondato a 2,5 kg. Due sedute di fila non riuscite: −5%. Gara A entro 3 settimane: carichi delle gambe invariati.
+
+## Oggi: controllo del mattino (src/lib/training/readiness.ts)
+
+Sonno 1–5, fatica 1–5, dolori (nessuno/leggero/forte). Dolore forte → stop su quella seduta e invito a sentire un medico
+o un fisioterapista se non passa in 2–3 giorni; dolore leggero → togliere l'intensità (proposta "dolore");
+fatica 5, oppure sonno ≤ 2 e fatica ≥ 4, oppure 3 mattine di fila con fatica ≥ 4, con una seduta dura → proposta
+"alleggerisci" del motore di riprogrammazione, applicabile con un tocco e annullabile. Non è una valutazione medica.
+
+## Revisione della settimana (src/lib/planning/weekly-review.ts)
+
+Da sabato a lunedì. Guarda gli ultimi 7 giorni: sedute fatte/saltate, sedute con RPE di 2 o più sopra il previsto,
+sonno e fatica medi, giorni con fastidi. Settimana pesante (2+ sedute troppo dure, fatica media ≥ 3,8 o fastidi in 2+ giorni)
+o meno del 60% delle sedute fatte → prossima settimana −15% di volume. Il resto del programma si rigenera con la storia
+reale (livelli delle sedute, volume, lunghi). Si mostrano le differenze giorno per giorno; si applica o si tiene com'è.
+
+## Strava automatico
+
+All'apertura dell'app, se Strava è collegato e l'ultimo import ha più di 15 minuti, le attività nuove si importano da sole
+e la Home chiede subito lo sforzo percepito della più recente.
