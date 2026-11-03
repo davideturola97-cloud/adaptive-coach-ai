@@ -134,6 +134,9 @@ test("scheda di palestra: giorni, gruppi e consigli del coach", async ({ page })
   await expect(page.getByRole("heading", { name: "Scheda di palestra" })).toBeVisible();
   await expect(page.getByText("Consigli del coach")).toBeVisible();
   await expect(page.getByText(/Venerdì gambe e sabato/).first()).toBeVisible();
+  await expect(page.getByLabel("Esercizio").first()).toHaveValue("Panca piana");
+  await page.getByRole("button", { name: "Aggiungi esercizio" }).first().click();
+  await expect(page.getByLabel("Esercizio").nth(4)).toBeVisible();
   await expect(page.getByRole("button", { name: "Salva la scheda" })).toBeDisabled();
   await noHorizontalScroll(page);
 });

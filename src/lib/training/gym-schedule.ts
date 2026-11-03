@@ -7,7 +7,7 @@
  * - spalle e dorsali pesanti il giorno prima di una seduta di qualità in acqua: meglio leggere.
  */
 import { addDays, daysBetween, weekdayName } from "@/lib/dates";
-import type { AthleteProfile, GymDay, PlannedWorkout, RaceEvent, Sport, WorkoutType } from "@/lib/domain/types";
+import type { AthleteProfile, GymDay, GymExercise, PlannedWorkout, RaceEvent, Sport, WorkoutType } from "@/lib/domain/types";
 
 export const DAYS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"] as const;
 
@@ -28,9 +28,13 @@ export const MUSCLE_GROUPS: { key: string; legs?: LegLoad; upper?: boolean }[] =
   { key: "mobilità" },
 ];
 
-export function legLoad(day: Pick<GymDay, "groups">): LegLoad | null {
+export function legLoad(day: Pick<GymDay, "groups"> & { exercises?: GymExercise[] }): LegLoad | null {
   const order: LegLoad[] = ["pesante", "medio", "leggero"];
   const loads = day.groups.map((g) => MUSCLE_GROUPS.find((m) => m.key === g)?.legs).filter((x): x is LegLoad => Boolean(x));
+  // Anche senza il gruppo "gambe", due o più esercizi per le gambe (es. squat e affondi) contano come gambe pesanti.
+  const legEx = (day.exercises ?? []).filter((e) => LEG_WORDS.test(e.name)).length;
+  if (legEx >= 2) loads.push("pesante");
+  else if (legEx === 1) loads.push("medio");
   return order.find((o) => loads.includes(o)) ?? null;
 }
 export const upperHeavy = (day: Pick<GymDay, "groups">) => day.groups.some((g) => MUSCLE_GROUPS.find((m) => m.key === g)?.upper);
@@ -110,7 +114,7 @@ export function gymAdvice(
       out.push({
         level: "attenzione",
         date: d,
-        text: `${weekdayName(d)} ${label} e ${dayName(addDays(d, 1))} ${next[0].title.toLowerCase()}: le gambe arrivano stanche alla seduta chiave.${alt ? ` Sposta le gambe a ${alt}` : " Sposta le gambe in un altro giorno"}, oppure quel giorno fai 2 serie leggere senza arrivare a cedimento.`,
+        text: `${weekdayName(d)} ${label} e ${dayName(addDays(d, 1))} ${next[0].title.toLowerCase()}: le gambe arrivano stanche alla seduta chiave.${alt ? ` Sposta le gambe a ${alt}` : " Sposta le gambe in un altro giorno"}, oppure quel giorno alleggerisci${lighterLegs(g.exercises) ? `: ${lighterLegs(g.exercises)}` : " (metà delle serie, carico −20%, niente cedimento)"}.`,
       });
       continue;
     }
@@ -137,4 +141,59 @@ export function gymAdvice(
   // Senza conflitti: lo diciamo, così l'atleta sa che la scheda è stata controllata.
   if (!out.some((a) => a.level === "attenzione")) out.unshift({ level: "ok", text: "Nelle prossime 2 settimane la scheda non crea conflitti con le sedute chiave del programma." });
   return out;
+}
+
+/* ---------- Esercizi ---------- */
+
+
+/** Esercizi suggeriti nel modulo (si può scrivere qualsiasi nome). */
+export const EXERCISE_SUGGESTIONS = [
+  "Squat", "Front squat", "Affondi", "Affondi bulgari", "Leg press", "Stacco rumeno", "Stacco da terra", "Hip thrust", "Ponte glutei",
+  "Step up", "Leg extension", "Leg curl", "Calf raise", "Calf raise seduto",
+  "Panca piana", "Panca inclinata", "Spinte con manubri", "Croci ai cavi", "Piegamenti", "Dip",
+  "Trazioni", "Lat machine", "Rematore con bilanciere", "Rematore con manubrio", "Pulley", "Face pull",
+  "Military press", "Lento avanti con manubri", "Alzate laterali", "Alzate posteriori",
+  "Curl con bilanciere", "Curl con manubri", "Curl a martello", "French press", "Pushdown ai cavi", "Estensioni sopra la testa",
+  "Plank", "Plank laterale", "Dead bug", "Bird dog", "Pallof press", "Crunch", "Russian twist",
+];
+
+const LEG_WORDS = /squat|affond|leg ?press|stacc|hip thrust|ponte glutei|step ?up|leg extension|leg curl|calf|polpacc|pistol|lunge|deadlift|salti|box jump|glute/i;
+/** Esercizi che caricano le gambe (dal nome). */
+export const isLegExercise = (e: Pick<GymExercise, "name">) => LEG_WORDS.test(e.name);
+
+export function restText(sec?: number): string {
+  if (!sec) return "";
+  return sec % 60 ? `${Math.floor(sec / 60) ? `${Math.floor(sec / 60)}'` : ""}${sec % 60}″` : `${sec / 60}'`;
+}
+const kg = (n: number) => `${String(Math.round(n * 2) / 2).replace(".", ",")} kg`;
+
+/** "4 × 8 · 60 kg · recupero 2'" */
+export function exerciseLine(e: GymExercise): string {
+  return [`${e.sets} × ${e.reps}`, e.loadKg ? kg(e.loadKg) : "", e.restSec ? `recupero ${restText(e.restSec)}` : "", e.note ?? ""].filter(Boolean).join(" · ");
+}
+
+/** Versione ridotta: meno serie (×factor, almeno 1) e carico ridotto (×loadFactor, arrotondato a 2,5 kg). */
+export function reduceExercise(e: GymExercise, setFactor: number, loadFactor = 1): GymExercise {
+  const sets = Math.max(1, Math.round(e.sets * setFactor));
+  const loadKg = e.loadKg ? Math.round((e.loadKg * loadFactor) / 2.5) * 2.5 : undefined;
+  return { ...e, sets, ...(loadKg !== undefined && { loadKg }) };
+}
+
+/** Durata stimata di un esercizio in minuti: serie × (ripetizioni × 3″ + recupero). */
+export function exerciseMinutes(e: GymExercise): number {
+  const reps = Number(String(e.reps).match(/\d+/)?.[0] ?? 10);
+  const work = /″|"|s$|sec/.test(e.reps) ? reps : reps * 3;
+  return Math.max(2, Math.round((e.sets * (work + (e.restSec ?? 90))) / 60));
+}
+
+/** Frase con le gambe alleggerite: "squat 2 × 8 a 50 kg invece di 4 × 8 a 60 kg". */
+export function lighterLegs(exercises: GymExercise[] | undefined): string {
+  const legs = (exercises ?? []).filter(isLegExercise).slice(0, 3);
+  if (!legs.length) return "";
+  return legs
+    .map((e) => {
+      const r = reduceExercise(e, 0.5, 0.8);
+      return `${e.name.toLowerCase()} ${r.sets} × ${e.reps}${r.loadKg ? ` a ${kg(r.loadKg)}` : ""} invece di ${e.sets} × ${e.reps}${e.loadKg ? ` a ${kg(e.loadKg)}` : ""}`;
+    })
+    .join(", ");
 }

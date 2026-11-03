@@ -17,7 +17,7 @@ import { template } from "@/lib/training/templates";
 import { applyTargets } from "./targets";
 import { buildSession, fitLevel, maxLevel, FAMILIES, type Family } from "./library";
 import { trainingState, type TrainingHistory } from "./progression";
-import { gymLabel, legLoad } from "@/lib/training/gym-schedule";
+import { exerciseLine, exerciseMinutes, gymLabel, isLegExercise, legLoad, reduceExercise } from "@/lib/training/gym-schedule";
 
 export type Phase = "base" | "costruzione" | "rifinitura" | "scarico" | "gara" | "recupero";
 
@@ -633,16 +633,23 @@ export function generatePlan(input: PlanInput): PlanDraft {
         const groups = nearRace ? (upper.length ? upper : ["mobilità", "core"]) : g.groups;
         const dur = Math.max(20, Math.min(120, g.durationMin || 60));
         const base = sized(legLoad({ groups }) ? "forza_specifica" : "forza_generale", dur);
+        // Esercizi della scheda: vicino alla gara senza quelli per le gambe; in scarico e settimana di gara meno serie.
+        const light = phase === "scarico" || phase === "gara" || phase === "recupero";
+        const exs = (g.exercises ?? []).filter((e) => !(nearRace && isLegExercise(e))).map((e) => (light ? reduceExercise(e, 0.6) : e));
+        const exSteps = exs.map((e) => ({ label: e.name, durationMin: exerciseMinutes(e), rpe: [6, 8] as [number, number], note: exerciseLine(e), zone: "rpe" }));
+        const lightNote = light ? `${PHASE_LABEL[phase]}: serie ridotte al 60%, stessi carichi. ` : "";
         created.push({
           w: {
             ...base,
             date: d,
             title: nearRace ? `${gymLabel({ groups })} (settimana di gara)` : gymLabel(g),
-            objective: nearRace ? "Settimana di gara: niente gambe, per arrivare con le gambe fresche." : "La tua scheda di palestra: il programma di resistenza è costruito intorno a questi giorni.",
-            durationMin: dur,
+            objective: `${lightNote}${nearRace ? "Settimana di gara: niente gambe, per arrivare con le gambe fresche." : "La tua scheda di palestra: il programma di resistenza è costruito intorno a questi giorni."}`,
+            durationMin: exSteps.length ? Math.min(150, 15 + exSteps.reduce((t, x) => t + x.durationMin, 0)) : dur,
             structure: {
               warmup: [{ label: "Riscaldamento e mobilità", durationMin: 10, rpe: [2, 3] }],
-              main: [{ label: groups.join(", "), durationMin: dur - 15, rpe: [6, 7], note: legLoad({ groups }) ? "1–2 ripetizioni di margine: niente cedimento nelle settimane di carico" : undefined }],
+              main: exSteps.length
+                ? exSteps
+                : [{ label: groups.join(", "), durationMin: dur - 15, rpe: [6, 7], note: legLoad({ groups }) ? "1–2 ripetizioni di margine: niente cedimento nelle settimane di carico" : undefined }],
               cooldown: [{ label: "Allungamento", durationMin: 5, rpe: [1, 2] }],
             },
           },

@@ -62,3 +62,50 @@ describe("scheda di palestra", () => {
     expect(thu.title).toMatch(/settimana di gara/);
   });
 });
+
+describe("esercizi della scheda", () => {
+  const gambe: GymDay = {
+    day: "Gio", groups: ["gambe"], durationMin: 60,
+    exercises: [
+      { name: "Squat", sets: 4, reps: "8", loadKg: 60, restSec: 120 },
+      { name: "Affondi", sets: 3, reps: "10", loadKg: 16, restSec: 90 },
+      { name: "Plank", sets: 3, reps: "45″", restSec: 45 },
+    ],
+  };
+
+  it("validazione: righe vuote ignorate, valori sbagliati segnalati", async () => {
+    const { parseExercises } = await import("./gym-parse");
+    expect(parseExercises(JSON.stringify([{ name: "Squat", sets: "4", reps: "8-10", loadKg: "62,5", restSec: "120" }, { name: "", sets: "3" }]), "Gio")).toEqual([
+      { name: "Squat", sets: 4, reps: "8-10", loadKg: 62.5, restSec: 120 },
+    ]);
+    expect(parseExercises(JSON.stringify([{ name: "Plank", sets: "3", reps: "45″", loadKg: "", restSec: "45" }]), "Gio")).toEqual([{ name: "Plank", sets: 3, reps: "45″", restSec: 45 }]);
+    expect(parseExercises(JSON.stringify([{ name: "Squat", sets: "40", reps: "8" }]), "Gio")).toMatch(/Gio, Squat: al massimo 10 serie/);
+    expect(parseExercises(JSON.stringify([{ name: "Squat", sets: "4", reps: "tante" }]), "Gio")).toMatch(/ripetizioni non valide/);
+  });
+
+  it("le gambe si riconoscono anche dagli esercizi", () => {
+    expect(legLoad({ groups: ["parte alta"], exercises: [{ name: "Squat bulgaro", sets: 3, reps: "8" }, { name: "Leg press", sets: 3, reps: "10" }] })).toBe("pesante");
+  });
+
+  it("consiglio con i numeri: gambe alleggerite il giorno prima delle ripetute", () => {
+    const plan = [w("2026-11-20", "ripetute", "Ripetute VO₂max 5 × 1 km")];
+    const a = gymAdvice([gambe], plan, [], athlete, TODAY).find((x) => x.level === "attenzione")!;
+    expect(a.text).toMatch(/alleggerisci: squat 2 × 8 a 47,5 kg invece di 4 × 8 a 60 kg, affondi 2 × 10 a 12,5 kg invece di 3 × 10 a 16 kg/);
+  });
+
+  it("nel programma: gli esercizi diventano la seduta, in scarico meno serie e vicino alla gara niente gambe", () => {
+    const sch: GymDay[] = [gambe, { day: "Lun", groups: ["petto"], durationMin: 45, exercises: [{ name: "Panca piana", sets: 4, reps: "8", loadKg: 60, restSec: 120 }] }];
+    const race: RaceEvent = { id: "r", name: "Gara", date: "2026-12-13", kind: "singolo", sport: "run", distanceKm: 21.1, priority: "A" };
+    const p = generatePlan({ today: "2026-11-15", athlete: { ...athlete, gymSchedule: sch }, events: [race], weeks: 4 });
+    const first = p.workouts.find((x) => x.sport === "gym" && weekdayName(x.date, true) === "Gio")!;
+    expect(first.structure.main.map((s) => [s.label, s.note])).toEqual([
+      ["Squat", "4 × 8 · 60 kg · recupero 2'"],
+      ["Affondi", "3 × 10 · 16 kg · recupero 1'30″"],
+      ["Plank", "3 × 45″ · recupero 45″"],
+    ]);
+    const raceWeekThu = p.workouts.find((x) => x.sport === "gym" && x.date === "2026-12-10");
+    expect(raceWeekThu?.structure.main.map((s) => s.label)).toEqual(["Plank"]);
+    const taperMon = p.workouts.find((x) => x.sport === "gym" && x.date === "2026-12-07")!;
+    expect(taperMon.structure.main[0].note).toMatch(/^2 × 8 · 60 kg/);
+  });
+});

@@ -168,7 +168,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
           <Card className="flex flex-col gap-3">
             {a.gymSchedule?.length ? (
               <ul className="flex flex-col gap-1 text-sm">
-                {a.gymSchedule.map((g) => <li key={g.day}><b>{g.day}</b> · {g.groups.join(", ")} · {g.durationMin}&apos;</li>)}
+                {a.gymSchedule.map((g) => <li key={g.day}><b>{g.day}</b> · {[g.groups.join(", "), g.exercises?.length ? `${g.exercises.length} esercizi` : ""].filter(Boolean).join(" · ")} · {g.durationMin}&apos;</li>)}
               </ul>
             ) : (
               <p className="text-sm text-muted">Hai una scheda a giorni fissi (es. lunedì petto e tricipiti, giovedì gambe)? Inseriscila: il coach ci costruisce intorno il programma e ti avvisa dei conflitti.</p>

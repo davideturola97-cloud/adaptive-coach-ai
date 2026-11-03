@@ -149,8 +149,24 @@ export function buildDemoData(now = new Date()): DemoData {
     longSessionMaxMin: 150,
     sportDays: { swim: ["Lun", "Mer", "Ven"] },
     gymSchedule: [
-      { day: "Lun", groups: ["petto", "tricipiti", "core"], durationMin: 60 },
-      { day: "Ven", groups: ["gambe"], durationMin: 60 },
+      {
+        day: "Lun", groups: ["petto", "tricipiti", "core"], durationMin: 60,
+        exercises: [
+          { name: "Panca piana", sets: 4, reps: "8", loadKg: 60, restSec: 120 },
+          { name: "Spinte con manubri", sets: 3, reps: "10", loadKg: 20, restSec: 90 },
+          { name: "Pushdown ai cavi", sets: 3, reps: "12", loadKg: 25, restSec: 60 },
+          { name: "Plank", sets: 3, reps: "45″", restSec: 45 },
+        ],
+      },
+      {
+        day: "Ven", groups: ["gambe"], durationMin: 60,
+        exercises: [
+          { name: "Squat", sets: 4, reps: "8", loadKg: 70, restSec: 150 },
+          { name: "Affondi", sets: 3, reps: "10", loadKg: 16, restSec: 90 },
+          { name: "Stacco rumeno", sets: 3, reps: "8", loadKg: 50, restSec: 120 },
+          { name: "Calf raise", sets: 3, reps: "15", restSec: 60 },
+        ],
+      },
     ],
     equipment: ["Orologio GPS con fascia cardio", "Bici da strada", "Rulli smart"],
     limitations: ["Tendine d'Achille sinistro sensibile dopo le salite"],

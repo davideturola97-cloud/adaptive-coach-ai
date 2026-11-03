@@ -163,10 +163,21 @@ export interface AthleteSport {
 }
 
 /** Profilo atleta. I campi facoltativi possono mancare finché l'atleta non completa l'onboarding. */
+export interface GymExercise {
+  name: string; // es. "Squat"
+  sets: number;
+  reps: string; // es. "8", "8-10", "30″"
+  loadKg?: number;
+  restSec?: number;
+  note?: string;
+}
+
 export interface GymDay {
   day: string; // "Lun" ... "Dom"
   groups: string[]; // es. ["petto", "tricipiti"]
   durationMin: number;
+  /** Esercizi della seduta, nell'ordine. */
+  exercises?: GymExercise[];
 }
 
 export interface AthleteProfile {

@@ -198,7 +198,7 @@ export function runTool(name: string, rawArgs: string, ctx: ToolContext): string
       const rows = data.plan.filter((w) => w.date >= from && w.date <= end).map(workoutLine);
       const gs = data.athlete.gymSchedule;
       const gym = gs?.length
-        ? `\nScheda di palestra dell'atleta (giorni fissi): ${gs.map((g) => `${g.day} ${g.groups.join(" e ")} ${g.durationMin}'`).join("; ")}.\nConsigli sulla scheda: ${gymAdvice(gs, data.plan, data.events, data.athlete, data.today).map((x) => `[${x.level}] ${x.text}`).join(" ")}`
+        ? `\nScheda di palestra dell'atleta (giorni fissi): ${gs.map((g) => `${g.day} ${g.groups.join(" e ")} ${g.durationMin}'${g.exercises?.length ? ` [${g.exercises.map((e) => `${e.name} ${e.sets}×${e.reps}${e.loadKg ? ` ${e.loadKg} kg` : ""}${e.restSec ? ` rec ${e.restSec}s` : ""}`).join(", ")}]` : ""}`).join("; ")}.\nConsigli sulla scheda: ${gymAdvice(gs, data.plan, data.events, data.athlete, data.today).map((x) => `[${x.level}] ${x.text}`).join(" ")}`
         : "";
       return (rows.length ? rows.join("\n") : "Nessuna seduta in quel periodo.") + gym;
     }
