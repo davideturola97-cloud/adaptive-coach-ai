@@ -88,6 +88,9 @@ if exist .env.local findstr /r /b /c:"STRAVA_CLIENT_SECRET=.." .env.local >nul &
 echo Strava: chiavi impostate: %HAS_STRAVA%   ^(facoltativo, guida in docs\STRAVA.md^)
 echo.
 
+rem Cache della compilazione: dopo un aggiornamento (git pull) puo' restare vecchia e la pagina si vede senza grafica.
+rem La cancello a ogni avvio: il primo caricamento richiede qualche secondo in piu'.
+if exist .next rmdir /s /q .next
 echo Avvio di Adaptive Coach AI su http://localhost:3000
 echo Per fermarla chiudi questa finestra.
 start "" http://localhost:3000
