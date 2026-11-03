@@ -4,7 +4,7 @@
  * - per riprogrammare chiama il motore della Milestone 6, che applica le regole di sicurezza;
  * - non può applicare modifiche: le proposte tornano all'interfaccia, dove l'atleta conferma.
  */
-import { addDays, formatDayMonth, weekdayName } from "@/lib/dates";
+import { daysBetween, addDays, formatDayMonth, weekdayName } from "@/lib/dates";
 import { SPORTS, WORKOUT_TYPE_LABEL } from "@/lib/domain/sports";
 import type { AthleteProfile, CompletedActivity, PlannedTest, PlannedWorkout, RaceEvent, TestResult } from "@/lib/domain/types";
 import { type Disruption, proposeReschedule, type RescheduleResult } from "@/lib/planning/reschedule";
@@ -13,7 +13,7 @@ import { feedbackSignals } from "@/lib/training/feedback";
 import { formatDuration, formatPace, formatSwimPace } from "@/lib/training/formulas";
 import { analyzeSplits } from "@/lib/training/splits";
 import { analyzeActivity } from "@/lib/training/analysis";
-import { formatRaceTime, predictRaces } from "@/lib/training/predictions";
+import { formatRaceTime, predictRaces, raceGoals } from "@/lib/training/predictions";
 import { TEST_CATALOG } from "@/lib/training/tests";
 import type { ChatClient, ChatMessage, ToolDef } from "./openai";
 
@@ -219,6 +219,16 @@ export function runTool(name: string, rawArgs: string, ctx: ToolContext): string
       const pr = r.predictions.map(
         (x) => `${x.label}: ${formatRaceTime(x.timeSec)} (tra ${formatRaceTime(x.lowSec)} e ${formatRaceTime(x.highSec)}, affidabilità ${x.confidence}, stimato da ${x.basedOn.label})${x.notes.length ? ` · ${x.notes.join(" ")}` : ""}`,
       );
+      const goals = data.events
+        .filter((e) => e.date >= data.today && e.kind === "singolo" && e.sport === "run" && e.distanceKm)
+        .map((e) => {
+          const p = r.predictions.find((x) => Math.abs(x.km - e.distanceKm!) < 0.6);
+          if (!p) return null;
+          const g = raceGoals(p, Math.ceil(daysBetween(data.today, e.date) / 7));
+          return `${e.name} (${e.date}): obiettivo sicuro ${formatRaceTime(g.sicuro)}, possibile ${formatRaceTime(g.possibile)}, ambizioso ${formatRaceTime(g.ambizioso)}`;
+        })
+        .filter(Boolean);
+      pr.push(...(goals as string[]));
       const head = `Previsioni di gara (STIME, riportale come tali con l'intervallo; volume ${r.weeklyKm} km/sett, lungo max ${r.longestKm} km):`;
       return [`Risultati:\n${t.join("\n") || "nessuno"}`, `Test in sospeso:\n${p.join("\n") || "nessuno"}`, `${head}\n${pr.join("\n") || r.notes.join(" ")}`].join("\n");
     }

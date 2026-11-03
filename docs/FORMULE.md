@@ -161,3 +161,31 @@ nasce da una corsa più recente del test, vale quella (T = passo previsto sui 10
 | Defaticamento | 1,28 – 1,45 |
 
 Arrotondati a 5 secondi. Sono indicazioni: con caldo, salite o stanchezza comanda l'RPE.
+
+## Sedute come un allenatore (src/lib/planning/library.ts, progression.ts)
+
+- **Libreria**: ogni tipo di lavoro ha una scala di livelli. Corsa: VO₂max (6 × 2' → 4 × 1600 m), ritmo 10 km, soglia
+  (3 × 8' → 3 × 4 km), ritmo mezza (3 × 2 km → 3 × 5 km), fartlek, salite brevi. Bici: tempo, sweet spot, soglia, VO₂max.
+  Nuoto: CSS, velocità. Ripetute a tempo o a distanza, scelte dal livello.
+- **Recuperi proporzionati**: VO₂max e ritmo 10 km circa metà della frazione corricchiando; soglia e ritmo mezza 1/5–1/4;
+  salite: discesa al passo; fartlek: corsa facile.
+- **Livello di partenza** (ultimi 60 giorni): ultima seduta dello stesso tipo chiusa con RPE entro il previsto → +1;
+  RPE di 1 sopra → stesso livello; 2 o più sopra → −1; saltata → stesso livello (−1 se due volte di fila);
+  senza RPE → +1. Mai visto → livello 1/2/3 per principiante/intermedio/avanzato. Poi +1 a ogni seduta in programma;
+  scarico e settimana di gara: due livelli sotto. Il livello scende se la seduta supera la durata massima.
+- **Scelta per fase e gara**: base = fartlek o salite (+ soglia se c'è una seconda qualità); costruzione per la mezza =
+  soglia + VO₂max/ritmo 10 km, nelle ultime 6 settimane ritmo mezza; per 5–10 km = VO₂max + soglia/ritmo 10 km;
+  rifinitura = ritmo gara; scarico = soglia leggera; settimana di gara = breve richiamo al ritmo gara.
+  Seconda seduta di qualità solo per lo sport della gara con almeno 5 sedute a settimana.
+- **Lungo con finale a ritmo gara** a settimane alterne in costruzione e rifinitura per mezza e maratona (10', poi +5').
+- **Allunghi** (6 × 20″) in una corsa facile a settimana in base e costruzione.
+- **Volume dai dati reali**: media delle ultime 4 settimane (con almeno 4 attività), +8% al massimo a settimana;
+  scarico al 70% dell'ultima settimana di carico. Lungo: dal più lungo delle ultime 6 settimane, +10' (corsa) o +15' (bici).
+- **Frequenza minima**: gli sport della gara almeno 2 volte a settimana (corsa 3 per una gara di corsa).
+- **Settimana**: le sedute dure si piazzano cercando la combinazione migliore di giorni (mai consecutive);
+  il nuoto di qualità non conta come seduta dura; la palestra va dopo una seduta di qualità, mai alla vigilia.
+
+## Tre obiettivi di gara (raceGoals in predictions.ts)
+
+Miglioramento realistico g = 0,4% per settimana di preparazione (esclusa l'ultima), massimo 4%, dimezzato con affidabilità bassa.
+Sicuro = estremo lento della previsione; possibile = previsione × (1 − g/2); ambizioso = previsione × (1 − g) × 0,985.

@@ -15,6 +15,8 @@ import { SPORTS } from "@/lib/domain/sports";
 import type { AthleteProfile, PlannedTest, PlannedWorkout, RaceEvent, Sport, TestKind, WorkoutType } from "@/lib/domain/types";
 import { template } from "@/lib/training/templates";
 import { applyTargets } from "./targets";
+import { buildSession, fitLevel, maxLevel, FAMILIES, type Family } from "./library";
+import { trainingState, type TrainingHistory } from "./progression";
 
 export type Phase = "base" | "costruzione" | "rifinitura" | "scarico" | "gara" | "recupero";
 
@@ -56,15 +58,22 @@ export interface PlanInput {
   startDate?: string;
   /** Numero di settimane da generare (default 12, massimo 20). */
   weeks?: number;
+  /** Storia reale (attività e sedute passate): volume, lunghi e livelli partono da qui. */
+  history?: TrainingHistory;
+  /** Ritmo di soglia attuale (s/km), per stimare la durata delle frazioni a distanza. */
+  thresholdSec?: number;
 }
 
 const ALL_DAYS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
 const ENDURANCE: Sport[] = ["swim", "bike", "run"];
 const HARD_TYPES = new Set<WorkoutType>([
   "ripetute", "tempo_run", "progressivo", "test_corsa", "lungo",
-  "tempo_bici", "sweet_spot", "soglia", "vo2max", "test_ftp", "brick",
-  "css_nuoto", "ripetute_nuoto", "test_css",
+  "tempo_bici", "sweet_spot", "soglia", "vo2max", "test_ftp", "brick", "test_css",
 ]);
+/**
+ * Il nuoto di qualità (CSS, velocità) non conta come seduta dura per la distanza tra le sedute:
+ * non pesa sulle gambe, e per un triatleta va bene il giorno dopo una seduta di corsa o bici.
+ */
 /** Sedute di durata variabile e loro durata di riferimento nei modelli (scala 1). */
 const BASE_MIN: Partial<Record<WorkoutType, number>> = {
   corsa_facile: 45, lungo: 90, progressivo: 50, endurance: 75, sweet_spot: 90, tecnica_nuoto: 45, aerobico_nuoto: 50, brick: 90,
@@ -126,6 +135,7 @@ interface Slot {
   type: WorkoutType;
   minutes: number;
   priority: number; // più basso = più importante
+  family?: Family;
 }
 
 function qualityType(sport: Sport, phase: Phase, weekIndex: number, conservative: boolean): WorkoutType {
@@ -146,6 +156,55 @@ function qualityType(sport: Sport, phase: Phase, weekIndex: number, conservative
     return alt || phase === "base" ? "css_nuoto" : "ripetute_nuoto";
   }
   return "core_mobilita";
+}
+
+/** Classe della gara per la corsa: decide che tipo di lavoro specifico serve. */
+function runClass(e: RaceEvent | undefined): "corta" | "mezza" | "maratona" {
+  const km = e?.kind === "triathlon" ? e.legs?.runKm ?? 10 : e?.sport === "run" ? e.distanceKm ?? 10 : 10;
+  return km >= 30 ? "maratona" : km >= 15 ? "mezza" : "corta";
+}
+
+/**
+ * Famiglia della seduta di qualità, come la sceglierebbe un allenatore: in base alla fase, alla gara obiettivo
+ * e a quante sedute di qualità ha già quello sport nella settimana (n = 0 la principale, 1 la seconda).
+ */
+export function qualityFamily(sport: Sport, phase: Phase, target: RaceEvent | undefined, week: number, n: number, weeksToRace?: number): Family | null {
+  const alt = week % 2 === 0;
+  if (sport === "run") {
+    const c = runClass(target);
+    switch (phase) {
+      case "base": return n === 0 ? (alt ? "fartlek" : "salite") : "soglia";
+      case "costruzione": {
+        const specific = weeksToRace !== undefined && weeksToRace <= 6;
+        if (c === "corta") return n === 0 ? "vo2" : specific ? "ritmo_10k" : "soglia";
+        if (c === "mezza") return n === 0 ? "soglia" : specific ? "ritmo_mezza" : alt ? "vo2" : "ritmo_10k";
+        return n === 0 ? "soglia" : "ritmo_mezza";
+      }
+      case "rifinitura": return c === "corta" ? (n === 0 ? "ritmo_10k" : "vo2") : n === 0 ? "ritmo_mezza" : "soglia";
+      case "scarico": return "soglia";
+      case "gara": return c === "corta" ? "ritmo_10k" : "ritmo_mezza";
+      default: return null;
+    }
+  }
+  if (sport === "bike") {
+    const tri = target?.kind === "triathlon";
+    switch (phase) {
+      case "base": return "bike_tempo";
+      case "costruzione": return tri ? (week % 3 === 2 ? "bike_vo2" : "bike_sweetspot") : alt ? "bike_sweetspot" : "bike_soglia";
+      case "rifinitura": return alt ? "bike_soglia" : "bike_vo2";
+      case "scarico": case "gara": return "bike_tempo";
+      default: return null;
+    }
+  }
+  if (sport === "swim") {
+    switch (phase) {
+      case "base": return "swim_css";
+      case "costruzione": return alt ? "swim_css" : "swim_veloce";
+      case "rifinitura": return "swim_veloce";
+      default: return null;
+    }
+  }
+  return null;
 }
 
 export function easyType(sport: Sport, phase: Phase, n: number): WorkoutType {
@@ -211,8 +270,17 @@ export function generatePlan(input: PlanInput): PlanDraft {
   const weeks: PlanWeek[] = [];
   const workouts: DraftWorkout[] = [];
   let loadCount = 0;
-  let prevLoadTarget = 0;
-  const prevLong: Partial<Record<Sport, number>> = {};
+  // Con una storia reale si parte dal volume vero delle ultime 4 settimane e si cresce al massimo dell'8% a settimana.
+  const st = trainingState(input.history, a, today);
+  const ramp = st.weeklyMin ? 1.08 : 1.15;
+  let prevLoadTarget = st.weeklyMin ?? 0;
+  const prevLong: Partial<Record<Sport, number>> = { ...st.longestMin };
+  /** Livello corrente di ogni famiglia di sedute: parte dalla storia e sale di un gradino a ogni seduta riuscita. */
+  const levels: Partial<Record<Family, { level: number; reason: string; used: number }>> = Object.fromEntries(
+    Object.entries(st.levels).map(([f, v]) => [f, { ...v!, used: 0 }]),
+  );
+  /** Lunghi con finale a ritmo gara già messi: il finale cresce di 5' ogni volta. */
+  let finales = 0;
   /** Giorni con seduta dura in tutto il programma: il lunedì guarda anche la domenica prima. */
   const allHard = new Set<string>();
   /** Settimane in cui uno sport non ha trovato nessun giorno: diventa un solo avviso per sport. */
@@ -245,8 +313,9 @@ export function generatePlan(input: PlanInput): PlanDraft {
     let targetMin = availMin * levelFrac * phaseMult[phase] * cycle;
     const isLoad = phase === "base" || phase === "costruzione" || phase === "rifinitura";
     // Niente salti di carico: al massimo +15% rispetto all'ultima settimana di carico.
-    if (isLoad && prevLoadTarget > 0) targetMin = Math.min(targetMin, prevLoadTarget * 1.15);
-    if (w === 0 && isLoad) targetMin *= 0.9; // prima settimana prudente
+    if (isLoad && prevLoadTarget > 0) targetMin = Math.min(targetMin, prevLoadTarget * ramp);
+    if (w === 0 && isLoad && !st.weeklyMin) targetMin *= 0.9; // prima settimana prudente se non conosciamo il volume reale
+    if (phase === "scarico" && prevLoadTarget > 0) targetMin = Math.min(targetMin, prevLoadTarget * 0.7);
     targetMin = Math.round(Math.min(targetMin, availMin) / 5) * 5;
     if (isLoad) prevLoadTarget = targetMin;
 
@@ -285,6 +354,11 @@ export function generatePlan(input: PlanInput): PlanDraft {
       const minutes = sportMin[s] ?? 0;
       if (minutes < 25) continue;
       let count = Math.max(1, Math.round(minutes / TYPICAL_MIN[s]));
+      // Frequenza minima, come farebbe un allenatore: gli sport della gara almeno 2 volte a settimana
+      // (la corsa 3 se la gara è di corsa), purché ogni seduta duri almeno 30 minuti.
+      const inRace = focus === s || focus === "tri";
+      const minFreq = inRace ? (focus === "run" && s === "run" ? 3 : 2) : 1;
+      count = Math.max(count, Math.min(minFreq, Math.floor(minutes / 30)));
       if (phase === "gara" || phase === "recupero") count = Math.min(count, 2);
       const sportSlots: Slot[] = [];
       const longAllowed = (s === "run" || s === "bike") && count >= 2 && phase !== "gara" && phase !== "recupero";
@@ -292,15 +366,22 @@ export function generatePlan(input: PlanInput): PlanDraft {
         let type: WorkoutType = s === "run" ? "lungo" : "endurance";
         if (s === "bike" && triBuild) type = "brick";
         let longMin = Math.min(maxLong, minutes * (s === "run" ? 0.38 : 0.45));
-        if (prevLong[s]) longMin = Math.min(longMin, prevLong[s]! + 15);
+        // Il lungo cresce poco per volta dal lungo più lungo reale: +10' a settimana nella corsa, +15' in bici.
+        if (prevLong[s]) longMin = Math.min(longMin, prevLong[s]! + (s === "run" ? 10 : 15));
         if (phase === "scarico") longMin *= 0.75;
         prevLong[s] = Math.max(prevLong[s] ?? 0, longMin);
         sportSlots.push({ sport: s, role: "lungo", type, minutes: longMin, priority: 1 });
       }
       const conservative = !hasParams[s] && levelOf(s) === "principiante" && w < 3;
-      if (hardLeft.n > 0 && (count >= 2 || s === "swim" || phase === "gara")) {
-        sportSlots.push({ sport: s, role: "qualita", type: qualityType(s, phase, w, conservative), minutes: 55, priority: 2 });
-        hardLeft.n -= 1;
+      const weeksToRace = target ? Math.round(daysBetween(weekStart, target.date) / 7) : undefined;
+      // Sedute di qualità: la principale e, per lo sport della gara con almeno 5 sedute (restano almeno 2 facili), una seconda.
+      const nQ = s === focus || (focus === "tri" && s === "run") ? (count >= 5 && !conservative && hardLeft.n >= 2 ? 2 : 1) : 1;
+      for (let n = 0; n < nQ; n++) {
+        if (!(hardLeft.n > 0 && (count >= 2 || s === "swim" || phase === "gara"))) break;
+        const family = conservative ? null : qualityFamily(s, phase, target, w, n, weeksToRace);
+        sportSlots.push({ sport: s, role: "qualita", type: family ? FAMILIES[family].type : qualityType(s, phase, w, conservative), minutes: 55, priority: 2 + n, ...(family && { family }) });
+        // Il nuoto di qualità pesa poco su gambe e sistema nervoso: non toglie spazio alla corsa e alla bici.
+        if (s !== "swim") hardLeft.n -= 1;
       }
       const fixed = sportSlots.reduce((t, x) => t + x.minutes, 0);
       const nEasy = Math.max(0, count - sportSlots.length);
@@ -386,13 +467,36 @@ export function generatePlan(input: PlanInput): PlanDraft {
     // Sedute di qualità: il più lontano possibile dalle altre sedute dure, mai in giorni consecutivi.
     // Gli sport con meno giorni possibili (es. piscina aperta solo due giorni) scelgono per primi.
     const constrained = (sp: Sport) => usable.filter((d) => sportOk(sp, d)).length;
-    for (const q of slots.filter((x) => x.role === "qualita").sort((x, y) => constrained(x.sport) - constrained(y.sport))) {
-      const candidates = usable.filter((d) => !used.has(d) && !nearHard(d) && sportOk(q.sport, d) && !(raceThisWeek && d > raceThisWeek.date));
-      const score = (d: string) => Math.min(...[...allHard].map((h) => Math.abs(daysBetween(h, d))), 9);
-      const day = candidates.sort((x, y) => score(y) - score(x) || x.localeCompare(y))[0];
+    // Si cerca la combinazione di giorni che fa stare più sedute di qualità possibile (mai in giorni consecutivi
+    // tra loro né accanto ad altre sedute dure), poi quella con le sedute più distanziate. Le settimane hanno al
+    // massimo 3–4 sedute di qualità e 7 giorni: la ricerca completa è immediata.
+    const qs = slots.filter((x) => x.role === "qualita").sort((x, y) => x.priority - y.priority || constrained(x.sport) - constrained(y.sport));
+    const free = (q: Slot) => usable.filter((d) => !used.has(d) && (!isHard(q.type) || !nearHard(d)) && sportOk(q.sport, d) && !(raceThisWeek && d > raceThisWeek.date));
+    let best: { days: (string | null)[]; placed: number; spread: number; prio: number } = { days: qs.map(() => null), placed: 0, spread: -1, prio: 0 };
+    const search = (i: number, chosen: (string | null)[]) => {
+      if (i === qs.length) {
+        const ds = chosen.filter((d): d is string => d !== null);
+        const all = [...allHard, ...ds];
+        const spread = ds.length ? Math.min(...ds.map((d) => Math.min(9, ...all.filter((h) => h !== d).map((h) => Math.abs(daysBetween(h, d)))))) : 0;
+        // A parità di sedute piazzate vincono quelle più importanti (priorità bassa), poi la distanza tra le sedute dure.
+        const prio = chosen.reduce((t, d, k) => t + (d ? 10 - qs[k].priority : 0), 0);
+        if (ds.length > best.placed || (ds.length === best.placed && (prio > best.prio || (prio === best.prio && spread > best.spread)))) {
+          best = { days: [...chosen], placed: ds.length, spread, prio };
+        }
+        return;
+      }
+      for (const d of free(qs[i])) {
+        const clash = chosen.some((c, k) => c && (c === d || (isHard(qs[i].type) && isHard(qs[k].type) && Math.abs(daysBetween(c, d)) <= 1)));
+        if (!clash) search(i + 1, [...chosen, d]);
+      }
+      search(i + 1, [...chosen, null]);
+    };
+    search(0, []);
+    qs.forEach((q, k) => {
+      const day = best.days[k];
       if (day) take(day, q);
-      else slots.push({ ...q, role: "facile", type: easyType(q.sport, phase, 1), minutes: 45, priority: 6 });
-    }
+      else slots.push({ ...q, role: "facile", type: easyType(q.sport, phase, 1), minutes: 45, priority: 6, family: undefined });
+    });
 
     // Sedute facili: un giorno libero ciascuna, alternando gli sport.
     const easy = slots.filter((x) => x.role === "facile").sort((x, y) => constrained(x.sport) - constrained(y.sport) || x.priority - y.priority);
@@ -427,6 +531,8 @@ export function generatePlan(input: PlanInput): PlanDraft {
       const day =
         free.find((d) => !used.has(d) && !hardDays.has(addDays(d, 1)) && sportOk("gym", d)) ??
         free.find((d) => !hardDays.has(d) && !hardDays.has(addDays(d, 1)) && sportOk("gym", d)) ??
+        // "Giorni duri duri, giorni facili facili": la forza dopo la seduta di qualità (non dopo il lungo), mai alla vigilia.
+        free.find((d) => hardDays.has(d) && !hardDays.has(addDays(d, 1)) && !placed.some((p) => p.date === d && p.slot.role === "lungo") && sportOk("gym", d)) ??
         free.find((d) => !hardDays.has(d) && sportOk("gym", d)) ??
         free.find((d) => sportOk("gym", d));
       if (day) take(day, g);
@@ -447,7 +553,57 @@ export function generatePlan(input: PlanInput): PlanDraft {
     const created: { w: DraftWorkout; slot: Slot }[] = [];
     for (const { date, slot } of placed.sort((x, y) => x.date.localeCompare(y.date))) {
       const minutes = Math.min(slot.role === "lungo" ? maxLong : maxSession, Math.max(20, slot.minutes));
-      const wkt = sized(slot.type, minutes);
+      let wkt = sized(slot.type, minutes);
+      if (slot.family) {
+        const f = slot.family;
+        const cur = levels[f] ?? { level: 1, reason: "prima seduta di questo tipo", used: 0 };
+        // Scarico e gara: versione più leggera. Carico: il livello corrente, se sta nella durata massima.
+        const light = phase === "scarico" || phase === "gara";
+        const wanted = light ? Math.max(1, cur.level - 2) : cur.level;
+        const L = fitLevel(f, wanted, maxSession, input.thresholdSec);
+        const lib = buildSession(f, L, input.thresholdSec);
+        const why =
+          light ? `${PHASE_LABEL[phase].toLowerCase()}: versione leggera (livello ${L} di ${maxLevel(f)}) per arrivare fresco`
+          : cur.used === 0 ? `livello ${L} di ${maxLevel(f)}: ${cur.reason}`
+          : `livello ${L} di ${maxLevel(f)}: un gradino sopra la volta precedente, se l'hai chiusa bene`;
+        const verso = slot.sport === "run" || slot.sport === "bike" || slot.sport === "swim" ? (target ? ` verso ${target.name}` : "") : "";
+        wkt = {
+          ...wkt, type: lib.type, title: lib.title, intensity: lib.intensity, durationMin: lib.durationMin, structure: lib.structure,
+          technicalTips: [...lib.technicalTips, ...wkt.technicalTips.slice(0, 1)],
+          objective: `${lib.objective} ${PHASE_LABEL[phase]}${verso}, ${why}.`,
+        };
+        if (!light) levels[f] = { ...cur, level: Math.min(maxLevel(f), L + 1), used: cur.used + 1 };
+      }
+      // Lungo di corsa con finale a ritmo gara, a settimane alterne, nelle fasi specifiche per mezza e maratona.
+      if (slot.role === "lungo" && slot.sport === "run" && (phase === "costruzione" || phase === "rifinitura")) {
+        const c = runClass(target);
+        const n = finales;
+        if (c !== "corta" && w % 2 === 1 && wkt.structure.main[0]?.durationMin && wkt.structure.main[0].durationMin >= 50) {
+          const finale = Math.min(10 + 5 * n, Math.round(wkt.structure.main[0].durationMin * 0.4));
+          const zone = c === "maratona" ? "maratona" : "mezza";
+          wkt = {
+            ...wkt,
+            title: `Lungo con finale a ritmo ${c === "maratona" ? "maratona" : "mezza"}`,
+            objective: `Abituare le gambe al ritmo di gara quando sono già stanche. ${PHASE_LABEL[phase]}${target ? ` verso ${target.name}` : ""}.`,
+            structure: {
+              ...wkt.structure,
+              main: [
+                { ...wkt.structure.main[0], label: "Corsa continua facile", durationMin: wkt.structure.main[0].durationMin - finale, note: undefined, zone: "lungo" },
+                { label: `Finale a ritmo ${c === "maratona" ? "maratona" : "mezza"}`, durationMin: finale, rpe: [6, 7], zone, note: "Senza forzare: se il ritmo non viene, chiudi a sensazione" },
+              ],
+            },
+          };
+          finales += 1;
+        }
+      }
+      // Allunghi in una corsa facile a settimana, nei periodi di base e costruzione: velocità ed economia senza fatica.
+      if (slot.role === "facile" && wkt.type === "corsa_facile" && (phase === "base" || phase === "costruzione") && !created.some((c) => c.w.type === "corsa_facile" && c.w.structure.main.length > 1)) {
+        wkt = {
+          ...wkt,
+          durationMin: wkt.durationMin + 4,
+          structure: { ...wkt.structure, main: [...wkt.structure.main, { label: "Allunghi di 20″ (recupero 40″ camminando)", durationMin: 0.33, repeat: 6, rpe: [6, 7], zone: "rpe", note: "Progressivi e rilassati, non a tutta" }] },
+        };
+      }
       wkt.date = date;
       if (slot.role === "attivazione") {
         wkt.title = "Attivazione pre-gara";
@@ -461,12 +617,18 @@ export function generatePlan(input: PlanInput): PlanDraft {
     // Tetto della settimana: prima si accorciano le sedute facili, poi si tolgono le meno importanti.
     const cap = Math.min(availMin, Math.round(targetMin * 1.1));
     const total = () => created.reduce((t, c) => t + c.w.durationMin, 0);
+    // Sedute già alla durata minima del loro modello: non si accorciano più (evita un ciclo infinito).
+    const atMinimum = new Set<DraftWorkout>();
     while (total() > cap) {
       const shortenable = created
-        .filter((c) => c.slot.role === "facile" && BASE_MIN[c.w.type] && c.w.durationMin > 35)
+        .filter((c) => c.slot.role === "facile" && BASE_MIN[c.w.type] && c.w.durationMin > 35 && !atMinimum.has(c.w))
         .sort((x, y) => y.w.durationMin - x.w.durationMin)[0];
       if (shortenable) {
         const resized = sized(shortenable.w.type, shortenable.w.durationMin - 10);
+        if (resized.durationMin >= shortenable.w.durationMin) {
+          atMinimum.add(shortenable.w);
+          continue;
+        }
         resized.date = shortenable.w.date;
         shortenable.w = resized;
         continue;

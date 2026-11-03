@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getAppData } from "@/lib/data/repository";
 import { generatePlan, type PlanDraft } from "@/lib/planning/engine";
 import { getUser } from "@/lib/supabase/server";
+import { paceReference } from "@/lib/training/run-paces";
 
 export type PreviewState = { draft?: PlanDraft; weeks?: number; error?: string; saved?: string };
 
@@ -12,7 +13,13 @@ async function draftFor(weeks: number, allowDemo = false) {
   const data = await getAppData();
   if (data.mode === "demo" && !allowDemo) return { error: "In modalità dimostrativa il programma non si salva." as const };
   if (!data.athlete.sports.length) return { error: "Completa prima il profilo con i tuoi sport." as const };
-  const draft = generatePlan({ today: data.today, startDate: data.today, athlete: data.athlete, events: data.events, tests: data.plannedTests, weeks });
+  // Il programma parte da quello che hai fatto davvero: volume, lunghi e livello delle ultime sedute di ogni tipo.
+  const ref = paceReference(data.athlete, data.activities, data.plan, data.today);
+  const draft = generatePlan({
+    today: data.today, startDate: data.today, athlete: data.athlete, events: data.events, tests: data.plannedTests, weeks,
+    history: { activities: data.activities, plan: data.plan.filter((p) => p.date < data.today) },
+    thresholdSec: ref?.thresholdSec,
+  });
   return { draft };
 }
 

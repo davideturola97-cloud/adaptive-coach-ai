@@ -28,7 +28,13 @@ export const ZONES = {
   recuperoTraProve: [1.35, 1.55],
   soglia: [0.99, 1.03],
   ripetute: [0.92, 0.96],
+  dieci: [0.95, 0.98],
+  mezza: [1.01, 1.05],
+  maratona: [1.06, 1.1],
+  fartlek: [0.96, 1.02],
 } as const satisfies Record<string, [number, number]>;
+type ZoneKey = keyof typeof ZONES;
+const isZone = (z: string | undefined): z is ZoneKey => z !== undefined && z in ZONES;
 
 const MAIN_ZONE: Partial<Record<WorkoutType, keyof typeof ZONES>> = {
   corsa_facile: "facile",
@@ -87,6 +93,13 @@ function withTarget(s: WorkoutStep, value: string): WorkoutStep {
   return { ...s, target: { value, origin: "stimato" } };
 }
 
+/** Tempo atteso di una frazione a distanza: "≈ 4:25–4:35 per ogni 1000 m". */
+function repTime(km: number, t: number, [fast, slow]: readonly [number, number]): string {
+  const sec = (pace: number) => paceText(r5(pace) * km);
+  const what = km < 1 ? `${Math.round(km * 1000)} m` : `${String(km).replace(".", ",")} km`;
+  return `≈ ${sec(t * fast)}–${sec(t * slow)} ogni ${what}`;
+}
+
 /** Seduta di corsa con i passi su ogni fase. Le altre sedute restano invariate. */
 export function withRunPaces<T extends PlannedWorkout>(w: T, ref: PaceReference | null): T {
   if (w.sport !== "run" || !ref) return w;
@@ -99,21 +112,29 @@ export function withRunPaces<T extends PlannedWorkout>(w: T, ref: PaceReference 
       const p = ref.fiveKPaceSec ?? t / 1.04 / 1.03;
       return withTarget(s, `parti a ${paceText(r5(p + 5))} /km, poi tieni o aumenta se stai bene`);
     }
-    const zone = MAIN_ZONE[w.type];
+    // La fase dice la sua zona (sedute della libreria); "rpe" = a sensazione (salite, allunghi).
+    if (s.zone === "rpe") return s;
+    const zone = isZone(s.zone) ? s.zone : MAIN_ZONE[w.type];
     if (!zone) return s;
     const z = ZONES[zone];
-    const reps = s.repeat && s.durationMin && (zone === "ripetute" || zone === "soglia") ? ` (${repDistance(s.durationMin, t, z)} ogni ${zone === "ripetute" ? "ripetuta" : "blocco"})` : "";
-    return withTarget(s, `${paceRange(t, z)}${reps}`);
+    const fast = zone === "ripetute" || zone === "soglia" || zone === "dieci" || zone === "mezza" || zone === "fartlek";
+    const hint =
+      s.distanceKm && (s.repeat ?? 1) > 1 ? ` (${repTime(s.distanceKm, t, z)})`
+      : s.distanceKm ? ` (${repTime(s.distanceKm, t, z)})`
+      : s.repeat && s.durationMin && fast ? ` (${repDistance(s.durationMin, t, z)} ogni ${zone === "soglia" || zone === "mezza" ? "blocco" : "frazione"})`
+      : "";
+    return withTarget(s, `${paceRange(t, z)}${hint}`);
   });
-  const hasReps = w.structure.main.some((s) => (s.repeat ?? 1) > 1);
+  const hasReps = w.structure.main.some((s) => (s.repeat ?? 1) > 1 && s.zone !== "rpe") || Boolean(w.structure.recoveries && w.structure.recoveryZone);
+  const recZone = w.structure.recoveryZone;
   return {
     ...w,
     paceSource: ref.source,
     structure: {
       ...w.structure,
-      warmup: w.structure.warmup.map((s) => withTarget(s, paceRange(t, ZONES.riscaldamento))),
+      warmup: w.structure.warmup.map((s) => (s.zone === "rpe" ? s : withTarget(s, paceRange(t, ZONES.riscaldamento)))),
       main,
-      ...(hasReps && { recoveryTarget: { value: paceRange(t, ZONES.recuperoTraProve), origin: "stimato" as const } }),
+      ...(hasReps && recZone !== "rpe" && { recoveryTarget: { value: paceRange(t, ZONES[isZone(recZone) ? recZone : "recuperoTraProve"]), origin: "stimato" as const } }),
       cooldown: w.structure.cooldown.map((s) => withTarget(s, paceRange(t, ZONES.defaticamento))),
     },
   };

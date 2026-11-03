@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CompletedActivity, PlannedWorkout } from "@/lib/domain/types";
-import { bestSegments, exponentFor, formatRaceTime, predictRaces } from "./predictions";
+import { bestSegments, exponentFor, formatRaceTime, predictRaces, type Prediction } from "./predictions";
 
 const run = (id: string, date: string, km: number, min: number, rpe?: number, splits?: CompletedActivity["splits"]): CompletedActivity => ({
   id, date, sport: "run", title: "", durationMin: min, distanceKm: km, source: "strava", splits,
@@ -65,5 +65,23 @@ describe("previsioni di gara", () => {
     const r = predictRaces([], [] as PlannedWorkout[], {}, TODAY);
     expect(r.predictions).toEqual([]);
     expect(r.notes[0]).toMatch(/almeno 3 km/);
+  });
+});
+
+describe("tre obiettivi di gara", () => {
+  const p: Prediction = { key: "half", label: "Mezza", km: 21.0975, timeSec: 6300, paceSec: 298.6, lowSec: 6237, highSec: 6552, confidence: "media", basedOn: { km: 10, timeSec: 2700, date: "2026-10-25", label: "", hard: true }, notes: [] };
+  it("sicuro > possibile > ambizioso, con miglioramento dalle settimane che mancano", async () => {
+    const { raceGoals } = await import("./predictions");
+    const near = raceGoals({ ...p }, 1);
+    expect(near.gain).toBe(0);
+    expect(near.sicuro).toBe(6552);
+    expect(near.possibile).toBe(6300);
+    expect(Math.round(near.ambizioso)).toBe(Math.round(6300 * 0.985));
+    const far = raceGoals({ ...p }, 6); // 5 settimane utili: 2%
+    expect(far.gain).toBeCloseTo(0.02);
+    expect(far.possibile).toBeCloseTo(6300 * 0.99);
+    expect(far.sicuro).toBeGreaterThan(far.possibile);
+    expect(far.possibile).toBeGreaterThan(far.ambizioso);
+    expect(raceGoals({ ...p, confidence: "bassa" }, 6).gain).toBeCloseTo(0.01);
   });
 });

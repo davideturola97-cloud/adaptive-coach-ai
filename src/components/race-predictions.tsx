@@ -4,7 +4,8 @@ import clsx from "clsx";
 import { formatDayMonth } from "@/lib/dates";
 import type { RaceEvent } from "@/lib/domain/types";
 import { formatPace } from "@/lib/training/formulas";
-import { formatRaceTime, type PredictionReport } from "@/lib/training/predictions";
+import { formatRaceTime, raceGoals, type PredictionReport } from "@/lib/training/predictions";
+import { daysBetween } from "@/lib/dates";
 import { Card, OriginTag, SectionTitle } from "./ui";
 
 const CONF = { alta: "text-ok border-ok/40", media: "text-warn border-warn/40", bassa: "text-bad border-bad/40" } as const;
@@ -26,14 +27,33 @@ export function RacePredictions({ report, events, today }: { report: PredictionR
         <p className="text-sm text-muted">{report.notes[0]}</p>
       ) : (
         <>
-          {upcoming.map(({ e, p }) => (
-            <p key={e.id} className="flex items-start gap-2 rounded-xl bg-surface-2 px-3 py-2 text-sm">
-              <Trophy className="mt-0.5 size-4 shrink-0 text-warn" aria-hidden />
-              <span>
-                <b>{e.name}</b> ({formatDayMonth(e.date, false)}): previsione <b className="num text-base">{formatRaceTime(p!.timeSec)}</b>, a {formatPace(p!.paceSec)}
-              </span>
-            </p>
-          ))}
+          {upcoming.map(({ e, p }) => {
+            const g = raceGoals(p!, Math.ceil(daysBetween(today, e.date) / 7));
+            const goals = [
+              { k: "Sicuro", t: g.sicuro, c: "text-ok", d: "anche in una giornata storta" },
+              { k: "Possibile", t: g.possibile, c: "text-warn", d: "con una buona giornata" },
+              { k: "Ambizioso", t: g.ambizioso, c: "text-run", d: "tutto perfetto" },
+            ];
+            return (
+              <div key={e.id} className="flex flex-col gap-2 rounded-2xl bg-surface-2 p-4">
+                <p className="flex items-start gap-2 text-sm">
+                  <Trophy className="mt-0.5 size-4 shrink-0 text-warn" aria-hidden />
+                  <span><b>{e.name}</b> · {formatDayMonth(e.date, false)}: tre obiettivi</span>
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {goals.map((x) => (
+                    <div key={x.k} className="rounded-xl border border-line p-2 text-center">
+                      <p className={clsx("text-xs font-semibold uppercase tracking-wide", x.c)}>{x.k}</p>
+                      <p className="num text-xl font-semibold sm:text-2xl">{formatRaceTime(x.t)}</p>
+                      <p className="text-[11px] text-muted">{formatPace(x.t / p!.km)}</p>
+                      <p className="hidden text-[11px] text-faint sm:block">{x.d}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted">{g.note} Parti al ritmo del &quot;sicuro&quot; nei primi km e decidi strada facendo.</p>
+              </div>
+            );
+          })}
           <ul className="grid gap-3 sm:grid-cols-2">
             {predictions.map((p) => {
               const d = report.trend?.[p.key];

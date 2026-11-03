@@ -187,3 +187,33 @@ export function predictRaces(
   }
   return { predictions: now.predictions, weeklyKm: now.weeklyKm, longestKm: now.longestKm, notes, trend };
 }
+
+export interface RaceGoals {
+  sicuro: number;
+  possibile: number;
+  ambizioso: number;
+  /** Miglioramento atteso da qui alla gara (frazione), già incluso in "possibile" e "ambizioso". */
+  gain: number;
+  note: string;
+}
+
+/**
+ * Tre obiettivi per una gara, dalla previsione attuale e dalle settimane che mancano:
+ * - sicuro: il tempo che fai anche in una giornata storta (estremo lento della previsione);
+ * - possibile: la previsione, più metà del miglioramento realistico da qui alla gara;
+ * - ambizioso: la previsione con tutto il miglioramento e una giornata perfetta (−1,5%).
+ * Miglioramento realistico: 0,4% a settimana di preparazione, al massimo 4%; dimezzato con affidabilità bassa.
+ * Nella settimana della gara non c'è più margine di miglioramento.
+ */
+export function raceGoals(p: Prediction, weeksToRace: number): RaceGoals {
+  const weeks = Math.max(0, weeksToRace - 1); // l'ultima settimana è di scarico: non migliora la forma
+  let gain = Math.min(0.04, weeks * 0.004);
+  if (p.confidence === "bassa") gain /= 2;
+  const sicuro = p.highSec;
+  const possibile = p.timeSec * (1 - gain / 2);
+  const ambizioso = p.timeSec * (1 - gain) * 0.985;
+  const note =
+    weeks === 0 ? "Gara vicina: gli obiettivi riflettono la forma di oggi."
+    : `Mancano ${weeksToRace} settimane: "possibile" e "ambizioso" includono il miglioramento realistico se segui il programma.`;
+  return { sicuro, possibile, ambizioso, gain, note };
+}

@@ -13,7 +13,7 @@ describe("passi al km per le sedute di corsa", () => {
 
   it("ripetute: passo, metri per ripetuta, recuperi, riscaldamento e defaticamento", () => {
     const r = withRunPaces(w("ripetute"), REF);
-    expect(r.structure.main[0].target).toEqual({ value: "4:20 – 4:30 /km (≈ 670–690 m ogni ripetuta)", origin: "stimato" });
+    expect(r.structure.main[0].target).toEqual({ value: "4:20 – 4:30 /km (≈ 670–690 m ogni frazione)", origin: "stimato" });
     expect(r.structure.recoveryTarget?.value).toBe("6:20 – 7:15 /km");
     expect(r.structure.warmup[0].target?.value).toBe("5:50 – 6:30 /km");
     expect(r.structure.cooldown[0].target?.value).toBe("6:00 – 6:45 /km");

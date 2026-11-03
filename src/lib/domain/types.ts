@@ -53,6 +53,8 @@ export interface WorkoutStep {
   rpe: [number, number];
   target?: { value: string; origin: ValueOrigin };
   note?: string;
+  /** Zona di passo della corsa per questa fase (es. "soglia", "mezza"); "rpe" = solo sensazioni, nessun passo. */
+  zone?: string;
 }
 
 export interface WorkoutStructure {
@@ -61,6 +63,10 @@ export interface WorkoutStructure {
   recoveries?: string;
   /** Passo dei recuperi tra ripetute o blocchi (calcolato, non salvato). */
   recoveryTarget?: { value: string; origin: ValueOrigin };
+  /** Zona di passo dei recuperi (corsa): "recuperoTraProve" di default, "rpe" se si cammina o si scende da una salita. */
+  recoveryZone?: string;
+  /** Seduta della libreria: famiglia e livello, per far progredire le sedute successive. */
+  session?: { family: string; level: number; maxLevel: number };
   cooldown: WorkoutStep[];
 }
 
