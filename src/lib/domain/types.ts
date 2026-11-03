@@ -59,6 +59,8 @@ export interface WorkoutStructure {
   warmup: WorkoutStep[];
   main: WorkoutStep[];
   recoveries?: string;
+  /** Passo dei recuperi tra ripetute o blocchi (calcolato, non salvato). */
+  recoveryTarget?: { value: string; origin: ValueOrigin };
   cooldown: WorkoutStep[];
 }
 
@@ -80,6 +82,8 @@ export interface PlannedWorkout {
   status: WorkoutStatus;
   completedActivityId?: string;
   skipReason?: string;
+  /** Da dove vengono i passi mostrati (calcolati al momento, non salvati). */
+  paceSource?: string;
 }
 
 export interface Feedback {

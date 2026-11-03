@@ -68,7 +68,14 @@ export default async function WorkoutPage({ params, searchParams }: { params: Pr
       </div>
 
       <Card className="text-sm text-muted">
-        L&apos;intensità è indicata con la scala RPE da 1 a 10 (sforzo percepito). Ritmi e potenze precise compariranno solo quando ci saranno test affidabili.
+        {w.paceSource ? (
+          <>
+            Passi al km stimati dalla tua forma attuale: <b className="text-fg">{w.paceSource}</b>. Si aggiornano da soli a ogni corsa registrata.
+            Se in una giornata il passo costa più fatica del previsto (caldo, salita, stanchezza), comanda l&apos;RPE: rallenta senza problemi.
+          </>
+        ) : (
+          <>L&apos;intensità è indicata con la scala RPE da 1 a 10 (sforzo percepito). I passi al km compariranno dopo qualche corsa registrata o un test.</>
+        )}
       </Card>
 
       <section>
@@ -81,7 +88,14 @@ export default async function WorkoutPage({ params, searchParams }: { params: Pr
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">Parte centrale</h3>
             <ul>{w.structure.main.map((s, i) => <Step key={i} s={s} />)}</ul>
-            {w.structure.recoveries && <p className="mt-2 rounded-xl bg-surface-2 px-3 py-2 text-sm text-muted">Recuperi: {w.structure.recoveries}</p>}
+            {w.structure.recoveries && (
+              <p className="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 text-sm text-muted">
+                Recuperi: {w.structure.recoveries}
+                {w.structure.recoveryTarget && (
+                  <span className="flex items-center gap-2 text-fg">Passo: {w.structure.recoveryTarget.value} <OriginTag origin={w.structure.recoveryTarget.origin} /></span>
+                )}
+              </p>
+            )}
           </div>
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">Defaticamento</h3>

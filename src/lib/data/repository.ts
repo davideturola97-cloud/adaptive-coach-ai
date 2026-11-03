@@ -1,4 +1,5 @@
 import "server-only";
+import { paceReference, withRunPaces } from "@/lib/training/run-paces";
 import { todayISO } from "@/lib/dates";
 import { buildDemoData, type DemoData } from "@/lib/demo/data";
 import type { AthleteProfile, CompletedActivity, Level, PlannedTest, PlannedWorkout, RaceEvent, Sport, TestResult, ValueOrigin, WorkoutStatus, WorkoutType } from "@/lib/domain/types";
@@ -42,7 +43,18 @@ function mapProfile(p: any, sports: any[]): AthleteProfile {
  * Con Supabase configurato legge i dati dell'utente collegato (le regole RLS limitano ogni lettura alle sue righe).
  * Senza configurazione restituisce i dati dimostrativi.
  */
+/**
+ * Dati dell'app. Le sedute di corsa ancora da fare ricevono i passi al km per ogni fase,
+ * calcolati al momento dalla forma attuale (test o previsioni dagli allenamenti).
+ */
 export async function getAppData(): Promise<AppData> {
+  const d = await loadAppData();
+  const ref = paceReference(d.athlete, d.activities, d.plan, d.today);
+  if (!ref) return d;
+  return { ...d, plan: d.plan.map((w) => (w.status === "programmato" ? withRunPaces(w, ref) : w)) };
+}
+
+async function loadAppData(): Promise<AppData> {
   if (!isSupabaseConfigured()) return { ...buildDemoData(), mode: "demo", onboardingCompleted: true, readiness: { flagged: false, doctorCleared: false, date: todayISO() } };
 
   const { supabase, user } = await getUser();

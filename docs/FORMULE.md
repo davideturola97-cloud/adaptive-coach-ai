@@ -140,3 +140,24 @@ Stime dei tempi su 5 km, 10 km, mezza e maratona, ricalcolate a ogni corsa regis
   Intervallo: −1%/+2% (alta), −2%/+4% (media), −3,5%/+7% (bassa).
 - **Andamento**: confronto con la stessa previsione calcolata 4 settimane fa.
 - Limiti: senza corse a tutta le previsioni sono prudenti (lo dicono); caldo, percorso e alimentazione in gara non sono considerati.
+
+## Passi al km nelle sedute di corsa (src/lib/training/run-paces.ts)
+
+Calcolati quando si apre la seduta (non salvati): seguono la forma attuale.
+Riferimento T (ritmo di soglia, s/km): il test degli ultimi 4 mesi; se una previsione dai 10 km con affidabilità media o alta
+nasce da una corsa più recente del test, vale quella (T = passo previsto sui 10 km × 1,04). Senza riferimento: solo RPE.
+
+| Fase | Passo (multipli di T, dal più veloce al più lento) |
+|---|---|
+| Riscaldamento | 1,25 – 1,40 |
+| Corsa facile | 1,20 – 1,32 |
+| Lungo | 1,15 – 1,27 |
+| Recupero | 1,30 – 1,45 |
+| Tempo run (soglia) | 0,99 – 1,03 |
+| Ripetute | 0,92 – 0,96 (con i metri attesi per ripetuta) |
+| Recuperi tra ripetute o blocchi | 1,35 – 1,55 |
+| Progressivo | terzi a 1,25 → 1,12 → 1,02 |
+| Test 5 km | partenza 5 s/km più lenta del passo previsto sui 5 km |
+| Defaticamento | 1,28 – 1,45 |
+
+Arrotondati a 5 secondi. Sono indicazioni: con caldo, salite o stanchezza comanda l'RPE.

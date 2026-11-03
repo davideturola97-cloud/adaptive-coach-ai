@@ -30,7 +30,16 @@ export interface CoachData {
 const d = (iso: string) => `${weekdayName(iso, true)} ${formatDayMonth(iso)}`;
 
 function workoutLine(w: PlannedWorkout) {
-  return `${w.date} (${d(w.date)}) · ${SPORTS[w.sport].label} · ${w.title} [${WORKOUT_TYPE_LABEL[w.type]}] · ${formatDuration(w.durationMin)} · ${w.intensity} · stato: ${w.status} · id: ${w.id}`;
+  const st = w.structure;
+  const paces = w.paceSource
+    ? ` · passi STIMATI (da ${w.paceSource}): ${[
+        ...st.warmup.map((x) => `riscaldamento ${x.target?.value ?? "-"}`),
+        ...st.main.map((x) => `${x.repeat ? `${x.repeat}×` : ""}${x.durationMin ? `${x.durationMin}' ` : ""}${x.label} ${x.target?.value ?? "-"}`),
+        ...(st.recoveryTarget ? [`recuperi ${st.recoveryTarget.value}`] : []),
+        ...st.cooldown.map((x) => `defaticamento ${x.target?.value ?? "-"}`),
+      ].join("; ")}`
+    : "";
+  return `${w.date} (${d(w.date)}) · ${SPORTS[w.sport].label} · ${w.title} [${WORKOUT_TYPE_LABEL[w.type]}] · ${formatDuration(w.durationMin)} · ${w.intensity} · stato: ${w.status} · id: ${w.id}${paces}`;
 }
 
 const WEEKDAY_FULL = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];
