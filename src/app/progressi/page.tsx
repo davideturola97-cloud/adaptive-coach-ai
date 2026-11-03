@@ -5,11 +5,14 @@ import { getAppData } from "@/lib/data/repository";
 import { weeklySummaries } from "@/lib/training/analytics";
 import { Signals } from "@/components/signals";
 import { feedbackSignals } from "@/lib/training/feedback";
+import { RacePredictions } from "@/components/race-predictions";
+import { predictRaces } from "@/lib/training/predictions";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProgressPage() {
-  const { plan, activities, tests, today, athlete } = await getAppData();
+  const { plan, activities, tests, today, athlete, events } = await getAppData();
+  const predictions = predictRaces(activities, plan, athlete, today);
   const weeks = weeklySummaries(activities, plan, today, 10);
 
   const easyTypes = new Set(["corsa_facile", "lungo"]);
@@ -32,6 +35,7 @@ export default async function ProgressPage() {
 
       <div className="flex flex-col gap-6">
         <Signals signals={feedbackSignals(activities, plan, today).filter((s) => s.id !== "registrare")} />
+        <RacePredictions report={predictions} events={events} today={today} />
         <Card>
           <SectionTitle hint="ore per settimana">Volume di allenamento</SectionTitle>
           <VolumeChart data={weeks} />

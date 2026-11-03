@@ -124,3 +124,19 @@ Per ogni sport, anche senza intertempi. Regole fisse; i valori legati ai test so
   Differenze sotto 0,5 km/h, 3 s/km (o /100 m) o 4 battiti sono considerate nella norma.
 - **Carico**: minuti × RPE.
 - Intertempi in bici: velocità in km/h, parziali anche da 5 km (lap); conta come completo un parziale lungo almeno il 90% del più lungo.
+
+## Previsioni di gara (src/lib/training/predictions.ts)
+
+Stime dei tempi su 5 km, 10 km, mezza e maratona, ricalcolate a ogni corsa registrata o importata.
+
+- **Riferimenti** (ultime 12 settimane): corse di almeno 3 km; dagli intertempi al km, i tratti consecutivi più veloci
+  da 3, 5, 10 e 21,1 km; il ritmo di soglia del test (10 km ≈ soglia ÷ 1,04 × 10).
+- **Proiezione**: Riegel T2 = T1 × (D2/D1)^e. Scendendo di distanza e = 1,06. Salendo: +0,03 sotto 20 km/settimana,
+  +0,015 tra 20 e 35; per la maratona +0,03 con lungo massimo (ultime 8 settimane) sotto 21 km, +0,015 sotto 28;
+  per la mezza +0,015 con lungo sotto 12 km. Un riferimento vale solo se è lungo almeno 1/8 della gara.
+- **Scelta**: la proiezione più veloce tra i riferimenti validi.
+- **Affidabilità**: alta = sforzo massimale o quasi (RPE ≥ 8, test) negli ultimi 60 giorni e lungo almeno 1/4 della gara;
+  media = solo una delle due condizioni; bassa = altrimenti, e sempre per la maratona con lungo massimo sotto 28 km.
+  Intervallo: −1%/+2% (alta), −2%/+4% (media), −3,5%/+7% (bassa).
+- **Andamento**: confronto con la stessa previsione calcolata 4 settimane fa.
+- Limiti: senza corse a tutta le previsioni sono prudenti (lo dicono); caldo, percorso e alimentazione in gara non sono considerati.

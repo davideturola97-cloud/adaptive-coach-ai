@@ -13,6 +13,7 @@ import { feedbackSignals } from "@/lib/training/feedback";
 import { formatDuration, formatPace, formatSwimPace } from "@/lib/training/formulas";
 import { analyzeSplits } from "@/lib/training/splits";
 import { analyzeActivity } from "@/lib/training/analysis";
+import { formatRaceTime, predictRaces } from "@/lib/training/predictions";
 import { TEST_CATALOG } from "@/lib/training/tests";
 import type { ChatClient, ChatMessage, ToolDef } from "./openai";
 
@@ -133,7 +134,7 @@ export const COACH_TOOLS: ToolDef[] = [
     type: "function",
     function: {
       name: "leggi_test",
-      description: "Legge i risultati dei test, i parametri stimati e i test in programma.",
+      description: "Legge i risultati dei test, i parametri stimati, i test in programma e le previsioni dei tempi di gara di corsa (5 km, 10 km, mezza, maratona) calcolate dagli allenamenti.",
       parameters: { type: "object", properties: {}, additionalProperties: false },
     },
   },
@@ -205,7 +206,12 @@ export function runTool(name: string, rawArgs: string, ctx: ToolContext): string
     case "leggi_test": {
       const t = data.tests.map((x) => `${x.date} · ${TEST_CATALOG[x.kind]?.label ?? x.kind}: ${x.rawValue} → ${x.derived.map((y) => `${y.label} ${y.value} (${y.origin})`).join(", ")}`);
       const p = data.plannedTests.filter((x) => x.status !== "completato").map((x) => `${TEST_CATALOG[x.kind].label}: ${x.status}${x.dueDate ? ` il ${x.dueDate}` : ""}`);
-      return [`Risultati:\n${t.join("\n") || "nessuno"}`, `Test in sospeso:\n${p.join("\n") || "nessuno"}`].join("\n");
+      const r = predictRaces(data.activities, data.plan, data.athlete, data.today);
+      const pr = r.predictions.map(
+        (x) => `${x.label}: ${formatRaceTime(x.timeSec)} (tra ${formatRaceTime(x.lowSec)} e ${formatRaceTime(x.highSec)}, affidabilità ${x.confidence}, stimato da ${x.basedOn.label})${x.notes.length ? ` · ${x.notes.join(" ")}` : ""}`,
+      );
+      const head = `Previsioni di gara (STIME, riportale come tali con l'intervallo; volume ${r.weeklyKm} km/sett, lungo max ${r.longestKm} km):`;
+      return [`Risultati:\n${t.join("\n") || "nessuno"}`, `Test in sospeso:\n${p.join("\n") || "nessuno"}`, `${head}\n${pr.join("\n") || r.notes.join(" ")}`].join("\n");
     }
     case "proponi_riprogrammazione": {
       const kinds = ["nessun_allenamento", "poco_tempo", "stanco", "dolore", "malato", "viaggio", "saltata"] as const;

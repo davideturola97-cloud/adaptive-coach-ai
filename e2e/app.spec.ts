@@ -120,3 +120,11 @@ test("profilo: istruzioni per installare l'app", async ({ page }, info) => {
   if (info.project.name === "iphone") await expect(page.getByText("Aggiungi alla schermata Home")).toBeVisible();
   if (info.project.name === "android") await expect(page.getByText(/Installa app|Installa l'app/)).toBeVisible();
 });
+
+test("progressi: previsioni di gara", async ({ page }) => {
+  await page.goto("/progressi");
+  await expect(page.getByText("Previsioni di gara")).toBeVisible();
+  for (const d of ["5 km", "10 km", "Mezza maratona", "Maratona"]) await expect(page.getByText(d, { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/affidabilità (alta|media|bassa)/).first()).toBeVisible();
+  await noHorizontalScroll(page);
+});
