@@ -56,6 +56,8 @@ if exist .env.local if "%HAS_AI%"=="NO" (
   set /p AI_IN_KEY=Chiave OpenAI: 
 )
 if defined AI_IN_KEY (
+  rem Prima un a capo: il Blocco note salva senza a capo finale e la chiave finirebbe attaccata all'ultima riga.
+  >> .env.local echo.
   >> .env.local echo OPENAI_API_KEY=%AI_IN_KEY%
   set HAS_AI=SI
   echo Chiave OpenAI salvata in .env.local.
@@ -78,6 +80,9 @@ if not exist .env.local (
   if "%SUPA_URL%%SUPA_KEY%"=="SISI" (echo Supabase configurato: vedrai la pagina di accesso.) else (echo Manca un valore in .env.local: l'app parte in modalita dimostrativa.)
 )
 echo Coach AI: chiave impostata: %HAS_AI%
+if exist .env.local findstr /r /c:"=.*[A-Z_][A-Z_]*_KEY=" /c:"=.*STRAVA_CLIENT_" /c:"=.*NEXT_PUBLIC_" .env.local >nul && (
+  echo ATTENZIONE: in .env.local due valori sono finiti sulla stessa riga. Aprilo con Blocco note e metti ogni NOME=valore su una riga sua.
+)
 set HAS_STRAVA=NO
 if exist .env.local findstr /r /b /c:"STRAVA_CLIENT_SECRET=.." .env.local >nul && findstr /r /b /c:"STRAVA_CLIENT_ID=[0-9]" .env.local >nul && set HAS_STRAVA=SI
 echo Strava: chiavi impostate: %HAS_STRAVA%   ^(facoltativo, guida in docs\STRAVA.md^)

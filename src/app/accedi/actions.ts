@@ -18,7 +18,11 @@ function friendly(message: string): string {
   if (/invalid login credentials/i.test(message)) return "Email o password non corretti.";
   if (/email not confirmed/i.test(message)) return "Conferma prima l'email: apri il link che ti abbiamo inviato.";
   if (/rate limit|too many/i.test(message)) return "Troppi tentativi. Riprova tra qualche minuto.";
+  if (/invalid api key|no api key|apikey/i.test(message)) return "Chiave di Supabase non valida nella configurazione del server (.env.local o Vercel): controlla la riga NEXT_PUBLIC_SUPABASE_ANON_KEY.";
+  if (/fetch failed|ENOTFOUND|ECONNREFUSED|network|timed? ?out/i.test(message)) return "Non riesco a contattare Supabase: controlla la connessione e l'indirizzo NEXT_PUBLIC_SUPABASE_URL (il progetto potrebbe essere in pausa su supabase.com).";
   if (/password/i.test(message)) return "La password non è abbastanza sicura: usa almeno 8 caratteri con lettere e numeri.";
+  // Nella finestra del server resta il motivo tecnico (mai password o chiavi: è il messaggio di Supabase).
+  console.error("Accesso non riuscito:", message.slice(0, 200));
   return "Operazione non riuscita. Riprova tra poco.";
 }
 
