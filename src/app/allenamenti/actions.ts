@@ -9,6 +9,7 @@ import { getUser } from "@/lib/supabase/server";
 import { dedupeKey, findSimilar, matchPlanned } from "@/lib/training/feedback";
 import { formatDuration } from "@/lib/training/formulas";
 import { parseGymLog } from "@/lib/training/gym-parse";
+import { applySwaps, proposeSwaps, swapContext } from "@/lib/training/gym-swaps";
 
 export type LogState = { errors?: string[]; duplicate?: string };
 
@@ -139,4 +140,26 @@ export async function skipFeedback(activityId: string): Promise<{ ok: boolean; e
   if (error) return { ok: false, error: "Non riuscito. Hai eseguito lo script 0013_feedback_skipped.sql su Supabase?" };
   revalidatePath("/", "layout");
   return { ok: true };
+}
+
+/** Sostituzioni degli esercizi scelte dall'atleta: ricalcolate sul server e applicate solo a questa seduta (annullabile). */
+export async function applyGymSwaps(workoutId: string, indices: number[]): Promise<{ ok: string; versionId?: string } | { error: string }> {
+  const data = await getAppData();
+  if (data.mode === "demo") return { error: "In modalità dimostrativa il programma non si modifica." };
+  const w = data.plan.find((p) => p.id === workoutId && p.sport === "gym" && p.status === "programmato");
+  if (!w) return { error: "Seduta non trovata o già registrata." };
+  const ctx = swapContext(w, data.plan, data.activities, data.events, data.checkins);
+  const chosen = proposeSwaps(w, ctx).filter((s) => indices.includes(s.index));
+  if (!chosen.length) return { error: "Scegli almeno una sostituzione." };
+  const changed = applySwaps(w, chosen);
+  const { supabase, user } = await getUser();
+  if (!user) return { error: "Sessione scaduta: accedi di nuovo." };
+  const patch = {
+    date: w.date, sport: w.sport, type: w.type, title: w.title, objective: changed.objective, durationMin: changed.durationMin,
+    intensity: w.intensity, structure: changed.structure, technicalTips: w.technicalTips, safetyNotes: w.safetyNotes, status: "programmato",
+  };
+  const { data: versionId, error } = await supabase.rpc("apply_plan_changes", { p_changes: [{ op: "modifica", id: w.id, patch }], p_reason: `Palestra adattata: ${chosen.map((s) => s.from.name).join(", ")}` });
+  if (error) return { error: "Modifica non riuscita. Riprova." };
+  revalidatePath("/", "layout");
+  return { ok: "Seduta aggiornata.", versionId: String(versionId) };
 }

@@ -12,6 +12,8 @@ import { getAppData } from "@/lib/data/repository";
 import { formatDuration } from "@/lib/training/formulas";
 import { gymAdvice } from "@/lib/training/gym-schedule";
 import { suggestLoad } from "@/lib/training/gym-progress";
+import { swapSuggestion } from "@/lib/training/gym-swaps";
+import { GymSwapsCard } from "@/components/gym-swaps";
 import { weekdayName as wd } from "@/lib/dates";
 import { GymAdviceList } from "@/components/gym-advice";
 
@@ -42,7 +44,7 @@ function Step({ s }: { s: WorkoutStep }) {
 
 export default async function WorkoutPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ salvato?: string }> }) {
   const { id } = await params;
-  const { plan, activities, today, mode, athlete, events } = await getAppData();
+  const { plan, activities, today, mode, athlete, events, checkins } = await getAppData();
   const { salvato } = await searchParams;
   const demo = mode === "demo";
   const w = plan.find((p) => p.id === id);
@@ -101,6 +103,11 @@ export default async function WorkoutPage({ params, searchParams }: { params: Pr
           </section>
         ) : null;
       })() : null}
+
+      {(() => {
+        const sug = swapSuggestion(w, { plan, activities, events, checkins });
+        return sug ? <GymSwapsCard workoutId={w.id} reasons={sug.reasons} swaps={sug.swaps} demo={demo} /> : null;
+      })()}
 
       <section>
         <SectionTitle>Struttura</SectionTitle>

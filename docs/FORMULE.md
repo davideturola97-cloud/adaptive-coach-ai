@@ -229,3 +229,12 @@ reale (livelli delle sedute, volume, lunghi). Si mostrano le differenze giorno p
 
 All'apertura dell'app, se Strava è collegato e l'ultimo import ha più di 15 minuti, le attività nuove si importano da sole
 e la Home chiede subito lo sforzo percepito della più recente.
+
+## Sostituzioni in palestra (src/lib/training/gym-swaps.ts)
+
+Per una seduta di palestra in programma il coach guarda: seduta chiave di corsa/bici il giorno prima (o attività con RPE ≥ 7
+o ≥ 80'), seduta chiave il giorno dopo, mattina con fatica ≥ 4 o fastidi alle gambe, gara A/B entro 6 giorni, nuoto di qualità
+il giorno dopo. Propone: squat → leg press (una serie in meno, 10-12, RPE 6); affondi → step up basso; stacchi → ponte glutei;
+polpacci → calf seduto leggero; salti → via; altri esercizi di gambe → −40% serie e −20% carico; gara entro 4 giorni → gambe via;
+prima del nuoto: military press → alzate laterali leggere, trazioni → lat machine. Per gli esercizi nuovi nessun chilo inventato:
+il carico è indicato con le ripetizioni di margine. L'atleta sceglie quali sostituzioni tenere; vale solo per quella seduta ed è annullabile.

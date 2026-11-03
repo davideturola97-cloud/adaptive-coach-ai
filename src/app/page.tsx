@@ -15,6 +15,8 @@ import { formatDuration } from "@/lib/training/formulas";
 import { MorningCheckin, StravaAutoSync, WeeklyReviewCard } from "@/components/today";
 import { AddFeedbackForm, SkipFeedbackButton } from "@/components/strava";
 import { waitingFeedback } from "@/lib/training/waiting";
+import { swapSuggestion } from "@/lib/training/gym-swaps";
+import { GymSwapsCard } from "@/components/gym-swaps";
 import { readinessAdvice } from "@/lib/training/readiness";
 import { proposeReschedule } from "@/lib/planning/reschedule";
 import { weeklyReview } from "@/lib/planning/weekly-review";
@@ -176,7 +178,15 @@ export default async function HomePage() {
         <SectionTitle hint={<Link href="/riprogramma" className="font-semibold text-warn hover:underline">Ho un imprevisto</Link>}>Oggi</SectionTitle>
         {todays.length ? (
           <div className="flex flex-col gap-3">
-            {todays.map((w) => <TodayWorkout key={w.id} w={w} />)}
+            {todays.map((w) => {
+              const sug = swapSuggestion(w, data);
+              return (
+                <div key={w.id} className="flex flex-col gap-3">
+                  {sug && <GymSwapsCard workoutId={w.id} reasons={sug.reasons} swaps={sug.swaps} demo={demo} />}
+                  <TodayWorkout w={w} />
+                </div>
+              );
+            })}
           </div>
         ) : mode === "utente" && !plan.some((p) => p.date >= today) ? (
           <Link href="/programma" className="block">
