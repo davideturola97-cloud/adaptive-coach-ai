@@ -2,6 +2,8 @@
 
 Allenatore personale per corsa e ciclismo che adatta il programma alla tua settimana.
 
+**Novità: importazione da Strava** (sola lettura, guida in `docs/STRAVA.md`).
+
 **Stato: Milestone 8 — completa.** App installabile su iPhone e Android, pronta per Vercel (guida in `docs/DEPLOY.md`), intestazioni di sicurezza, limite ai tentativi di accesso, pagina privacy, test end-to-end su tre schermi.
 
 Milestone 7: Chat con il coach AI (accesso controllato ai dati, proposte tramite il motore di regole, conferma obbligatoria), lettura degli screenshot delle attività, dettatura vocale, limiti di uso giornalieri.
@@ -48,6 +50,7 @@ supabase/migrations/   schema del database e regole di sicurezza (RLS)
 supabase/rls.test.ts   test delle regole di sicurezza su un Postgres in memoria
 docs/FORMULE.md        formule usate e loro limiti
 docs/DEPLOY.md         mettere l'app online e installarla sul telefono
+docs/STRAVA.md         collegare Strava e importare gli allenamenti
 e2e/                   test nel browser (Android, iPhone, computer)
 ```
 

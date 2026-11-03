@@ -37,7 +37,7 @@ async function as(user: string | null, sql: string, params: unknown[] = []) {
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(SUPABASE_STUB);
-  for (const f of ["0001_schema.sql", "0002_multisport.sql", "0003_plan.sql", "0004_activities.sql", "0005_reschedule.sql", "0006_coach_ai.sql", "0007_splits.sql", "0008_auth_throttle.sql"]) {
+  for (const f of ["0001_schema.sql", "0002_multisport.sql", "0003_plan.sql", "0004_activities.sql", "0005_reschedule.sql", "0006_coach_ai.sql", "0007_splits.sql", "0008_auth_throttle.sql", "0009_strava.sql"]) {
     await db.exec(readFileSync(path.join(__dirname, "migrations", f), "utf8"));
   }
   // Le migrazioni devono poter essere rieseguite senza errori.
@@ -48,6 +48,7 @@ beforeAll(async () => {
   await db.exec(readFileSync(path.join(__dirname, "migrations/0006_coach_ai.sql"), "utf8"));
   await db.exec(readFileSync(path.join(__dirname, "migrations/0007_splits.sql"), "utf8"));
   await db.exec(readFileSync(path.join(__dirname, "migrations/0008_auth_throttle.sql"), "utf8"));
+  await db.exec(readFileSync(path.join(__dirname, "migrations/0009_strava.sql"), "utf8"));
   await db.exec(`insert into auth.users (id, email) values ('${ALICE}', 'a@example.com'), ('${BOB}', 'b@example.com');`);
 });
 
@@ -340,5 +341,37 @@ describe("limite ai tentativi di accesso", () => {
   it("rifiuta chiavi non valide o troppe chiavi", async () => {
     await expect(as(null, "select public.auth_attempts_record($1)", [["mario@example.com"]])).rejects.toThrow();
     await expect(as(null, "select public.auth_attempts_count($1, 900)", [[K1, K1, K1]])).rejects.toThrow();
+  });
+});
+
+describe("Strava", () => {
+  // Utenti propri: un test precedente cancella l'account di Alice.
+  const CARLA = "33333333-3333-3333-3333-333333333333";
+  const DARIO = "44444444-4444-4444-4444-444444444444";
+  beforeAll(async () => {
+    await db.exec(`insert into auth.users (id, email) values ('${CARLA}', 'c@example.com'), ('${DARIO}', 'd@example.com') on conflict do nothing;`);
+  });
+  const act = (ext: string) => ({ activity_date: "2026-11-01", sport: "run", title: "Corsa", duration_min: 40, source: "strava", external_id: ext });
+  it("ognuno vede solo il proprio collegamento", async () => {
+    await as(CARLA, "insert into public.strava_connections (athlete_id, token_ciphertext) values (1, 'x')");
+    await as(DARIO, "insert into public.strava_connections (athlete_id, token_ciphertext) values (2, 'y')");
+    const r = await as(DARIO, "select athlete_id from public.strava_connections");
+    expect(r.rows).toEqual([{ athlete_id: 2 }]);
+    await as(DARIO, "delete from public.strava_connections where user_id = $1", [CARLA]);
+    expect((await db.query("select count(*)::int as c from public.strava_connections")).rows[0]).toEqual({ c: 2 });
+  });
+  it("la stessa attività Strava non si importa due volte", async () => {
+    await as(CARLA, "select public.record_activity($1, null)", [act("strava:123")]);
+    await expect(as(CARLA, "select public.record_activity($1, null)", [act("strava:123")])).rejects.toThrow();
+    await as(DARIO, "select public.record_activity($1, null)", [act("strava:123")]); // un altro utente sì
+  });
+  it("feedback aggiunto dopo, solo sulle proprie attività", async () => {
+    const fb = { rpe: 6, muscle_fatigue: 3, cardio_fatigue: 3, feeling: "buono" };
+    const id = (await as(CARLA, "select id from public.activities where external_id = 'strava:123'")).rows[0].id;
+    await expect(as(DARIO, "select public.add_feedback($1, $2)", [id, fb])).rejects.toThrow();
+    await as(CARLA, "select public.add_feedback($1, $2)", [id, fb]);
+    await as(CARLA, "select public.add_feedback($1, $2)", [id, { ...fb, rpe: 7 }]);
+    const r = await as(CARLA, "select rpe from public.feedback where activity_id = $1", [id]);
+    expect(r.rows).toEqual([{ rpe: 7 }]);
   });
 });

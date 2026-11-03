@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { profileFromForm } from "@/lib/domain/profile-schema";
 import { persistProfile } from "@/lib/data/mutations";
 import { getUser } from "@/lib/supabase/server";
+import { disconnect } from "@/lib/strava/service";
 
 export type ProfileState = { errors?: string[] };
 
@@ -27,6 +28,8 @@ export async function deleteAccount(fd: FormData) {
   if (fd.get("confirm") !== "CANCELLA") redirect("/profilo?errore=conferma");
   const { supabase, user } = await getUser();
   if (!user) redirect("/accedi");
+  // Prima di cancellare tutto, revoca l'accesso a Strava (se collegato): l'app non resta autorizzata.
+  await disconnect(supabase).catch(() => {});
   const { error } = await supabase.rpc("delete_my_account");
   if (error) redirect("/profilo?errore=cancellazione");
   await supabase.auth.signOut();

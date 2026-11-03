@@ -78,6 +78,9 @@ if not exist .env.local (
   if "%SUPA_URL%%SUPA_KEY%"=="SISI" (echo Supabase configurato: vedrai la pagina di accesso.) else (echo Manca un valore in .env.local: l'app parte in modalita dimostrativa.)
 )
 echo Coach AI: chiave impostata: %HAS_AI%
+set HAS_STRAVA=NO
+if exist .env.local findstr /r /b /c:"STRAVA_CLIENT_SECRET=.." .env.local >nul && findstr /r /b /c:"STRAVA_CLIENT_ID=[0-9]" .env.local >nul && set HAS_STRAVA=SI
+echo Strava: chiavi impostate: %HAS_STRAVA%   ^(facoltativo, guida in docs\STRAVA.md^)
 echo.
 
 echo Avvio di Adaptive Coach AI su http://localhost:3000

@@ -4,6 +4,7 @@ import { Card, OriginTag } from "@/components/ui";
 import type { CompletedActivity } from "@/lib/domain/types";
 import { SplitsView } from "./splits-view";
 import { ActivityAnalysisCard } from "./activity-analysis";
+import { AddFeedbackForm, STRAVA_ORANGE } from "./strava";
 import type { ActivityData, AthleteData, PlannedData } from "@/lib/training/analysis";
 import { formatDuration, formatPace, formatSwimPace } from "@/lib/training/formulas";
 
@@ -33,7 +34,14 @@ export function ActivitySummary({ a, back, editable, planned, athlete, history }
     <Card className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Attività svolta</p>
-        <OriginTag origin="misurato" />
+        <span className="flex items-center gap-3">
+          {a.externalId?.startsWith("strava:") && (
+            <a href={`https://www.strava.com/activities/${a.externalId.slice(7)}`} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold underline" style={{ color: STRAVA_ORANGE }}>
+              Vedi su Strava
+            </a>
+          )}
+          <OriginTag origin="misurato" />
+        </span>
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Item label="Durata" value={formatDuration(a.durationMin)} />
@@ -54,6 +62,12 @@ export function ActivitySummary({ a, back, editable, planned, athlete, history }
           </p>
           {f.pain && <p className="text-warn">Dolore: {f.pain}</p>}
           {f.notes && <p className="text-muted">“{f.notes}”</p>}
+        </div>
+      )}
+      {!f && editable && (
+        <div className="flex flex-col gap-3 border-t border-line pt-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-warn">Com&apos;è andata? Manca il tuo feedback</p>
+          <AddFeedbackForm activityId={a.id} />
         </div>
       )}
       {editable && (

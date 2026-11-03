@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getAppData } from "@/lib/data/repository";
-import { activityFromForm, splitsFromForm } from "@/lib/domain/activity-schema";
+import { activityFromForm, feedbackFromForm, splitsFromForm } from "@/lib/domain/activity-schema";
 import { sportLabel } from "@/lib/domain/sports";
 import { getUser } from "@/lib/supabase/server";
 import { dedupeKey, findSimilar, matchPlanned } from "@/lib/training/feedback";
@@ -103,4 +103,27 @@ export async function deleteActivity(fd: FormData) {
   await supabase.from("activities").delete().eq("id", id);
   revalidatePath("/", "layout");
   redirect(back.startsWith("/") ? back : "/allenamenti");
+}
+
+export type FeedbackState = { errors?: string[]; saved?: boolean };
+
+/** Feedback aggiunto dopo, per le attività importate (es. da Strava) che non ce l'hanno. */
+export async function addFeedback(_: FeedbackState, fd: FormData): Promise<FeedbackState> {
+  const id = String(fd.get("activityId") ?? "");
+  if (!/^[0-9a-f-]{36}$/.test(id)) return { errors: ["Attività non valida."] };
+  const parsed = feedbackFromForm(fd);
+  if (!parsed.ok) return { errors: parsed.errors };
+  const f = parsed.feedback;
+  const { supabase, user } = await getUser();
+  if (!user) return { errors: ["Sessione scaduta: accedi di nuovo."] };
+  const { error } = await supabase.rpc("add_feedback", {
+    p_activity_id: id,
+    p_feedback: {
+      rpe: f.rpe, muscle_fatigue: f.muscleFatigue, cardio_fatigue: f.cardioFatigue, sleep_quality: f.sleepQuality ?? null,
+      feeling: f.feeling, pain: f.pain ?? null, notes: f.notes ?? null,
+    },
+  });
+  if (error) return { errors: ["Salvataggio non riuscito. Hai eseguito lo script 0009_strava.sql su Supabase?"] };
+  revalidatePath("/", "layout");
+  return { saved: true };
 }

@@ -45,6 +45,10 @@ export default function PrivacyPage() {
           inviati a OpenAI tramite la sua API, alle condizioni di OpenAI per l&apos;API. Gli screenshot non vengono salvati dall&apos;app:
           resta solo ciò che confermi nel modulo.
         </p>
+        <p>
+          Se colleghi Strava, l&apos;app legge le tue attività (sola lettura) e le salva come attività importate. I permessi di accesso
+          a Strava sono conservati cifrati; scollegando Strava dal Profilo l&apos;accesso viene revocato e i permessi cancellati.
+        </p>
         <p>Non ci sono pubblicità, profilazione commerciale o strumenti di analisi del traffico. I dati non vengono venduti né ceduti.</p>
       </S>
 

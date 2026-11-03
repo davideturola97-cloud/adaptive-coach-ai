@@ -9,6 +9,9 @@ import { sportLabel } from "@/lib/domain/sports";
 import { formatPace, formatSwimPace, powerZones } from "@/lib/training/formulas";
 import { deleteAccount } from "./actions";
 import { InstallApp } from "@/components/pwa";
+import { StravaSection } from "@/components/strava-section";
+import { stravaStatus } from "@/lib/strava/service";
+import { getUser } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +26,11 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 const dash = "–";
 
-export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ errore?: string }> }) {
+export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ errore?: string; strava?: string }> }) {
   const { athlete: a, events, today, mode, email } = await getAppData();
-  const { errore } = await searchParams;
+  const { errore, strava } = await searchParams;
   const demo = mode === "demo";
+  const strStatus = demo ? null : await stravaStatus((await getUser()).supabase);
   const age = a.birthDate ? `${Math.floor(daysBetween(a.birthDate, today) / 365.25)} anni` : null;
   const body = [age, a.heightCm && `${a.heightCm} cm`, a.weightKg && `${a.weightKg} kg`].filter(Boolean).join(" · ");
 
@@ -158,6 +162,11 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             </Card>
           </section>
         )}
+
+        <section id="strava" className="scroll-mt-4">
+          <SectionTitle>Strava</SectionTitle>
+          <StravaSection status={strStatus} esito={strava} demo={demo} />
+        </section>
 
         <section>
           <SectionTitle>App sul telefono</SectionTitle>

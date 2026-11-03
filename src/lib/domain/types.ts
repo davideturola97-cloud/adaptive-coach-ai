@@ -111,7 +111,9 @@ export interface CompletedActivity {
   avgHr?: number;
   avgPowerW?: number;
   elevationM?: number;
-  source: "manuale" | "screenshot" | "file" | "demo";
+  source: "manuale" | "screenshot" | "file" | "demo" | "strava";
+  /** Identificativo dell'attività di origine, es. "strava:123456". */
+  externalId?: string;
   splits?: Split[];
   feedback?: Feedback;
 }

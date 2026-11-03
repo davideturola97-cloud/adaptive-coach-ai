@@ -93,3 +93,13 @@ export function activityFromForm(fd: FormData): { ok: true; activity: ActivityIn
   if (errors.length || !a.success || !f.success || durationMin === null) return { ok: false, errors: [...new Set(errors)] };
   return { ok: true, activity: { ...a.data, durationMin }, feedback: f.data };
 }
+
+/** Solo il feedback (per un'attività già salvata, es. importata da Strava). */
+export function feedbackFromForm(fd: FormData): { ok: true; feedback: FeedbackInput } | { ok: false; errors: string[] } {
+  const g = (k: string) => fd.get(k) ?? "";
+  const f = feedbackSchema.safeParse({
+    rpe: g("rpe"), muscleFatigue: g("muscleFatigue"), cardioFatigue: g("cardioFatigue"), sleepQuality: g("sleepQuality"),
+    feeling: g("feeling"), pain: g("pain"), notes: g("notes"),
+  });
+  return f.success ? { ok: true, feedback: f.data } : { ok: false, errors: [...new Set(f.error.issues.map((i) => i.message))] };
+}

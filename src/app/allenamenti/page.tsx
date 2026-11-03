@@ -3,11 +3,17 @@ import Link from "next/link";
 import { PageHeader } from "@/components/ui";
 import { WorkoutList, type HistoryItem } from "@/components/workout-list";
 import { getAppData } from "@/lib/data/repository";
+import { StravaImport } from "@/components/strava";
+import { stravaStatus } from "@/lib/strava/service";
+import { getUser } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function WorkoutsPage() {
-  const { plan, today, activities } = await getAppData();
+  const { plan, today, activities, mode } = await getAppData();
+  const strava = mode === "demo" ? null : await stravaStatus((await getUser()).supabase);
+  // Attività importate che aspettano lo sforzo percepito: senza RPE il coach non può valutare il carico.
+  const waiting = activities.filter((a) => a.source === "strava" && !a.feedback).sort((x, y) => y.date.localeCompare(x.date));
   // Storico: attività svolte (con o senza seduta), sedute saltate e sedute passate ancora da registrare.
   const linked = new Set(plan.map((p) => p.completedActivityId).filter(Boolean));
   const history: HistoryItem[] = [
@@ -30,6 +36,16 @@ export default async function WorkoutsPage() {
           <PencilLine className="size-5" aria-hidden /> Inserisci a mano
         </Link>
       </div>
+      {strava?.connected && !strava.broken && (
+        <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4">
+          <StravaImport compact />
+          {waiting.length > 0 && (
+            <Link href={`/attivita/${waiting[0].id}`} className="text-sm font-semibold text-warn underline">
+              {waiting.length === 1 ? "1 attività da Strava aspetta" : `${waiting.length} attività da Strava aspettano`} il tuo feedback (RPE) →
+            </Link>
+          )}
+        </div>
+      )}
       <WorkoutList plan={plan} today={today} history={history} />
     </>
   );
