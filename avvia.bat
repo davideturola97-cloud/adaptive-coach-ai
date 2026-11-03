@@ -88,6 +88,10 @@ if exist .env.local findstr /r /b /c:"STRAVA_CLIENT_SECRET=.." .env.local >nul &
 echo Strava: chiavi impostate: %HAS_STRAVA%   ^(facoltativo, guida in docs\STRAVA.md^)
 echo.
 
+rem Aggiornamento automatico del database (se in .env.local c'e' SUPABASE_DB_URL).
+call npm run migrate --silent
+if errorlevel 1 echo ATTENZIONE: aggiornamento del database non riuscito. L'app parte lo stesso; leggi il messaggio qui sopra.
+
 rem Cache della compilazione: dopo un aggiornamento (git pull) puo' restare vecchia e la pagina si vede senza grafica.
 rem La cancello a ogni avvio: il primo caricamento richiede qualche secondo in piu'.
 if exist .next rmdir /s /q .next

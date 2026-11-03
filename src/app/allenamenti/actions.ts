@@ -57,10 +57,10 @@ export async function logActivity(_: LogState, fd: FormData): Promise<LogState> 
     },
     p_feedback: {
       rpe: f.rpe,
-      muscle_fatigue: f.muscleFatigue,
-      cardio_fatigue: f.cardioFatigue,
+      muscle_fatigue: f.muscleFatigue ?? null,
+      cardio_fatigue: f.cardioFatigue ?? null,
       sleep_quality: f.sleepQuality ?? null,
-      feeling: f.feeling,
+      feeling: f.feeling ?? null,
       pain: f.pain ?? null,
       notes: f.notes ?? null,
     },
@@ -122,8 +122,8 @@ export async function addFeedback(_: FeedbackState, fd: FormData): Promise<Feedb
   const { error } = await supabase.rpc("add_feedback", {
     p_activity_id: id,
     p_feedback: {
-      rpe: f.rpe, muscle_fatigue: f.muscleFatigue, cardio_fatigue: f.cardioFatigue, sleep_quality: f.sleepQuality ?? null,
-      feeling: f.feeling, pain: f.pain ?? null, notes: f.notes ?? null,
+      rpe: f.rpe, muscle_fatigue: f.muscleFatigue ?? null, cardio_fatigue: f.cardioFatigue ?? null, sleep_quality: f.sleepQuality ?? null,
+      feeling: f.feeling ?? null, pain: f.pain ?? null, notes: f.notes ?? null,
     },
   });
   if (error) return { errors: ["Salvataggio non riuscito. Hai eseguito lo script 0009_strava.sql su Supabase?"] };
@@ -162,4 +162,41 @@ export async function applyGymSwaps(workoutId: string, indices: number[]): Promi
   if (error) return { error: "Modifica non riuscita. Riprova." };
   revalidatePath("/", "layout");
   return { ok: "Seduta aggiornata.", versionId: String(versionId) };
+}
+
+/** RPE con un tocco su un'attività già salvata (es. importata da Strava). */
+export async function quickRpe(activityId: string, rpe: number): Promise<{ ok: boolean; error?: string }> {
+  if (!/^[0-9a-f-]{36}$/.test(activityId) || !Number.isInteger(rpe) || rpe < 1 || rpe > 10) return { ok: false, error: "Valore non valido." };
+  const { supabase, user } = await getUser();
+  if (!user) return { ok: false, error: "Sessione scaduta: accedi di nuovo." };
+  const { error } = await supabase.rpc("add_feedback", { p_activity_id: activityId, p_feedback: { rpe } });
+  if (error) return { ok: false, error: "Salvataggio non riuscito. Riprova." };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/** "Fatto" con un tocco: la seduta in programma diventa un'attività con la durata prevista e l'RPE indicato. */
+export async function quickDone(plannedId: string, rpe: number): Promise<{ ok: boolean; error?: string; activityId?: string }> {
+  if (!Number.isInteger(rpe) || rpe < 1 || rpe > 10) return { ok: false, error: "Valore non valido." };
+  const data = await getAppData();
+  if (data.mode === "demo") return { ok: false, error: "In modalità dimostrativa non si salva." };
+  const w = data.plan.find((p) => p.id === plannedId && p.status === "programmato" && p.date <= data.today);
+  if (!w) return { ok: false, error: "Seduta non trovata, futura o già registrata." };
+  // Già registrata (es. arrivata da Strava senza collegamento): non la duplico.
+  const similar = findSimilar(data.activities, w.sport, w.date, w.durationMin);
+  if (similar.length) return { ok: false, error: `C'è già un'attività di ${sportLabel(w.sport).toLowerCase()} quel giorno ("${similar[0].title || "attività"}"): aprila e aggiungi lì lo sforzo.` };
+  const gymLog = w.structure.main.filter((s) => s.exercise).map((s) => ({ name: s.exercise!.name, sets: s.exercise!.sets, reps: s.exercise!.reps, ...(s.exercise!.loadKg !== undefined && { loadKg: s.exercise!.loadKg }), done: true }));
+  const { supabase, user } = await getUser();
+  if (!user) return { ok: false, error: "Sessione scaduta: accedi di nuovo." };
+  const { data: id, error } = await supabase.rpc("record_activity", {
+    p_activity: {
+      activity_date: w.date, sport: w.sport, title: w.title, duration_min: w.durationMin, distance_km: w.distanceKm ?? null,
+      source: "manuale", dedupe_key: dedupeKey(w.sport, w.date, w.durationMin), planned_workout_id: w.id,
+      ...(gymLog.length && { gym_log: gymLog }),
+    },
+    p_feedback: { rpe },
+  });
+  if (error) return { ok: false, error: /duplicate|unique/i.test(error.message) ? "Questa seduta risulta già registrata." : "Salvataggio non riuscito. Riprova." };
+  revalidatePath("/", "layout");
+  return { ok: true, activityId: String(id) };
 }

@@ -96,10 +96,11 @@ export interface PlannedWorkout {
 
 export interface Feedback {
   rpe: number; // 1-10
-  muscleFatigue: number; // 1-5
-  cardioFatigue: number; // 1-5
+  /** Facoltativi: basta l'RPE. */
+  muscleFatigue?: number; // 1-5
+  cardioFatigue?: number; // 1-5
   sleepQuality?: number; // 1-5
-  feeling: "ottimo" | "buono" | "normale" | "stanco" | "pessimo";
+  feeling?: "ottimo" | "buono" | "normale" | "stanco" | "pessimo";
   pain?: string;
   notes?: string;
 }

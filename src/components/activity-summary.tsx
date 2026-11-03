@@ -74,7 +74,7 @@ export function ActivitySummary({ a, back, editable, planned, athlete, history }
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Il tuo feedback</p>
           <p>
             <span className="num text-xl font-semibold">RPE {f.rpe}</span>
-            <span className="text-muted"> · fatica muscolare {f.muscleFatigue}/5 · fiato {f.cardioFatigue}/5{f.sleepQuality ? ` · sonno ${f.sleepQuality}/5` : ""} · {f.feeling}</span>
+            <span className="text-muted">{[f.muscleFatigue && `fatica muscolare ${f.muscleFatigue}/5`, f.cardioFatigue && `fiato ${f.cardioFatigue}/5`, f.sleepQuality && `sonno ${f.sleepQuality}/5`, f.feeling].filter(Boolean).map((x) => ` · ${x}`).join("")}</span>
           </p>
           {f.pain && <p className="text-warn">Dolore: {f.pain}</p>}
           {f.notes && <p className="text-muted">“{f.notes}”</p>}

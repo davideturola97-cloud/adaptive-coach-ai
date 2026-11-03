@@ -13,7 +13,11 @@ import { getAppData } from "@/lib/data/repository";
 import { adherence, loadState, weeklySummaries } from "@/lib/training/analytics";
 import { formatDuration } from "@/lib/training/formulas";
 import { MorningCheckin, StravaAutoSync, WeeklyReviewCard } from "@/components/today";
-import { AddFeedbackForm, SkipFeedbackButton } from "@/components/strava";
+import { SkipFeedbackButton } from "@/components/strava";
+import { QuickDone, QuickRpe } from "@/components/quick-rpe";
+import { stravaStatus } from "@/lib/strava/service";
+import { getUser } from "@/lib/supabase/server";
+import type { CompletedActivity } from "@/lib/domain/types";
 import { waitingFeedback } from "@/lib/training/waiting";
 import { swapSuggestion } from "@/lib/training/gym-swaps";
 import { GymSwapsCard } from "@/components/gym-swaps";
@@ -30,7 +34,7 @@ function stepLine(s: WorkoutStep): string {
   return [s.exercise ? s.label : `${s.label}${what ? ` ${what}` : ""}`, how].filter(Boolean).join(" · ");
 }
 
-function TodayWorkout({ w }: { w: PlannedWorkout }) {
+function TodayWorkout({ w, done, stravaOn, demo }: { w: PlannedWorkout; done?: CompletedActivity; stravaOn: boolean; demo: boolean }) {
   const st = w.structure;
   const rows: { k: string; v: string }[] = [
     ...st.warmup.map((s) => ({ k: "Riscaldamento", v: stepLine(s) })),
@@ -58,12 +62,16 @@ function TodayWorkout({ w }: { w: PlannedWorkout }) {
       </ol>
       {w.paceSource && <p className="text-xs text-faint">Passi stimati da: {w.paceSource}</p>}
       {w.status === "programmato" ? (
-        <div className="grid grid-cols-2 gap-2">
-          <Link href={`/allenamenti/${w.id}#registra`} className="flex min-h-12 items-center justify-center rounded-xl bg-ok font-semibold text-bg">Fatto</Link>
-          <Link href={`/allenamenti/${w.id}`} className="flex min-h-12 items-center justify-center rounded-xl border border-line font-semibold">Dettagli</Link>
+        <div className="flex flex-col gap-2">
+          {stravaOn && w.sport !== "gym" && (
+            <p className="text-xs text-muted">Con l&apos;orologio collegato a Strava si registra da sola: dopo ti chiedo solo quanto è stata dura. Senza orologio, premi Fatto.</p>
+          )}
+          <QuickDone plannedId={w.id} detailsHref={`/allenamenti/${w.id}`} disabled={demo} />
         </div>
+      ) : done && !done.feedback ? (
+        <QuickRpe activityId={done.id} detailsHref={`/attivita/${done.id}`} disabled={demo} />
       ) : (
-        <Link href={`/allenamenti/${w.id}`} className="text-sm font-semibold underline">Vedi la seduta</Link>
+        <Link href={`/allenamenti/${w.id}`} className="text-sm font-semibold underline">Vedi la seduta{done?.feedback ? ` · RPE ${done.feedback.rpe}` : ""}</Link>
       )}
     </Card>
   );
@@ -83,7 +91,9 @@ export default async function HomePage() {
   const advice = checkin ? readinessAdvice(checkin, plan.filter((p) => p.date === today), checkins) : undefined;
   const firstProposal = advice?.disruption ? proposeReschedule({ today, athlete, plan, events, disruption: advice.disruption }).proposals.find((p) => p.changes.length) : undefined;
   // Attività da Strava che aspettano lo sforzo percepito.
-  const waiting = waitingFeedback(activities, today);
+  const todayDone = new Set(plan.filter((p) => p.date === today).map((p) => p.completedActivityId).filter(Boolean));
+  const waiting = waitingFeedback(activities, today).filter((a) => !todayDone.has(a.id));
+  const stravaOn = !demo && Boolean((await stravaStatus((await getUser()).supabase)).connected);
   // Revisione della settimana (da sabato a lunedì).
   const ref = paceReference(athlete, activities, plan, today);
   const review = mode === "utente" || demo ? weeklyReview({ ...data, thresholdSec: ref?.thresholdSec }) : null;
@@ -143,7 +153,7 @@ export default async function HomePage() {
             <p className="text-sm">
               <b>{waiting[0].title || "Attività"}</b> <span className="text-muted">· {weekdayName(waiting[0].date)} {formatDayMonth(waiting[0].date, false)} · da Strava</span>
             </p>
-            <AddFeedbackForm key={waiting[0].id} activityId={waiting[0].id} />
+            <QuickRpe key={waiting[0].id} activityId={waiting[0].id} detailsHref={`/attivita/${waiting[0].id}`} disabled={demo} />
             <SkipFeedbackButton activityId={waiting[0].id} disabled={demo} />
           </Card>
         </section>
@@ -183,7 +193,7 @@ export default async function HomePage() {
               return (
                 <div key={w.id} className="flex flex-col gap-3">
                   {sug && <GymSwapsCard workoutId={w.id} reasons={sug.reasons} swaps={sug.swaps} demo={demo} />}
-                  <TodayWorkout w={w} />
+                  <TodayWorkout w={w} done={activities.find((a) => a.id === w.completedActivityId)} stravaOn={stravaOn} demo={demo} />
                 </div>
               );
             })}

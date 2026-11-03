@@ -99,7 +99,7 @@ export default async function ProgressPage() {
                 <div key={a.id} className="flex items-center justify-between gap-3 px-4 py-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{a.title}</p>
-                    <p className="text-xs text-muted">{formatDayMonth(a.date)} · sensazioni {a.feedback!.feeling}</p>
+                    <p className="text-xs text-muted">{formatDayMonth(a.date)} {a.feedback!.feeling ? ` · sensazioni ${a.feedback!.feeling}` : ""}</p>
                   </div>
                   <p className="num shrink-0 text-2xl font-semibold">RPE {a.feedback!.rpe}</p>
                 </div>

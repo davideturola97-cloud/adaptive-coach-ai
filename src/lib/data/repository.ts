@@ -95,7 +95,7 @@ async function loadAppData(): Promise<AppData> {
       externalId: a.external_id ?? undefined,
       gymLog: Array.isArray(a.gym_log) ? a.gym_log : undefined,
       feedbackSkipped: Boolean(a.feedback_skipped),
-      feedback: f ? { rpe: f.rpe, muscleFatigue: f.muscle_fatigue, cardioFatigue: f.cardio_fatigue, sleepQuality: f.sleep_quality ?? undefined, feeling: f.feeling, pain: f.pain ?? undefined, notes: f.notes ?? undefined } : undefined,
+      feedback: f ? { rpe: f.rpe, muscleFatigue: f.muscle_fatigue ?? undefined, cardioFatigue: f.cardio_fatigue ?? undefined, sleepQuality: f.sleep_quality ?? undefined, feeling: f.feeling ?? undefined, pain: f.pain ?? undefined, notes: f.notes ?? undefined } : undefined,
     };
   });
   const byPlan = new Map((acts.data ?? []).filter((a: any) => a.planned_workout_id).map((a: any) => [a.planned_workout_id, a.id]));

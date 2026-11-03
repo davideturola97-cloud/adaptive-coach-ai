@@ -37,7 +37,7 @@ async function as(user: string | null, sql: string, params: unknown[] = []) {
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(SUPABASE_STUB);
-  for (const f of ["0001_schema.sql", "0002_multisport.sql", "0003_plan.sql", "0004_activities.sql", "0005_reschedule.sql", "0006_coach_ai.sql", "0007_splits.sql", "0008_auth_throttle.sql", "0009_strava.sql", "0010_gym_schedule.sql", "0011_gym_log.sql", "0012_daily.sql", "0013_feedback_skipped.sql"]) {
+  for (const f of ["0001_schema.sql", "0002_multisport.sql", "0003_plan.sql", "0004_activities.sql", "0005_reschedule.sql", "0006_coach_ai.sql", "0007_splits.sql", "0008_auth_throttle.sql", "0009_strava.sql", "0010_gym_schedule.sql", "0011_gym_log.sql", "0012_daily.sql", "0013_feedback_skipped.sql", "0014_quick_feedback.sql"]) {
     await db.exec(readFileSync(path.join(__dirname, "migrations", f), "utf8"));
   }
   // Le migrazioni devono poter essere rieseguite senza errori.
@@ -53,6 +53,7 @@ beforeAll(async () => {
   await db.exec(readFileSync(path.join(__dirname, "migrations/0011_gym_log.sql"), "utf8"));
   await db.exec(readFileSync(path.join(__dirname, "migrations/0012_daily.sql"), "utf8"));
   await db.exec(readFileSync(path.join(__dirname, "migrations/0013_feedback_skipped.sql"), "utf8"));
+  await db.exec(readFileSync(path.join(__dirname, "migrations/0014_quick_feedback.sql"), "utf8"));
   await db.exec(`insert into auth.users (id, email) values ('${ALICE}', 'a@example.com'), ('${BOB}', 'b@example.com');`);
 });
 
@@ -405,5 +406,16 @@ describe("controllo del mattino", () => {
     await expect(as(FEDE, "insert into public.daily_checkins (checkin_date, sleep, fatigue) values ('2026-11-04', 9, 3)")).rejects.toThrow();
     expect((await as(GINO, "select * from public.daily_checkins")).rows).toEqual([]);
     expect((await as(FEDE, "select sleep from public.daily_checkins")).rows).toEqual([{ sleep: 2 }]);
+  });
+});
+
+describe("feedback in un tocco", () => {
+  const HUGO = "88888888-8888-8888-8888-888888888888";
+  beforeAll(async () => {
+    await db.exec(`insert into auth.users (id, email) values ('${HUGO}', 'h@example.com') on conflict do nothing;`);
+  });
+  it("basta l'RPE", async () => {
+    const id = (await as(HUGO, "select public.record_activity($1, $2) as id", [{ activity_date: "2026-11-05", sport: "run", title: "Corsa", duration_min: 40, source: "manuale" }, { rpe: 6 }])).rows[0].id;
+    expect((await as(HUGO, "select rpe, muscle_fatigue, feeling from public.feedback where activity_id = $1", [id])).rows).toEqual([{ rpe: 6, muscle_fatigue: null, feeling: null }]);
   });
 });

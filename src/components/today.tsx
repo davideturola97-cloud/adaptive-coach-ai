@@ -110,7 +110,7 @@ export function MorningCheckin({ existing, advice, proposal, demo }: { existing?
       </fieldset>
       {state?.error && <p role="alert" className="text-sm text-bad">{state.error}</p>}
       <button disabled={pending || !sleep || !fatigue} className="min-h-12 rounded-xl bg-ok text-base font-semibold text-bg disabled:opacity-50">
-        {pending ? "Un attimo..." : "Fatto"}
+        {pending ? "Un attimo..." : "Invia le risposte"}
       </button>
     </form>
   );

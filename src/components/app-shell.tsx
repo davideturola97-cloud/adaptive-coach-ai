@@ -1,21 +1,25 @@
 "use client";
 
 import clsx from "clsx";
-import { Activity, Bot, CalendarDays, Dumbbell, Home, LineChart, UserRound } from "lucide-react";
+import { Activity, Bot, CalendarDays, Home, LineChart, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+// Cinque voci: Oggi, Calendario (con dentro allenamenti, programma e imprevisti), Coach, Progressi, Profilo.
 const NAV = [
-  { href: "/", label: "Home", icon: Home },
+  { href: "/", label: "Oggi", icon: Home },
   { href: "/calendario", label: "Calendario", icon: CalendarDays },
-  { href: "/allenamenti", label: "Allenamenti", icon: Dumbbell },
   { href: "/coach", label: "Coach AI", icon: Bot },
   { href: "/progressi", label: "Progressi", icon: LineChart },
   { href: "/profilo", label: "Profilo", icon: UserRound },
 ];
 
+const UNDER_CALENDAR = ["/calendario", "/allenamenti", "/attivita", "/programma", "/riprogramma", "/test"];
+
 function isActive(pathname: string, href: string) {
-  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  if (href === "/") return pathname === "/";
+  if (href === "/calendario") return UNDER_CALENDAR.some((p) => pathname.startsWith(p));
+  return pathname.startsWith(href);
 }
 
 export function AppShell({ children, demo }: { children: React.ReactNode; demo: boolean }) {
@@ -70,7 +74,7 @@ export function AppShell({ children, demo }: { children: React.ReactNode; demo: 
         className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface/95 backdrop-blur md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
-        <ul className="grid grid-cols-6">
+        <ul className="grid grid-cols-5">
           {NAV.map(({ href, label, icon: Icon }) => {
             const active = isActive(pathname, href);
             return (
@@ -78,7 +82,7 @@ export function AppShell({ children, demo }: { children: React.ReactNode; demo: 
                 <Link
                   href={href}
                   aria-current={active ? "page" : undefined}
-                  className={clsx("flex min-h-16 flex-col items-center justify-center gap-1 text-[10.5px] font-medium", active ? "text-fg" : "text-faint")}
+                  className={clsx("flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium", active ? "text-fg" : "text-faint")}
                 >
                   <Icon className={clsx("size-[22px]", active && "text-run")} aria-hidden />
                   {label}

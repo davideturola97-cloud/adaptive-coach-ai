@@ -20,6 +20,7 @@ In Supabase → **SQL Editor** → incolla ed esegui `supabase/migrations/0008_a
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | la chiave pubblica (publishable/anon) | è uguale a quella in `.env.local` |
 | `OPENAI_API_KEY` | la chiave OpenAI | è uguale a quella in `.env.local` |
 | `OPENAI_MODEL` | facoltativo, es. `gpt-4.1-mini` | solo se l'hai messo in `.env.local` |
+| `SUPABASE_DB_URL` | consigliato: aggiorna il database da solo a ogni deploy | vedi `docs/SUPABASE.md`, "Aggiornamento automatico" |
 
    I valori si copiano dal tuo `.env.local` (aprilo con Blocco note) e si incollano **solo** nella pagina di Vercel,
    mai in una chat. Vercel li conserva cifrati e li usa solo sul server.

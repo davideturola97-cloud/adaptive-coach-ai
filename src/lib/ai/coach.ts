@@ -211,7 +211,7 @@ export function runTool(name: string, rawArgs: string, ctx: ToolContext): string
         .filter((a) => a.date > addDays(data.today, -days))
         .map((a) => {
           const f = a.feedback;
-          const fb = f ? ` · RPE ${f.rpe}, fatica muscolare ${f.muscleFatigue}/5, fiato ${f.cardioFatigue}/5${f.sleepQuality ? `, sonno ${f.sleepQuality}/5` : ""}, ${f.feeling}${f.pain ? `, dolore: ${f.pain}` : ""}${f.notes ? `, note: ${f.notes}` : ""}` : " · senza feedback";
+          const fb = f ? ` · RPE ${f.rpe}${f.muscleFatigue ? `, fatica muscolare ${f.muscleFatigue}/5` : ""}${f.cardioFatigue ? `, fiato ${f.cardioFatigue}/5` : ""}${f.sleepQuality ? `, sonno ${f.sleepQuality}/5` : ""}${f.feeling ? `, ${f.feeling}` : ""}${f.pain ? `, dolore: ${f.pain}` : ""}${f.notes ? `, note: ${f.notes}` : ""}` : " · senza feedback";
           const p = data.plan.find((w) => w.completedActivityId === a.id);
           const an = ` · analisi: ${analyzeActivity(a, { planned: p, athlete: data.athlete, history: data.activities }).findings.join(" ")}`;
           const sp = a.splits?.length ? ` · intertempi: ${analyzeSplits(a.splits, a.sport, p, data.athlete).findings.join(" ")}` : "";

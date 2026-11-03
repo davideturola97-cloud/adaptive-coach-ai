@@ -16,10 +16,10 @@ export const FEELINGS = ["ottimo", "buono", "normale", "stanco", "pessimo"] as c
 
 export const feedbackSchema = z.object({
   rpe: scale("lo sforzo percepito (RPE)", 10),
-  muscleFatigue: scale("la fatica muscolare", 5),
-  cardioFatigue: scale("la fatica cardiovascolare", 5),
+  muscleFatigue: z.preprocess((v) => (v === "" || v == null ? undefined : Number(v)), z.number().int().min(1).max(5).optional()),
+  cardioFatigue: z.preprocess((v) => (v === "" || v == null ? undefined : Number(v)), z.number().int().min(1).max(5).optional()),
   sleepQuality: z.preprocess((v) => (v === "" || v == null ? undefined : Number(v)), z.number().int().min(1).max(5).optional()),
-  feeling: z.enum(FEELINGS, { errorMap: () => ({ message: "Scegli come ti sei sentito" }) }),
+  feeling: z.preprocess((v) => (v === "" || v == null ? undefined : v), z.enum(FEELINGS).optional()),
   pain: z.string().trim().max(500, "Descrizione del dolore troppo lunga").optional().transform((v) => v || undefined),
   notes: z.string().trim().max(2000, "Note troppo lunghe").optional().transform((v) => v || undefined),
 });

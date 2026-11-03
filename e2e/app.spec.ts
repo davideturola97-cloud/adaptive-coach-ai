@@ -16,11 +16,10 @@ function trackErrors(page: Page) {
 
 const SECTIONS = [
   { name: "Calendario", path: "/calendario" },
-  { name: "Allenamenti", path: "/allenamenti" },
   { name: "Coach AI", path: "/coach" },
   { name: "Progressi", path: "/progressi" },
   { name: "Profilo", path: "/profilo" },
-  { name: "Home", path: "/" },
+  { name: "Oggi", path: "/" },
 ];
 
 test("si naviga in tutte le sezioni senza errori", async ({ page }) => {
@@ -38,8 +37,8 @@ test("si naviga in tutte le sezioni senza errori", async ({ page }) => {
 
 test("il tasto indietro (Android) torna alla pagina precedente", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("navigation").filter({ visible: true }).getByRole("link", { name: "Allenamenti", exact: true }).first().click();
-  await expect(page).toHaveURL(/\/allenamenti$/);
+  await page.getByRole("navigation").filter({ visible: true }).getByRole("link", { name: "Calendario", exact: true }).first().click();
+  await expect(page).toHaveURL(/\/calendario$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/$/);
 });
@@ -153,7 +152,7 @@ test("home: controllo del mattino e consiglio del coach", async ({ page }) => {
   await expect(page.getByText("Come stai stamattina?")).toBeVisible();
   await page.locator('input[name="sleep"][value="2"]').check({ force: true });
   await page.locator('input[name="fatigue"][value="4"]').check({ force: true });
-  await page.getByRole("button", { name: "Fatto", exact: true }).click();
+  await page.getByRole("button", { name: "Invia le risposte" }).click();
   await expect(page.getByText(/dormito male|Non sei al meglio|Via libera|riposo/i).first()).toBeVisible();
   await noHorizontalScroll(page);
 });

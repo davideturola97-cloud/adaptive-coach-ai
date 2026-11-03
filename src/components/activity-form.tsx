@@ -41,6 +41,9 @@ export function FeedbackFields() {
   return (
     <div className="flex flex-col gap-5">
       <Scale name="rpe" max={10} label="Quanto è stata dura? (RPE 1–10)" hint={(n) => RPE_HINT[n]} />
+      <details className="group flex flex-col gap-5">
+      <summary className="min-h-10 cursor-pointer text-sm font-semibold text-muted">Aggiungi dettagli <span className="font-normal">(facoltativo: fatica, sonno, sensazioni, dolori, note)</span></summary>
+      <div className="mt-4 flex flex-col gap-5">
       <div className="grid gap-5 sm:grid-cols-2">
         <Scale name="muscleFatigue" max={5} label="Fatica muscolare" hint={(n) => ["", "Nessuna", "Leggera", "Media", "Alta", "Molto alta"][n]} />
         <Scale name="cardioFatigue" max={5} label="Fatica di fiato e cuore" hint={(n) => ["", "Nessuna", "Leggera", "Media", "Alta", "Molto alta"][n]} />
@@ -63,6 +66,8 @@ export function FeedbackFields() {
       <Field label="Note per il coach" hint="Facoltativo. Tutto quello che vuoi dire su questa seduta.">
         <textarea name="notes" rows={3} maxLength={2000} className={`${inputCls} py-3`} />
       </Field>
+      </div>
+      </details>
     </div>
   );
 }
