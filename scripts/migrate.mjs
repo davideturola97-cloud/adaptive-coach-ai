@@ -33,6 +33,12 @@ if (parsed.error) {
   console.error(`Database: aggiornamento NON riuscito. SUPABASE_DB_URL non valida: ${parsed.error}.`);
   process.exit(1);
 }
+// Con il pooler l'utente dev'essere "postgres.<codice progetto>": se manca il codice lo ricavo dall'indirizzo di Supabase.
+const ref = process.env.NEXT_PUBLIC_SUPABASE_URL?.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1];
+if (parsed.config.host.includes("pooler.supabase.com") && parsed.config.user === "postgres" && ref) {
+  parsed.config.user = `postgres.${ref}`;
+}
+console.log(`Database: collegamento a ${parsed.config.host}:${parsed.config.port} come ${parsed.config.user}...`);
 if (parsed.config.host.startsWith("db.") && parsed.config.host.endsWith(".supabase.co")) {
   console.log("Database: stai usando la \"Direct connection\"; se non si collega usa la \"Session pooler\" (Supabase → Connect).");
 }
@@ -45,6 +51,10 @@ try {
   // Il messaggio di pg non contiene la password; per sicurezza si toglie comunque qualsiasi stringa di connessione.
   const msg = (e instanceof Error ? e.message : String(e)).replace(/postgres(ql)?:\/\/\S+/g, "postgresql://***");
   console.error(`Database: aggiornamento NON riuscito. ${msg}`);
+  if (/password authentication failed/i.test(msg)) {
+    console.error("  La password del DATABASE non è giusta (non è quella dell'account Supabase). Reimpostala in Supabase → Project Settings → Database → Reset database password, usando solo lettere e numeri, e aggiorna SUPABASE_DB_URL.");
+  }
+  if (/Tenant or user not found/i.test(msg)) console.error("  Nome utente sbagliato: con la Session pooler è postgres.<codice progetto>.");
   process.exit(1);
 } finally {
   await client.end().catch(() => {});
