@@ -4,6 +4,7 @@ import { Card, OriginTag } from "@/components/ui";
 import type { CompletedActivity } from "@/lib/domain/types";
 import { SplitsView } from "./splits-view";
 import { ActivityAnalysisCard } from "./activity-analysis";
+import { HeartSection } from "./heart-section";
 import { AddFeedbackForm, STRAVA_ORANGE } from "./strava";
 import type { ActivityData, AthleteData, PlannedData } from "@/lib/training/analysis";
 import { formatDuration, formatPace, formatSwimPace } from "@/lib/training/formulas";
@@ -68,6 +69,7 @@ export function ActivitySummary({ a, back, editable, planned, athlete, history }
         </div>
       ) : null}
       {a.sport !== "gym" && <ActivityAnalysisCard a={a} planned={planned} athlete={athlete} history={history} />}
+      {history && (a.sport === "run" || a.sport === "bike") ? <HeartSection a={a} history={history as CompletedActivity[]} /> : null}
       {a.splits?.length ? <div className="border-t border-line pt-3"><SplitsView splits={a.splits} sport={a.sport} planned={planned} athlete={athlete} /></div> : null}
       {f && (
         <div className="flex flex-col gap-2 border-t border-line pt-3 text-sm">

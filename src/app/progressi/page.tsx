@@ -7,12 +7,17 @@ import { Signals } from "@/components/signals";
 import { feedbackSignals } from "@/lib/training/feedback";
 import { RacePredictions } from "@/components/race-predictions";
 import { predictRaces } from "@/lib/training/predictions";
+import { hrAtPace, referencePace } from "@/lib/training/hr-pace";
+import { paceReference } from "@/lib/training/run-paces";
+import { HeartPulse } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProgressPage() {
   const { plan, activities, tests, today, athlete, events } = await getAppData();
   const predictions = predictRaces(activities, plan, athlete, today);
+  const refP = referencePace(activities, today, paceReference(athlete, activities, plan, today)?.thresholdSec);
+  const heart = refP ? hrAtPace(activities, today, refP) : null;
   const weeks = weeklySummaries(activities, plan, today, 10);
 
   const easyTypes = new Set(["corsa_facile", "lungo"]);
@@ -36,6 +41,16 @@ export default async function ProgressPage() {
       <div className="flex flex-col gap-6">
         <Signals signals={feedbackSignals(activities, plan, today).filter((s) => s.id !== "registrare")} />
         <RacePredictions report={predictions} events={events} today={today} />
+        {heart && (
+          <Card className="flex gap-3">
+            <HeartPulse className={`mt-0.5 size-6 shrink-0 ${heart.delta !== undefined && heart.delta <= -2 ? "text-ok" : heart.delta !== undefined && heart.delta >= 2 ? "text-warn" : "text-bad"}`} aria-hidden />
+            <div className="flex flex-col gap-1">
+              <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted">Cuore a passo fisso <OriginTag origin="stimato" /></p>
+              <p>{heart.text}</p>
+              <p className="text-xs text-muted">Calcolato sugli intertempi con frequenza cardiaca delle tue corse (Strava o screenshot), a parità di passo. È il segnale più affidabile della forma aerobica.</p>
+            </div>
+          </Card>
+        )}
         <Card>
           <SectionTitle hint="ore per settimana">Volume di allenamento</SectionTitle>
           <VolumeChart data={weeks} />

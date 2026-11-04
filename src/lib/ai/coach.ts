@@ -13,6 +13,7 @@ import { feedbackSignals } from "@/lib/training/feedback";
 import { formatDuration, formatPace, formatSwimPace } from "@/lib/training/formulas";
 import { analyzeSplits } from "@/lib/training/splits";
 import { analyzeActivity } from "@/lib/training/analysis";
+import { heartAnalysis, hrAtPace, referencePace } from "@/lib/training/hr-pace";
 import { gymAdvice } from "@/lib/training/gym-schedule";
 import { scheduleProgress } from "@/lib/training/gym-progress";
 import { formatRaceTime, predictRaces, raceGoals } from "@/lib/training/predictions";
@@ -213,7 +214,8 @@ export function runTool(name: string, rawArgs: string, ctx: ToolContext): string
           const f = a.feedback;
           const fb = f ? ` · RPE ${f.rpe}${f.muscleFatigue ? `, fatica muscolare ${f.muscleFatigue}/5` : ""}${f.cardioFatigue ? `, fiato ${f.cardioFatigue}/5` : ""}${f.sleepQuality ? `, sonno ${f.sleepQuality}/5` : ""}${f.feeling ? `, ${f.feeling}` : ""}${f.pain ? `, dolore: ${f.pain}` : ""}${f.notes ? `, note: ${f.notes}` : ""}` : " · senza feedback";
           const p = data.plan.find((w) => w.completedActivityId === a.id);
-          const an = ` · analisi: ${analyzeActivity(a, { planned: p, athlete: data.athlete, history: data.activities }).findings.join(" ")}`;
+          const heart = heartAnalysis(a, data.activities);
+          const an = ` · analisi: ${analyzeActivity(a, { planned: p, athlete: data.athlete, history: data.activities }).findings.join(" ")}${heart ? ` Cuore e passo: ${heart.findings.join(" ")}` : ""}`;
           const sp = a.splits?.length ? ` · intertempi: ${analyzeSplits(a.splits, a.sport, p, data.athlete).findings.join(" ")}` : "";
           return `${a.date} · ${SPORTS[a.sport].label} · ${a.title} · ${formatDuration(a.durationMin)}${a.distanceKm ? ` · ${a.distanceKm} km` : ""}${a.avgHr ? ` · FC ${a.avgHr}` : ""}${a.avgPowerW ? ` · ${a.avgPowerW} W` : ""} (misurato)${fb}${an}${sp}`;
         });
@@ -238,6 +240,9 @@ export function runTool(name: string, rawArgs: string, ctx: ToolContext): string
         })
         .filter(Boolean);
       pr.push(...(goals as string[]));
+      const refP = referencePace(data.activities, data.today, data.athlete.thresholdPaceSecPerKm?.value);
+      const hp = refP ? hrAtPace(data.activities, data.today, refP) : null;
+      if (hp) pr.push(`Forma aerobica (stima): ${hp.text}`);
       const head = `Previsioni di gara (STIME, riportale come tali con l'intervallo; volume ${r.weeklyKm} km/sett, lungo max ${r.longestKm} km):`;
       return [`Risultati:\n${t.join("\n") || "nessuno"}`, `Test in sospeso:\n${p.join("\n") || "nessuno"}`, `${head}\n${pr.join("\n") || r.notes.join(" ")}`].join("\n");
     }

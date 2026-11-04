@@ -238,3 +238,14 @@ il giorno dopo. Propone: squat → leg press (una serie in meno, 10-12, RPE 6); 
 polpacci → calf seduto leggero; salti → via; altri esercizi di gambe → −40% serie e −20% carico; gara entro 4 giorni → gambe via;
 prima del nuoto: military press → alzate laterali leggere, trazioni → lat machine. Per gli esercizi nuovi nessun chilo inventato:
 il carico è indicato con le ripetizioni di margine. L'atleta sceglie quali sostituzioni tenere; vale solo per quella seduta ed è annullabile.
+
+## Cuore e passo (src/lib/training/hr-pace.ts)
+
+- **Efficienza** (corsa): metri al minuto ÷ FC media = metri per battito. Bici: watt ÷ FC con il misuratore, altrimenti km/h ÷ FC.
+  Confronto con la media delle ultime uscite simili (stesso sport, distanza ±25%, 4 mesi): differenze sotto il 2% = in linea.
+- **A passo simile**: FC media rispetto alle uscite simili con passo entro ±10″/km (differenze sotto 3 battiti = uguale).
+- **Deriva cardiaca** (Friel): efficienza della prima metà rispetto alla seconda sui parziali al km con FC (almeno 6, sedute ≥ 40').
+  Sotto 5% buona resistenza aerobica, 5–10% da migliorare, oltre 10% ritmo alto per la durata, caldo o poca idratazione.
+- **FC a passo fisso**: regressione lineare FC ~ velocità sui parziali al km con FC entro ±75″ dal passo di riferimento
+  (passo facile = soglia × 1,25, altrimenti il 60° percentile dei passi recenti), servono almeno 8 parziali.
+  Ultime 4 settimane contro le 6 precedenti: −2 battiti o più = forma aerobica in crescita, entro ±2 = stabile.

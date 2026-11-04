@@ -156,3 +156,14 @@ test("home: controllo del mattino e consiglio del coach", async ({ page }) => {
   await expect(page.getByText(/dormito male|Non sei al meglio|Via libera|riposo/i).first()).toBeVisible();
   await noHorizontalScroll(page);
 });
+
+test("attività di corsa: cuore e passo con grafico e uscite simili", async ({ page }) => {
+  for (let i = 1; i <= 14; i++) {
+    const d = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
+    await page.goto(`/allenamenti/w-${d}`);
+    if (await page.getByText("Cuore e passo").isVisible().catch(() => false)) break;
+  }
+  await expect(page.getByText("Cuore e passo")).toBeVisible();
+  await expect(page.getByText(/Efficienza/).first()).toBeVisible();
+  await noHorizontalScroll(page);
+});
