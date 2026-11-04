@@ -39,3 +39,19 @@ describe("aggiornamento automatico del database", () => {
     expect(t.rows[0]).toEqual({ t: null });
   }, 60000);
 });
+
+describe("stringa di connessione", () => {
+  it("password con caratteri speciali o tra parentesi quadre", async () => {
+    // @ts-expect-error modulo JavaScript senza tipi
+    const { parseDbUrl } = await import("../scripts/db-url.mjs");
+    const host = "aws-0-eu-west-1.pooler.supabase.com";
+    expect(parseDbUrl(`postgresql://postgres.abc:pa#ss/w?rd@x@${host}:5432/postgres`).config).toEqual({ user: "postgres.abc", password: "pa#ss/w?rd@x", host, port: 5432, database: "postgres" });
+    expect(parseDbUrl(`postgresql://postgres.abc:[segreta1]@${host}:5432/postgres`).config.password).toBe("segreta1");
+    expect(parseDbUrl(`postgresql://postgres.abc:a%40b@${host}:6543/postgres`).config).toMatchObject({ password: "a@b", port: 6543 });
+    expect(parseDbUrl(`postgresql://postgres.abc:[YOUR-PASSWORD]@${host}:5432/postgres`).error).toMatch(/YOUR-PASSWORD/);
+    expect(parseDbUrl(`postgresql://postgres.abc@${host}`).error).toMatch(/password/);
+    const e = parseDbUrl("postgresql://postgres.abc:segretissima@postgres.abc").error;
+    expect(e).toMatch(/server non valido/);
+    expect(e).not.toMatch(/segretissima/);
+  });
+});

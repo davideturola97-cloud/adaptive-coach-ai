@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import nextEnv from "@next/env";
 import pg from "pg";
 import { migrate } from "./migrate-core.mjs";
+import { parseDbUrl } from "./db-url.mjs";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 nextEnv.loadEnvConfig(root);
@@ -27,7 +28,15 @@ const files = readdirSync(dir)
 
 // Connessione cifrata. Il certificato di Supabase non è tra quelli di sistema di Node, quindi non si verifica la catena:
 // il traffico resta cifrato, e la stringa di connessione la conosci solo tu.
-const client = new pg.Client({ connectionString: url.replace(/[?&]sslmode=[^&]+/, ""), ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 15000 });
+const parsed = parseDbUrl(url);
+if (parsed.error) {
+  console.error(`Database: aggiornamento NON riuscito. SUPABASE_DB_URL non valida: ${parsed.error}.`);
+  process.exit(1);
+}
+if (parsed.config.host.startsWith("db.") && parsed.config.host.endsWith(".supabase.co")) {
+  console.log("Database: stai usando la \"Direct connection\"; se non si collega usa la \"Session pooler\" (Supabase → Connect).");
+}
+const client = new pg.Client({ ...parsed.config, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 15000 });
 try {
   await client.connect();
   const applied = await migrate(client, files);
