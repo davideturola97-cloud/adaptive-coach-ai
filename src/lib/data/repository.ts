@@ -114,6 +114,7 @@ async function loadAppData(): Promise<AppData> {
       sport: e.sport ?? undefined, distanceKm: num(e.distance_km), triFormat: e.tri_format ?? undefined,
       legs: e.kind === "triathlon" ? { swimKm: Number(e.swim_km), bikeKm: Number(e.bike_km), runKm: Number(e.run_km) } : undefined,
       priority: e.priority,
+      goalTimeSec: num(e.goal_time_sec),
     })),
     plan: (plan.data ?? []).map((p: any): PlannedWorkout => ({
       id: p.id, date: p.workout_date, sport: p.sport, type: p.workout_type as WorkoutType, title: p.title, objective: p.objective,

@@ -184,7 +184,7 @@ export function buildDemoData(now = new Date()): DemoData {
   };
 
   const events: RaceEvent[] = [
-    { id: "e-1", name: "Mezza maratona (demo)", date: addDays(monday, 7 * 3 + 6), kind: "singolo", sport: "run", distanceKm: 21.1, priority: "A" },
+    { id: "e-1", name: "Mezza maratona (demo)", date: addDays(monday, 7 * 3 + 6), kind: "singolo", sport: "run", distanceKm: 21.1, priority: "A", goalTimeSec: 6240 },
     { id: "e-2", name: "Triathlon olimpico (demo)", date: addDays(monday, 7 * 14 + 6), kind: "triathlon", triFormat: "olimpico", legs: { swimKm: 1.5, bikeKm: 40, runKm: 10 }, priority: "B" },
   ];
 

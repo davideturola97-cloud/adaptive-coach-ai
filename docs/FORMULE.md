@@ -256,3 +256,5 @@ Sull'obiettivo scelto (sicuro, possibile, ambizioso): primo 25% della gara a pas
 (se si sta bene), parte centrale ricalcolata perché il tempo finale torni esatto. Tempi di passaggio ogni 5 km.
 Gel: nessuno sotto i 50', uno a metà tra 50' e 80', ogni 35–40' fino a 2h30, poi circa 60 g di carboidrati all'ora.
 Con caldo oltre 18–20 °C: 5–10″/km più lenti.
+Obiettivo scelto dall'atleta: si confronta con i tre calcolati (più lento del sicuro = facile; tra sicuro e possibile = realistico;
+tra possibile e ambizioso = ambizioso; più veloce dell'ambizioso = molto difficile, con il consiglio di partire sul "possibile").

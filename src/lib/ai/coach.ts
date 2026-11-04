@@ -16,7 +16,7 @@ import { analyzeActivity } from "@/lib/training/analysis";
 import { heartAnalysis, hrAtPace, referencePace } from "@/lib/training/hr-pace";
 import { gymAdvice } from "@/lib/training/gym-schedule";
 import { scheduleProgress } from "@/lib/training/gym-progress";
-import { formatRaceTime, predictRaces, raceGoals } from "@/lib/training/predictions";
+import { formatRaceTime, goalVerdict, predictRaces, raceGoals } from "@/lib/training/predictions";
 import { TEST_CATALOG } from "@/lib/training/tests";
 import type { ChatClient, ChatMessage, ToolDef } from "./openai";
 
@@ -236,7 +236,7 @@ export function runTool(name: string, rawArgs: string, ctx: ToolContext): string
           const p = r.predictions.find((x) => Math.abs(x.km - e.distanceKm!) < 0.6);
           if (!p) return null;
           const g = raceGoals(p, Math.ceil(daysBetween(data.today, e.date) / 7));
-          return `${e.name} (${e.date}): obiettivo sicuro ${formatRaceTime(g.sicuro)}, possibile ${formatRaceTime(g.possibile)}, ambizioso ${formatRaceTime(g.ambizioso)}`;
+          return `${e.name} (${e.date}): obiettivo sicuro ${formatRaceTime(g.sicuro)}, possibile ${formatRaceTime(g.possibile)}, ambizioso ${formatRaceTime(g.ambizioso)}${e.goalTimeSec ? `; obiettivo scelto dall'atleta ${formatRaceTime(e.goalTimeSec)} (${goalVerdict(e.goalTimeSec, g).text})` : ""}`;
         })
         .filter(Boolean);
       pr.push(...(goals as string[]));

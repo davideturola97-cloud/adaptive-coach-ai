@@ -217,3 +217,12 @@ export function raceGoals(p: Prediction, weeksToRace: number): RaceGoals {
     : `Mancano ${weeksToRace} settimane: "possibile" e "ambizioso" includono il miglioramento realistico se segui il programma.`;
   return { sicuro, possibile, ambizioso, gain, note };
 }
+
+/** Quanto è realistico l'obiettivo dell'atleta rispetto ai tre obiettivi calcolati. */
+export function goalVerdict(goalSec: number, g: RaceGoals): { level: "facile" | "realistico" | "ambizioso" | "molto difficile"; text: string } {
+  const diff = (a: number) => formatRaceTime(Math.abs(a));
+  if (goalSec >= g.sicuro) return { level: "facile", text: `Il tuo obiettivo è più lento del "sicuro" (${formatRaceTime(g.sicuro)}): alla portata anche in una giornata storta.` };
+  if (goalSec >= g.possibile) return { level: "realistico", text: `Il tuo obiettivo è tra "sicuro" e "possibile": realistico, con una buona giornata.` };
+  if (goalSec >= g.ambizioso) return { level: "ambizioso", text: `Il tuo obiettivo è tra "possibile" e "ambizioso" (${diff(g.possibile - goalSec)} più veloce del possibile): serve una giornata molto buona.` };
+  return { level: "molto difficile", text: `Il tuo obiettivo è ${diff(g.ambizioso - goalSec)} più veloce dell'"ambizioso": oggi è molto difficile. Partire a quel passo rischia di far saltare la gara: valuta di partire sul "possibile" e decidere al 15° km.` };
+}

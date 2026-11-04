@@ -5,13 +5,15 @@ import { notFound } from "next/navigation";
 import { Card, OriginTag, PageHeader, SectionTitle } from "@/components/ui";
 import { daysBetween, formatDayMonth, weekdayName } from "@/lib/dates";
 import { getAppData } from "@/lib/data/repository";
-import { formatRaceTime, predictRaces, raceGoals } from "@/lib/training/predictions";
+import { formatRaceTime, goalVerdict, predictRaces, raceGoals } from "@/lib/training/predictions";
+import { RaceGoalForm } from "@/components/race-goal-form";
 import { racePlan } from "@/lib/training/race-plan";
 
 export const dynamic = "force-dynamic";
 
 const pace = (s: number) => `${Math.floor(Math.round(s) / 60)}:${String(Math.round(s) % 60).padStart(2, "0")}`;
 const GOALS = [
+  { key: "mio", label: "Il mio" },
   { key: "sicuro", label: "Sicuro" },
   { key: "possibile", label: "Possibile" },
   { key: "ambizioso", label: "Ambizioso" },
@@ -21,14 +23,20 @@ type GoalKey = (typeof GOALS)[number]["key"];
 export default async function RacePlanPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ obiettivo?: string }> }) {
   const { id } = await params;
   const { obiettivo } = await searchParams;
-  const { events, activities, plan, athlete, today } = await getAppData();
+  const { events, activities, plan, athlete, today, mode } = await getAppData();
   const e = events.find((x) => x.id === id);
   if (!e) notFound();
-  const pick: GoalKey = GOALS.some((g) => g.key === obiettivo) ? (obiettivo as GoalKey) : "possibile";
+  const mine = e.goalTimeSec;
+  const valid = (k?: string): k is GoalKey => GOALS.some((g) => g.key === k) && (k !== "mio" || Boolean(mine));
+  const pick: GoalKey = valid(obiettivo) ? obiettivo : mine ? "mio" : "possibile";
   const run = e.kind === "singolo" && e.sport === "run" && e.distanceKm;
   const pred = run ? predictRaces(activities, plan, athlete, today).predictions.find((p) => Math.abs(p.km - e.distanceKm!) < 0.6) : undefined;
   const goals = pred ? raceGoals(pred, Math.ceil(daysBetween(today, e.date) / 7)) : undefined;
-  const rp = goals ? racePlan(e, goals[pick]) : null;
+  const timeOf = (k: GoalKey) => (k === "mio" ? mine : goals?.[k]);
+  const chosen = timeOf(pick) ?? mine;
+  const rp = chosen ? racePlan(e, chosen) : null;
+  const verdict = mine && goals ? goalVerdict(mine, goals) : null;
+  const shown = GOALS.filter((g) => timeOf(g.key) !== undefined);
 
   return (
     <article className="flex flex-col gap-6">
@@ -39,14 +47,17 @@ export default async function RacePlanPage({ params, searchParams }: { params: P
 
       {!run ? (
         <Card className="text-sm text-muted">Il piano gara è disponibile per le gare di corsa. Per il triathlon arriverà con la preparazione del Ledroman.</Card>
-      ) : !goals || !rp ? (
-        <Card className="text-sm text-muted">Per il piano servono corse recenti con distanza e durata: registrane o importane qualcuna da Strava.</Card>
+      ) : !rp ? (
+        <Card className="flex flex-col gap-3">
+          <p className="text-sm text-muted">Per gli obiettivi calcolati servono corse recenti con distanza e durata. Intanto puoi scrivere il tuo obiettivo: il piano si costruisce su quello.</p>
+          <RaceGoalForm eventId={e.id} demo={mode === "demo"} />
+        </Card>
       ) : (
         <>
           <section>
             <SectionTitle hint={<OriginTag origin="stimato" />}>Il tuo obiettivo</SectionTitle>
-            <div className="grid grid-cols-3 gap-2">
-              {GOALS.map((g) => (
+            <div className={clsx("grid gap-2", shown.length === 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3")}>
+              {shown.map((g) => (
                 <Link
                   key={g.key}
                   href={`/gara/${e.id}?obiettivo=${g.key}`}
@@ -54,12 +65,18 @@ export default async function RacePlanPage({ params, searchParams }: { params: P
                   className={clsx("flex flex-col items-center rounded-2xl border p-3 text-center", pick === g.key ? "border-fg bg-surface-2" : "border-line bg-surface")}
                 >
                   <span className="text-xs font-semibold uppercase tracking-wide text-muted">{g.label}</span>
-                  <span className="num text-2xl font-semibold">{formatRaceTime(goals[g.key])}</span>
-                  <span className="text-xs text-muted">{pace(goals[g.key] / e.distanceKm!)} /km</span>
+                  <span className="num text-2xl font-semibold">{formatRaceTime(timeOf(g.key)!)}</span>
+                  <span className="text-xs text-muted">{pace(timeOf(g.key)! / e.distanceKm!)} /km</span>
                 </Link>
               ))}
             </div>
-            <p className="mt-2 text-xs text-muted">{goals.note} Il piano qui sotto è costruito su &quot;{GOALS.find((g) => g.key === pick)!.label.toLowerCase()}&quot;.</p>
+            {verdict && (
+              <p className={clsx("mt-3 rounded-xl px-3 py-2 text-sm", verdict.level === "molto difficile" ? "bg-bad/10 text-bad" : verdict.level === "ambizioso" ? "bg-warn/10 text-warn" : "bg-ok/10 text-ok")}>{verdict.text}</p>
+            )}
+            <p className="mt-2 text-xs text-muted">{goals ? `${goals.note} ` : ""}Il piano qui sotto è costruito su &quot;{GOALS.find((g) => g.key === pick)!.label.toLowerCase()}&quot;.</p>
+            <div className="mt-4">
+              <RaceGoalForm eventId={e.id} current={mine ? formatRaceTime(mine) : undefined} demo={mode === "demo"} />
+            </div>
           </section>
 
           <section>

@@ -85,3 +85,16 @@ describe("tre obiettivi di gara", () => {
     expect(raceGoals({ ...p, confidence: "bassa" }, 6).gain).toBeCloseTo(0.01);
   });
 });
+
+describe("obiettivo scelto dall'atleta", () => {
+  it("giudizio rispetto ai tre obiettivi", async () => {
+    const { goalVerdict } = await import("./predictions");
+    const g = { sicuro: 6200, possibile: 6000, ambizioso: 5850, gain: 0.02, note: "" };
+    expect(goalVerdict(6300, g).level).toBe("facile");
+    expect(goalVerdict(6100, g).level).toBe("realistico");
+    expect(goalVerdict(5900, g).level).toBe("ambizioso");
+    const hard = goalVerdict(5700, g);
+    expect(hard.level).toBe("molto difficile");
+    expect(hard.text).toMatch(/2:30 più veloce dell'"ambizioso"/);
+  });
+});

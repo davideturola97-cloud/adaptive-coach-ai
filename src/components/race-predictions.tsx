@@ -4,7 +4,7 @@ import clsx from "clsx";
 import { formatDayMonth } from "@/lib/dates";
 import type { RaceEvent } from "@/lib/domain/types";
 import { formatPace } from "@/lib/training/formulas";
-import { formatRaceTime, raceGoals, type PredictionReport } from "@/lib/training/predictions";
+import { formatRaceTime, goalVerdict, raceGoals, type PredictionReport } from "@/lib/training/predictions";
 import { daysBetween } from "@/lib/dates";
 import { Card, OriginTag, SectionTitle } from "./ui";
 
@@ -50,6 +50,9 @@ export function RacePredictions({ report, events, today }: { report: PredictionR
                     </div>
                   ))}
                 </div>
+                {e.goalTimeSec && (
+                  <p className="text-sm"><b>Il tuo obiettivo: {formatRaceTime(e.goalTimeSec)}</b> <span className="text-muted">({formatPace(e.goalTimeSec / p!.km)}) · {goalVerdict(e.goalTimeSec, g).text}</span></p>
+                )}
                 <p className="text-xs text-muted">{g.note} Parti al ritmo del &quot;sicuro&quot; nei primi km e decidi strada facendo.</p>
                 <Link href={`/gara/${e.id}`} className="self-start text-sm font-semibold text-run underline">Piano gara: passi, tempi di passaggio, gel e checklist</Link>
               </div>

@@ -160,6 +160,8 @@ export interface RaceEvent {
   triFormat?: TriFormat;
   legs?: { swimKm: number; bikeKm: number; runKm: number };
   priority: "A" | "B" | "C";
+  /** Obiettivo di tempo scelto dall'atleta (secondi). */
+  goalTimeSec?: number;
 }
 
 export interface AthleteSport {
