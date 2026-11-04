@@ -249,3 +249,10 @@ il carico è indicato con le ripetizioni di margine. L'atleta sceglie quali sost
 - **FC a passo fisso**: regressione lineare FC ~ velocità sui parziali al km con FC entro ±75″ dal passo di riferimento
   (passo facile = soglia × 1,25, altrimenti il 60° percentile dei passi recenti), servono almeno 8 parziali.
   Ultime 4 settimane contro le 6 precedenti: −2 battiti o più = forma aerobica in crescita, entro ±2 = stabile.
+
+## Piano gara (src/lib/training/race-plan.ts)
+
+Sull'obiettivo scelto (sicuro, possibile, ambizioso): primo 25% della gara a passo obiettivo + 5″/km, ultimo 20% a −3″/km
+(se si sta bene), parte centrale ricalcolata perché il tempo finale torni esatto. Tempi di passaggio ogni 5 km.
+Gel: nessuno sotto i 50', uno a metà tra 50' e 80', ogni 35–40' fino a 2h30, poi circa 60 g di carboidrati all'ora.
+Con caldo oltre 18–20 °C: 5–10″/km più lenti.

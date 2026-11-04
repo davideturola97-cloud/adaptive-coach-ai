@@ -121,7 +121,7 @@ export default async function HomePage() {
       </header>
 
       {race && (
-        <Link href="/profilo" className="group relative overflow-hidden rounded-[var(--radius-card)] border border-line bg-gradient-to-br from-run/20 via-surface to-surface p-5">
+        <Link href={race.kind === "singolo" && race.sport === "run" ? `/gara/${race.id}` : "/profilo"} className="group relative overflow-hidden rounded-[var(--radius-card)] border border-line bg-gradient-to-br from-run/20 via-surface to-surface p-5">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
               <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-run">
@@ -130,6 +130,7 @@ export default async function HomePage() {
               <p className="mt-1 truncate text-lg font-semibold">{race.name}</p>
               <p className="text-sm text-muted">{eventDescription(race)}</p>
               {athlete.goals.primary && <p className="text-sm text-muted">{athlete.goals.primary}</p>}
+              {race.kind === "singolo" && race.sport === "run" && <p className="mt-1 text-sm font-semibold text-run">Piano gara →</p>}
             </div>
             <p className="num shrink-0 text-right text-6xl font-semibold leading-none">
               {daysBetween(today, race.date)}

@@ -51,6 +51,7 @@ export function RacePredictions({ report, events, today }: { report: PredictionR
                   ))}
                 </div>
                 <p className="text-xs text-muted">{g.note} Parti al ritmo del &quot;sicuro&quot; nei primi km e decidi strada facendo.</p>
+                <Link href={`/gara/${e.id}`} className="self-start text-sm font-semibold text-run underline">Piano gara: passi, tempi di passaggio, gel e checklist</Link>
               </div>
             );
           })}

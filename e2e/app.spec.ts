@@ -167,3 +167,14 @@ test("attività di corsa: cuore e passo con grafico e uscite simili", async ({ p
   await expect(page.getByText(/Efficienza/).first()).toBeVisible();
   await noHorizontalScroll(page);
 });
+
+test("piano gara: obiettivi, passi, passaggi e checklist", async ({ page }) => {
+  await page.goto("/");
+  await page.getByText("Piano gara →").click();
+  await expect(page.getByRole("heading", { name: /Piano gara/ })).toBeVisible();
+  await expect(page.getByText("Tempi di passaggio")).toBeVisible();
+  await page.getByRole("link", { name: /Ambizioso/ }).click();
+  await expect(page).toHaveURL(/obiettivo=ambizioso/);
+  await expect(page.getByText("La sera prima")).toBeVisible();
+  await noHorizontalScroll(page);
+});
