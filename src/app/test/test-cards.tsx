@@ -9,6 +9,7 @@ import { formatDayMonth, weekdayName } from "@/lib/dates";
 import type { PlannedTest, Sport, TestKind } from "@/lib/domain/types";
 import { READINESS_QUESTIONS, TEST_CATALOG, TESTS_BY_SPORT } from "@/lib/training/tests";
 import { changeTest, fixConflicts, proposeTest, recordResult, saveReadiness, type TestState } from "./actions";
+import { TimeInput } from "@/components/time-input";
 
 function Message({ state }: { state: TestState }) {
   if (state.error) return <p role="alert" className="rounded-xl border border-bad/40 bg-bad/10 px-4 py-3 text-sm text-bad">{state.error}</p>;
@@ -28,13 +29,13 @@ const STATUS_TEXT = (t: PlannedTest) => {
 
 function ResultFields({ kind }: { kind: TestKind }) {
   switch (kind) {
-    case "5km": return <Field label="Tempo sui 5 km" hint="Formato mm:ss, es. 24:30"><input name="time" inputMode="numeric" placeholder="24:30" className={inputCls} /></Field>;
+    case "5km": return <Field label="Tempo sui 5 km" hint="Solo cifre: 2430 = 24:30"><TimeInput name="time" placeholder="24:30" className={inputCls} /></Field>;
     case "cooper": return <Field label="Metri percorsi in 12 minuti"><input name="meters" inputMode="numeric" placeholder="2800" className={inputCls} /></Field>;
     case "recente_corsa":
       return (
         <div className="grid grid-cols-2 gap-3">
           <Field label="Distanza (km)"><input name="distanceKm" inputMode="decimal" placeholder="21,1" className={inputCls} /></Field>
-          <Field label="Tempo" hint="mm:ss o h:mm:ss"><input name="time" inputMode="numeric" placeholder="1:42:06" className={inputCls} /></Field>
+          <Field label="Tempo" hint="Solo cifre: 14206 = 1:42:06"><TimeInput name="time" placeholder="1:42:06" className={inputCls} /></Field>
         </div>
       );
     case "ftp20": return <Field label="Potenza media dei 20 minuti (W)"><input name="watts" inputMode="numeric" placeholder="250" className={inputCls} /></Field>;
@@ -43,15 +44,15 @@ function ResultFields({ kind }: { kind: TestKind }) {
     case "css":
       return (
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Tempo 400 m" hint="mm:ss"><input name="t400" inputMode="numeric" placeholder="7:20" className={inputCls} /></Field>
-          <Field label="Tempo 200 m" hint="mm:ss"><input name="t200" inputMode="numeric" placeholder="3:30" className={inputCls} /></Field>
+          <Field label="Tempo 400 m" hint="Solo cifre: 720 = 7:20"><TimeInput name="t400" placeholder="7:20" className={inputCls} /></Field>
+          <Field label="Tempo 200 m" hint="Solo cifre: 720 = 7:20"><TimeInput name="t200" placeholder="3:30" className={inputCls} /></Field>
         </div>
       );
     case "recente_nuoto":
       return (
         <div className="grid grid-cols-2 gap-3">
           <Field label="Distanza (m)"><input name="distanceM" inputMode="numeric" placeholder="1500" className={inputCls} /></Field>
-          <Field label="Tempo" hint="mm:ss"><input name="time" inputMode="numeric" placeholder="30:00" className={inputCls} /></Field>
+          <Field label="Tempo" hint="Solo cifre: 720 = 7:20"><TimeInput name="time" placeholder="30:00" className={inputCls} /></Field>
         </div>
       );
   }
