@@ -10,4 +10,14 @@ describe("tempo scritto solo con cifre (iPhone)", () => {
     expect(formatTimeInput("45")).toBe("45");
     expect(formatTimeInput("1:39:00")).toBe("1:39:00");
   });
+  it("cifra dopo cifra, come sul tastierino dell'iPhone", () => {
+    let v = "";
+    for (const c of "13900") v = formatTimeInput(v + c);
+    expect(v).toBe("1:39:00");
+    v = "";
+    for (const c of "4530") v = formatTimeInput(v + c);
+    expect(v).toBe("45:30");
+    // Cancellare l'ultima cifra funziona
+    expect(formatTimeInput("1:39:0")).toBe("13:90");
+  });
 });

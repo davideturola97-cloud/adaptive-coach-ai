@@ -4,10 +4,10 @@ import { useState } from "react";
 
 /**
  * Il tastierino numerico dell'iPhone non ha i due punti: si scrivono solo cifre e i ":" li mette l'app.
- * 4530 → 45:30 · 13900 → 1:39:00 · 013900 → 1:39:00. Chi scrive già i ":" (Android, computer) non cambia nulla.
+ * 4530 → 45:30 · 13900 → 1:39:00 · 013900 → 1:39:00. Anche chi scrive i ":" a mano ottiene lo stesso risultato.
  */
 export function formatTimeInput(raw: string): string {
-  if (raw.includes(":")) return raw.replace(/[^\d:]/g, "").slice(0, 8);
+  // Sempre dalle sole cifre: così i ":" messi mentre scrivi si spostano al posto giusto quando aggiungi la cifra successiva.
   const d = raw.replace(/\D/g, "").replace(/^0+(?=\d{5})/, "").slice(0, 6);
   if (d.length <= 2) return d;
   if (d.length <= 4) return `${d.slice(0, -2)}:${d.slice(-2)}`;
