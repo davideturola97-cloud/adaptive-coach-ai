@@ -20,6 +20,8 @@ import { getUser } from "@/lib/supabase/server";
 import type { CompletedActivity } from "@/lib/domain/types";
 import { waitingFeedback } from "@/lib/training/waiting";
 import { swapSuggestion } from "@/lib/training/gym-swaps";
+import { energyDay } from "@/lib/training/energy";
+import { EnergyCard } from "@/components/energy-card";
 import { GymSwapsCard } from "@/components/gym-swaps";
 import { readinessAdvice } from "@/lib/training/readiness";
 import { proposeReschedule } from "@/lib/planning/reschedule";
@@ -213,6 +215,8 @@ export default async function HomePage() {
           </Card>
         )}
       </section>
+
+      <EnergyCard day={energyDay(athlete, plan, activities, events, today)} job={athlete.dailyActivity} demo={demo} />
 
       <section>
         <SectionTitle hint={`${formatDuration(cur.runMin + cur.bikeMin)} su ${formatDuration(plannedWeekMin)} previsti`}>Questa settimana</SectionTitle>

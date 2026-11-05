@@ -218,6 +218,8 @@ export interface AthleteProfile {
   longSessionMaxMin?: number;
   /** Giorni preferiti per sport (facoltativo), es. nuoto solo Lun e Mer. */
   sportDays: Partial<Record<Sport, string[]>>;
+  /** Attività quotidiana fuori dall'allenamento (lavoro), per il fabbisogno calorico. */
+  dailyActivity?: "sedentario" | "in piedi" | "fisico";
   /** Scheda di palestra a giorni fissi scelta dall'atleta (se c'è, il motore la rispetta invece di proporre la sua). */
   gymSchedule?: GymDay[];
   ftpW?: { value: number; origin: ValueOrigin; date: string };

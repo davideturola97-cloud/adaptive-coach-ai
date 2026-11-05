@@ -181,3 +181,12 @@ test("piano gara: obiettivi, passi, passaggi e checklist", async ({ page }) => {
   await expect(page.getByText("La sera prima")).toBeVisible();
   await noHorizontalScroll(page);
 });
+
+test("home: energia di oggi con calorie e ripartizione", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByText(/Energia di oggi/)).toBeVisible();
+  await expect(page.getByText("Carboidrati", { exact: true })).toBeVisible();
+  await page.getByText("Come è calcolato").click();
+  await expect(page.getByText(/Mifflin-St Jeor/)).toBeVisible();
+  await noHorizontalScroll(page);
+});

@@ -258,3 +258,15 @@ Gel: nessuno sotto i 50', uno a metà tra 50' e 80', ogni 35–40' fino a 2h30, 
 Con caldo oltre 18–20 °C: 5–10″/km più lenti.
 Obiettivo scelto dall'atleta: si confronta con i tre calcolati (più lento del sicuro = facile; tra sicuro e possibile = realistico;
 tra possibile e ambizioso = ambizioso; più veloce dell'ambizioso = molto difficile, con il consiglio di partire sul "possibile").
+
+## Energia di oggi (src/lib/training/energy.ts)
+
+Stima di mantenimento, ±10–15%; non è un consiglio medico o dietetico.
+- Metabolismo a riposo (Mifflin-St Jeor): uomo 10·kg + 6,25·cm − 5·anni + 5; donna −161; non indicato −78.
+- Vita quotidiana: × 1,3 seduto, × 1,5 in piedi, × 1,7 lavoro fisico (1,4 se non indicato).
+- Allenamento (calorie nette): corsa 0,95 kcal/kg/km; bici con potenza watt × secondi ÷ 1000; altrimenti (MET − 1) × kg × ore
+  (Compendium of Physical Activities): bici 6/8/10,5, nuoto 6/8,3/10, palestra 3,5/5/6, corsa senza distanza 8,5/10/11,5
+  per facile/media/dura (da RPE o tipo di seduta). Sedute fatte con i dati veri, quelle da fare con la durata prevista.
+- Ripartizione: proteine 1,6 g/kg (1,8 nei giorni intensi e di gara); carboidrati 3 g/kg riposo, 4,5 leggera, 5,5 moderata,
+  7–8 intensa, 8 alla vigilia di una gara lunga, 7 il giorno di gara; grassi il resto, almeno 0,8 g/kg. Se i carboidrati non
+  ci stanno, si riducono; alla vigilia e il giorno di gara invece si tengono e il totale sale un po'.

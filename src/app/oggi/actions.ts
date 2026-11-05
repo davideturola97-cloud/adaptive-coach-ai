@@ -99,3 +99,14 @@ export async function skipWeeklyReview(target: string): Promise<{ ok: string } |
   revalidatePath("/", "layout");
   return { ok: "Va bene: la settimana resta com'è." };
 }
+
+/** Tipo di lavoro (attività quotidiana fuori dall'allenamento), per il fabbisogno calorico. */
+export async function setDailyActivity(v: string): Promise<{ ok: boolean; error?: string }> {
+  if (!["sedentario", "in piedi", "fisico"].includes(v)) return { ok: false, error: "Valore non valido." };
+  const { supabase, user } = await getUser();
+  if (!user) return { ok: false, error: "Sessione scaduta: accedi di nuovo." };
+  const { error } = await supabase.from("profiles").update({ daily_activity: v }).eq("user_id", user.id);
+  if (error) return { ok: false, error: "Salvataggio non riuscito. Riprova tra un minuto." };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}

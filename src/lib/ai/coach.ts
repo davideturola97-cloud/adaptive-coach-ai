@@ -15,6 +15,7 @@ import { analyzeSplits } from "@/lib/training/splits";
 import { analyzeActivity } from "@/lib/training/analysis";
 import { heartAnalysis, hrAtPace, referencePace } from "@/lib/training/hr-pace";
 import { gymAdvice } from "@/lib/training/gym-schedule";
+import { energyDay } from "@/lib/training/energy";
 import { scheduleProgress } from "@/lib/training/gym-progress";
 import { formatRaceTime, goalVerdict, predictRaces, raceGoals } from "@/lib/training/predictions";
 import { TEST_CATALOG } from "@/lib/training/tests";
@@ -148,7 +149,7 @@ export const COACH_TOOLS: ToolDef[] = [
     type: "function",
     function: {
       name: "leggi_test",
-      description: "Legge i risultati dei test, i parametri stimati, i test in programma e le previsioni dei tempi di gara di corsa (5 km, 10 km, mezza, maratona) calcolate dagli allenamenti.",
+      description: "Legge i risultati dei test, i parametri stimati, i test in programma, le previsioni dei tempi di gara di corsa (5 km, 10 km, mezza, maratona), la forma aerobica e le calorie stimate di oggi.",
       parameters: { type: "object", properties: {}, additionalProperties: false },
     },
   },
@@ -240,6 +241,8 @@ export function runTool(name: string, rawArgs: string, ctx: ToolContext): string
         })
         .filter(Boolean);
       pr.push(...(goals as string[]));
+      const en = energyDay(data.athlete, data.plan, data.activities, data.events, data.today);
+      if (en) pr.push(`Energia di oggi (stima di mantenimento, non consiglio medico): ${en.total} kcal, carboidrati ${en.carbsG} g, proteine ${en.proteinG} g, grassi ${en.fatG} g (${en.dayType}). ${en.notes.join(" ")}`);
       const refP = referencePace(data.activities, data.today, data.athlete.thresholdPaceSecPerKm?.value);
       const hp = refP ? hrAtPace(data.activities, data.today, refP) : null;
       if (hp) pr.push(`Forma aerobica (stima): ${hp.text}`);
