@@ -156,6 +156,7 @@ export function buildDemoData(now = new Date()): DemoData {
     longDays: ["Sab", "Dom"],
     longSessionMaxMin: 150,
     sportDays: { swim: ["Lun", "Mer", "Ven"] },
+    dailySteps: 8000,
     gymSchedule: [
       {
         day: "Lun", groups: ["petto", "tricipiti", "core"], durationMin: 60,

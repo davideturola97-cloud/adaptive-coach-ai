@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AthleteProfile, PlannedWorkout, RaceEvent } from "@/lib/domain/types";
-import { bmr, energyDay, sessionKcal } from "./energy";
+import { bmr, energyDay, energyWeek, sessionKcal } from "./energy";
 
 const a = { name: "D", birthDate: "1997-01-01", sex: "M", heightCm: 178, weightKg: 70, dailyActivity: "sedentario", sports: [], availableDays: [], longDays: [], sportDays: {}, equipment: [], limitations: [], goals: { primary: "", secondary: [] } } as AthleteProfile;
 const D = "2026-11-05";
@@ -34,3 +34,20 @@ describe("fabbisogno della giornata", () => {
   });
 });
 const r = (x: number) => Math.round(x / 5) * 5;
+
+describe("passi e prossimi giorni", () => {
+  it("i passi alzano la vita quotidiana", () => {
+    const few = energyDay({ ...a, dailySteps: 3000 }, [], [], [], D)!;
+    const many = energyDay({ ...a, dailySteps: 15000 }, [], [], [], D)!;
+    expect(many.daily - few.daily).toBe(Math.round(12000 * 0.0005 * 70));
+    expect(few.daily).toBe(Math.round(bmr(a, D)! * 1.2 + 3000 * 0.0005 * 70));
+  });
+  it("prossimi giorni dal programma, senza la nota delle sedute di oggi", () => {
+    const tomorrow = { ...w("lungo", "run", 100, 18), date: "2026-11-06" };
+    const week = energyWeek(a, [tomorrow], [], [], D, 3);
+    expect(week.map((d) => d.date)).toEqual(["2026-11-06", "2026-11-07", "2026-11-08"]);
+    expect(week[0].training).toBeGreaterThan(1000);
+    expect(week[1].dayType).toBe("riposo");
+    expect(week[0].notes.join(" ")).not.toMatch(/ancora da fare/);
+  });
+});

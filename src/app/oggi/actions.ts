@@ -110,3 +110,14 @@ export async function setDailyActivity(v: string): Promise<{ ok: boolean; error?
   revalidatePath("/", "layout");
   return { ok: true };
 }
+
+/** Passi medi al giorno senza la corsa, per il fabbisogno calorico. */
+export async function setDailySteps(n: number): Promise<{ ok: boolean; error?: string }> {
+  if (!Number.isInteger(n) || n < 0 || n > 40000) return { ok: false, error: "Valore non valido." };
+  const { supabase, user } = await getUser();
+  if (!user) return { ok: false, error: "Sessione scaduta: accedi di nuovo." };
+  const { error } = await supabase.from("profiles").update({ daily_steps: n }).eq("user_id", user.id);
+  if (error) return { ok: false, error: "Salvataggio non riuscito. Riprova tra un minuto." };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}

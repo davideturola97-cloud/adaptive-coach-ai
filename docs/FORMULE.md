@@ -263,7 +263,9 @@ tra possibile e ambizioso = ambizioso; più veloce dell'ambizioso = molto diffic
 
 Stima di mantenimento, ±10–15%; non è un consiglio medico o dietetico.
 - Metabolismo a riposo (Mifflin-St Jeor): uomo 10·kg + 6,25·cm − 5·anni + 5; donna −161; non indicato −78.
-- Vita quotidiana: × 1,3 seduto, × 1,5 in piedi, × 1,7 lavoro fisico (1,4 se non indicato).
+- Vita quotidiana: metabolismo × 1,2 + passi medi al giorno (senza la corsa, già contata) × 0,0005 kcal per kg di peso
+  (circa 0,035 kcal a passo per 70 kg). Senza passi: × 1,4.
+- Prossimi giorni: stesso calcolo sulle sedute in programma dei 7 giorni successivi.
 - Allenamento (calorie nette): corsa 0,95 kcal/kg/km; bici con potenza watt × secondi ÷ 1000; altrimenti (MET − 1) × kg × ore
   (Compendium of Physical Activities): bici 6/8/10,5, nuoto 6/8,3/10, palestra 3,5/5/6, corsa senza distanza 8,5/10/11,5
   per facile/media/dura (da RPE o tipo di seduta). Sedute fatte con i dati veri, quelle da fare con la durata prevista.

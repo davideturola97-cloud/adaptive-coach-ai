@@ -20,7 +20,7 @@ import { getUser } from "@/lib/supabase/server";
 import type { CompletedActivity } from "@/lib/domain/types";
 import { waitingFeedback } from "@/lib/training/waiting";
 import { swapSuggestion } from "@/lib/training/gym-swaps";
-import { energyDay } from "@/lib/training/energy";
+import { energyDay, energyWeek } from "@/lib/training/energy";
 import { EnergyCard } from "@/components/energy-card";
 import { GymSwapsCard } from "@/components/gym-swaps";
 import { readinessAdvice } from "@/lib/training/readiness";
@@ -28,6 +28,8 @@ import { proposeReschedule } from "@/lib/planning/reschedule";
 import { weeklyReview } from "@/lib/planning/weekly-review";
 import { paceReference } from "@/lib/training/run-paces";
 import type { PlannedWorkout, WorkoutStep } from "@/lib/domain/types";
+
+const i18nDay = (d: string) => `${weekdayName(d)} ${formatDayMonth(d, false)}`;
 
 /** Una riga per fase: "6 × 3' · 4:25 – 4:35 /km". */
 function stepLine(s: WorkoutStep): string {
@@ -216,7 +218,12 @@ export default async function HomePage() {
         )}
       </section>
 
-      <EnergyCard day={energyDay(athlete, plan, activities, events, today)} job={athlete.dailyActivity} demo={demo} />
+      <EnergyCard
+        day={energyDay(athlete, plan, activities, events, today)}
+        steps={athlete.dailySteps}
+        demo={demo}
+        next={energyWeek(athlete, plan, activities, events, today, 7).map((e) => ({ date: e.date, label: i18nDay(e.date), day: e }))}
+      />
 
       <section>
         <SectionTitle hint={`${formatDuration(cur.runMin + cur.bikeMin)} su ${formatDuration(plannedWeekMin)} previsti`}>Questa settimana</SectionTitle>

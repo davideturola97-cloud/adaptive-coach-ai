@@ -220,6 +220,8 @@ export interface AthleteProfile {
   sportDays: Partial<Record<Sport, string[]>>;
   /** Attività quotidiana fuori dall'allenamento (lavoro), per il fabbisogno calorico. */
   dailyActivity?: "sedentario" | "in piedi" | "fisico";
+  /** Passi medi al giorno, senza contare la corsa (per il fabbisogno calorico). */
+  dailySteps?: number;
   /** Scheda di palestra a giorni fissi scelta dall'atleta (se c'è, il motore la rispetta invece di proporre la sua). */
   gymSchedule?: GymDay[];
   ftpW?: { value: number; origin: ValueOrigin; date: string };

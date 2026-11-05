@@ -4,20 +4,22 @@ import clsx from "clsx";
 import { Flame } from "lucide-react";
 import Link from "next/link";
 import { useTransition } from "react";
-import { setDailyActivity } from "@/app/oggi/actions";
+import { setDailySteps } from "@/app/oggi/actions";
 import type { EnergyDay } from "@/lib/training/energy";
 
 const TYPE: Record<EnergyDay["dayType"], string> = {
   riposo: "Giorno di riposo", leggera: "Giornata leggera", moderata: "Giornata moderata", intensa: "Giornata intensa", "pre-gara": "Vigilia di gara", gara: "Giorno di gara",
 };
-const JOBS = [
-  { v: "sedentario", label: "Seduto" },
-  { v: "in piedi", label: "In piedi" },
-  { v: "fisico", label: "Fisico" },
-] as const;
+const STEPS = Array.from({ length: 26 }, (_, i) => i * 1000);
 
 /** Calorie di mantenimento della giornata e ripartizione: stima, con il dettaglio del calcolo a richiesta. */
-export function EnergyCard({ day, job, demo }: { day: EnergyDay | null; job?: string; demo: boolean }) {
+export interface EnergyNext {
+  date: string;
+  label: string;
+  day: EnergyDay;
+}
+
+export function EnergyCard({ day, steps, demo, next = [] }: { day: EnergyDay | null; steps?: number; demo: boolean; next?: EnergyNext[] }) {
   const [pending, start] = useTransition();
   if (!day) {
     return (
@@ -51,27 +53,45 @@ export function EnergyCard({ day, job, demo }: { day: EnergyDay | null; job?: st
         ))}
       </div>
       {day.notes.length > 0 && <ul className="flex flex-col gap-1 text-sm text-muted">{day.notes.map((n) => <li key={n}>{n}</li>)}</ul>}
-      <div className="flex flex-col gap-1.5">
-        <p className="text-xs text-muted">Che lavoro fai?</p>
-        <div className="grid grid-cols-3 gap-1.5">
-          {JOBS.map((j) => (
-            <button
-              key={j.v}
-              type="button"
-              disabled={pending || demo}
-              onClick={() => start(async () => { await setDailyActivity(j.v); })}
-              className={clsx("min-h-10 rounded-xl border text-sm font-semibold disabled:opacity-60", job === j.v ? "border-fg bg-fg text-bg" : "border-line text-muted")}
-            >
-              {j.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <label className="flex flex-wrap items-center justify-between gap-2 text-sm">
+        <span className="text-muted">Passi medi al giorno <span className="text-xs">(senza la corsa)</span></span>
+        <select
+          aria-label="Passi medi al giorno"
+          value={steps ?? ""}
+          disabled={pending || demo}
+          onChange={(e) => start(async () => { await setDailySteps(Number(e.target.value)); })}
+          className="min-h-11 rounded-xl border border-line bg-bg px-3 text-base tabular-nums text-fg disabled:opacity-60"
+        >
+          {steps === undefined && <option value="">scegli</option>}
+          {STEPS.map((n) => <option key={n} value={n}>{n === 25000 ? "25.000 o più" : n.toLocaleString("it-IT")}</option>)}
+        </select>
+      </label>
+      {next.length > 0 && (
+        <details className="text-sm" open>
+          <summary className="min-h-9 cursor-pointer font-semibold text-muted">Prossimi giorni</summary>
+          <ul className="mt-1 flex flex-col">
+            {next.map((n) => (
+              <li key={n.date} className="flex items-center justify-between gap-3 border-b border-line py-2 last:border-0">
+                <span className="min-w-0">
+                  <span className="font-medium">{n.label}</span>
+                  <span className={clsx("block text-xs", n.day.dayType === "pre-gara" || n.day.dayType === "gara" ? "text-run" : n.day.dayType === "intensa" ? "text-warn" : "text-muted")}>
+                    {TYPE[n.day.dayType]}{n.day.sessions.length ? ` · ${n.day.sessions.map((s) => s.title).join(", ")}` : ""}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right">
+                  <span className="num block text-lg font-semibold">{n.day.total.toLocaleString("it-IT")}<span className="text-xs text-muted"> kcal</span></span>
+                  <span className="block text-xs text-muted">C {n.day.carbsG} · P {n.day.proteinG} · G {n.day.fatG} g</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
       <details className="text-sm">
         <summary className="min-h-9 cursor-pointer font-semibold text-muted">Come è calcolato</summary>
         <ul className="mt-2 flex flex-col gap-1 text-muted">
           <li>Metabolismo a riposo: {kcal(day.bmr)} (formula di Mifflin-St Jeor)</li>
-          <li>Con la vita quotidiana: {kcal(day.daily)}</li>
+          <li>Con la vita quotidiana ({steps !== undefined ? `${steps.toLocaleString("it-IT")} passi al giorno` : "passi non indicati"}): {kcal(day.daily)}</li>
           <li>Allenamento: +{kcal(day.training)}{day.sessions.length ? ` (${day.sessions.map((s) => `${s.title} ${s.kcal} kcal${s.done ? "" : ", da fare"}`).join("; ")})` : ""}</li>
           <li>Proteine 1,6–1,8 g/kg; carboidrati secondo il carico della giornata; grassi il resto (almeno 0,8 g/kg).</li>
         </ul>

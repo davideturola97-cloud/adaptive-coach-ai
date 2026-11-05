@@ -4,7 +4,9 @@
  * con obiettivi di peso, disturbi alimentari o patologie serve un professionista.
  *
  * - Metabolismo a riposo: Mifflin-St Jeor (1990). Uomo 10·kg + 6,25·cm − 5·anni + 5; donna … − 161.
- * - Vita quotidiana (senza allenamento): × 1,3 lavoro sedentario, × 1,5 in piedi, × 1,7 lavoro fisico (1,4 se non indicato).
+ * - Vita quotidiana (senza allenamento): metabolismo × 1,2 (vita sedentaria) + passi medi × 0,0005 kcal per kg
+ *   (circa 0,035 kcal a passo per 70 kg). I passi vanno indicati senza la corsa, già contata come allenamento.
+ *   Se mancano i passi: × 1,3 seduto, × 1,5 in piedi, × 1,7 lavoro fisico, × 1,4 se non indicato nulla.
  * - Allenamento, calorie NETTE (oltre quelle già contate):
  *   corsa ≈ 0,95 kcal per kg per km; bici con potenza ≈ watt medi × secondi ÷ 1000 (lavoro meccanico in kJ ≈ kcal spese,
  *   perché il rendimento del corpo è circa il 24%); senza potenza e per nuoto e palestra: (MET − 1) × kg × ore,
@@ -77,11 +79,12 @@ export function energyDay(
   activities: CompletedActivity[],
   events: RaceEvent[],
   date: string,
+  today: string = date,
 ): EnergyDay | null {
   const base = bmr(a, date);
   if (!base || !a.weightKg) return null;
   const kg = a.weightKg;
-  const daily = Math.round(base * (a.dailyActivity ? DAILY[a.dailyActivity] : 1.4));
+  const daily = Math.round(a.dailySteps !== undefined ? base * 1.2 + a.dailySteps * 0.0005 * kg : base * (a.dailyActivity ? DAILY[a.dailyActivity] : 1.4));
   // Fatte oggi (dati veri) + quelle ancora in programma.
   const done = activities.filter((x) => x.date === date);
   const todo = plan.filter((p) => p.date === date && p.status === "programmato");
@@ -134,8 +137,18 @@ export function energyDay(
   if (dayType === "gara") notes.push("Giorno di gara: colazione ricca di carboidrati 3 ore prima, durante la gara i gel del piano, dopo l'arrivo carboidrati e proteine entro un'ora.");
   if (dayType === "intensa") notes.push("Giornata impegnativa: carboidrati prima e dopo la seduta; nelle sedute oltre i 90' porta 30–60 g di carboidrati all'ora.");
   if (dayType === "riposo") notes.push("Giorno di riposo: meno carboidrati, proteine come sempre per il recupero muscolare.");
-  if (sessions.some((s) => !s.done)) notes.push("Comprende le sedute ancora da fare: se cambiano, il conto si aggiorna.");
+  if (sessions.some((s) => !s.done) && date === today) notes.push("Comprende le sedute ancora da fare: se cambiano, il conto si aggiorna.");
   notes.push(...extra);
-  if (!a.dailyActivity) notes.push("Indica che lavoro fai per una stima più precisa.");
+  if (a.dailySteps === undefined && !a.dailyActivity) notes.push("Indica i tuoi passi medi al giorno per una stima più precisa.");
   return { bmr: base, daily, training: training + raceKcal, total, carbsG, proteinG, fatG, dayType, sessions, notes };
+}
+
+/** I prossimi giorni, dal programma: calorie e carboidrati per organizzarsi la spesa e i pasti. */
+export function energyWeek(a: AthleteProfile, plan: PlannedWorkout[], activities: CompletedActivity[], events: RaceEvent[], today: string, days = 6): (EnergyDay & { date: string })[] {
+  return Array.from({ length: days }, (_, i) => addDays(today, i + 1))
+    .map((d) => {
+      const e = energyDay(a, plan, activities, events, d, today);
+      return e ? { ...e, date: d } : null;
+    })
+    .filter((x): x is EnergyDay & { date: string } => x !== null);
 }
