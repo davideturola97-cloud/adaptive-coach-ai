@@ -174,7 +174,8 @@ test("piano gara: obiettivi, passi, passaggi e checklist", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /Piano gara/ })).toBeVisible();
   await expect(page.getByText("Tempi di passaggio")).toBeVisible();
   await expect(page.getByRole("link", { name: /Il mio/ })).toBeVisible();
-  await expect(page.getByLabel("Il mio obiettivo")).toHaveValue("1:44:00");
+  await expect(page.getByLabel("Il mio obiettivo: ore")).toHaveValue("1");
+  await expect(page.getByLabel("Il mio obiettivo: minuti")).toHaveValue("44");
   await page.getByRole("link", { name: /Ambizioso/ }).click();
   await expect(page).toHaveURL(/obiettivo=ambizioso/);
   await expect(page.getByText("La sera prima")).toBeVisible();

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { setRaceGoal } from "@/app/profilo/gare/actions";
-import { formatTimeInput } from "./time-input";
+import { TimePicker } from "./time-input";
 
 /** Il mio obiettivo: un tempo scritto dall'atleta, salvato con la gara. */
 export function RaceGoalForm({ eventId, current, demo }: { eventId: string; current?: string; demo: boolean }) {
@@ -25,17 +25,9 @@ export function RaceGoalForm({ eventId, current, demo }: { eventId: string; curr
       }}
       className="flex flex-col gap-2"
     >
-      <label className="text-sm font-medium" htmlFor="goal">Il mio obiettivo <span className="text-xs font-normal text-muted">(scrivi solo le cifre: 13900 = 1:39:00)</span></label>
-      <div className="flex gap-2">
-        <input
-          id="goal"
-          inputMode="numeric"
-          placeholder="es. 1:39:00"
-          value={value}
-          onChange={(e) => setValue(formatTimeInput(e.target.value))}
-          maxLength={8}
-          className="min-h-12 w-36 rounded-xl border border-line bg-bg px-3 text-lg tabular-nums outline-none focus:border-faint"
-        />
+      <p className="text-sm font-medium">Il mio obiettivo</p>
+      <div className="flex flex-wrap items-start gap-2">
+        <TimePicker value={value} onChange={setValue} label="Il mio obiettivo" />
         <button disabled={pending || demo} className="min-h-12 rounded-xl bg-fg px-5 font-semibold text-bg disabled:opacity-50">
           {pending ? "..." : "Salva"}
         </button>
