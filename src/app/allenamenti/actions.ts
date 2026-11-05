@@ -200,3 +200,30 @@ export async function quickDone(plannedId: string, rpe: number): Promise<{ ok: b
   revalidatePath("/", "layout");
   return { ok: true, activityId: String(id) };
 }
+
+/** "Annulla seduta" senza spiegazioni: la seduta diventa saltata (si può ripristinare). */
+export async function quickSkip(id: string): Promise<{ ok: boolean; error?: string }> {
+  if (!/^[0-9a-f-]{36}$/.test(id)) return { ok: false, error: "Seduta non valida." };
+  const { supabase, user } = await getUser();
+  if (!user) return { ok: false, error: "Sessione scaduta: accedi di nuovo." };
+  const { data, error } = await supabase
+    .from("planned_workouts")
+    .update({ status: "saltato", skip_reason: null, skipped_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("status", "programmato")
+    .select("id");
+  if (error || !data?.length) return { ok: false, error: "Non riuscito: la seduta è già registrata o annullata." };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/** Ripristina una seduta annullata. */
+export async function quickRestore(id: string): Promise<{ ok: boolean; error?: string }> {
+  if (!/^[0-9a-f-]{36}$/.test(id)) return { ok: false, error: "Seduta non valida." };
+  const { supabase, user } = await getUser();
+  if (!user) return { ok: false, error: "Sessione scaduta: accedi di nuovo." };
+  const { error } = await supabase.from("planned_workouts").update({ status: "programmato", skip_reason: null, skipped_at: null }).eq("id", id).eq("status", "saltato");
+  if (error) return { ok: false, error: "Non riuscito. Riprova." };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}

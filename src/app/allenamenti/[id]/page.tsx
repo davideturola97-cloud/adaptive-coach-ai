@@ -14,6 +14,7 @@ import { gymAdvice } from "@/lib/training/gym-schedule";
 import { suggestLoad } from "@/lib/training/gym-progress";
 import { swapSuggestion } from "@/lib/training/gym-swaps";
 import { GymSwapsCard } from "@/components/gym-swaps";
+import { QuickSkip } from "@/components/quick-skip";
 import { weekdayName as wd } from "@/lib/dates";
 import { GymAdviceList } from "@/components/gym-advice";
 
@@ -75,6 +76,7 @@ export default async function WorkoutPage({ params, searchParams }: { params: Pr
         </div>
         <h1 className="text-3xl font-bold tracking-tight">{w.title}</h1>
         <p className="text-muted">{weekdayName(w.date)} {formatDayMonth(w.date, false)}</p>
+        {w.status === "programmato" && <QuickSkip workoutId={w.id} disabled={demo} />}
       </header>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

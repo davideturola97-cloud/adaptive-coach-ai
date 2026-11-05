@@ -15,6 +15,7 @@ import { formatDuration } from "@/lib/training/formulas";
 import { MorningCheckin, StravaAutoSync, WeeklyReviewCard } from "@/components/today";
 import { SkipFeedbackButton } from "@/components/strava";
 import { QuickDone, QuickRpe } from "@/components/quick-rpe";
+import { QuickSkip } from "@/components/quick-skip";
 import { stravaStatus } from "@/lib/strava/service";
 import { getUser } from "@/lib/supabase/server";
 import type { CompletedActivity } from "@/lib/domain/types";
@@ -71,7 +72,10 @@ function TodayWorkout({ w, done, stravaOn, demo }: { w: PlannedWorkout; done?: C
             <p className="text-xs text-muted">Con l&apos;orologio collegato a Strava si registra da sola: dopo ti chiedo solo quanto è stata dura. Senza orologio, premi Fatto.</p>
           )}
           <QuickDone plannedId={w.id} detailsHref={`/allenamenti/${w.id}`} disabled={demo} />
+          <QuickSkip workoutId={w.id} disabled={demo} />
         </div>
+      ) : w.status === "saltato" ? (
+        <QuickSkip workoutId={w.id} disabled={demo} skipped />
       ) : done && !done.feedback ? (
         <QuickRpe activityId={done.id} detailsHref={`/attivita/${done.id}`} disabled={demo} />
       ) : (
