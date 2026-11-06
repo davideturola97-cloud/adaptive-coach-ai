@@ -28,8 +28,13 @@ export interface Reference {
   date: string;
   /** Testo per l'atleta: "corsa del 28/10 (10 km in 48:30)". */
   label: string;
-  /** Sforzo massimale o quasi: test, gara, RPE ≥ 8. */
+  /** Sforzo massimale o quasi: test, gara, RPE ≥ 8, oppure FC media vicina alla massima. */
   hard: boolean;
+  /**
+   * Per gli sforzi non massimali: quanto più lento del tuo massimo è stato (1,2 = 20% più lento).
+   * Serve a non scambiare una corsa facile per una gara.
+   */
+  easeFactor?: number;
   activityId?: string;
 }
 
@@ -92,25 +97,50 @@ export function bestSegments(splits: CompletedActivity["splits"], lengths = [3, 
 }
 
 /** Riferimenti dalle corse delle ultime 12 settimane (fino alla data indicata). */
+/**
+ * FC massima: la più alta vista nelle ultime 12 settimane (parziali o medie), oppure la formula di Tanaka (208 − 0,7 × età)
+ * se quella osservata è troppo bassa per essere un vero massimo.
+ */
+export function maxHr(activities: CompletedActivity[], athlete: Pick<AthleteProfile, "birthDate">, asOf: string): number | undefined {
+  const from = addDays(asOf, -WINDOW_DAYS);
+  const seen = Math.max(0, ...activities.filter((a) => a.date >= from && a.date <= asOf && (a.sport === "run" || a.sport === "bike")).flatMap((a) => [a.avgHr ?? 0, ...(a.splits ?? []).map((s) => s.hr ?? 0)]));
+  const age = athlete.birthDate ? Math.floor((Date.parse(asOf) - Date.parse(athlete.birthDate)) / (365.25 * 864e5)) : undefined;
+  const tanaka = age ? 208 - 0.7 * age : undefined;
+  if (tanaka) return seen >= tanaka * 0.92 ? seen : Math.round(tanaka);
+  return seen >= 160 ? seen : undefined;
+}
+
+/** Quanto è stato duro uno sforzo, senza RPE: dalla FC media rispetto alla massima. */
+function effortOf(a: CompletedActivity, hrMax: number | undefined, plannedHard: boolean): { hard: boolean; easeFactor?: number; why: string } {
+  const rpe = a.feedback?.rpe;
+  if ((rpe ?? 0) >= 8 || plannedHard) return { hard: true, why: rpe ? `RPE ${rpe}` : "test" };
+  const pct = a.avgHr && hrMax ? a.avgHr / hrMax : undefined;
+  if (pct !== undefined && pct >= 0.9 && a.durationMin >= 15) return { hard: true, why: `FC media ${a.avgHr}, il ${Math.round(pct * 100)}% della massima` };
+  if (rpe !== undefined) return { hard: false, easeFactor: rpe >= 6 ? 1.07 : 1.2, why: `RPE ${rpe}` };
+  if (pct !== undefined) return { hard: false, easeFactor: pct >= 0.86 ? 1.05 : pct >= 0.8 ? 1.1 : 1.18, why: `FC media ${a.avgHr}, il ${Math.round(pct * 100)}% della massima` };
+  return { hard: false, easeFactor: 1.15, why: "senza RPE né FC" };
+}
+
 export function references(
   activities: CompletedActivity[],
   plan: Pick<PlannedWorkout, "type" | "completedActivityId">[],
-  athlete: Pick<AthleteProfile, "thresholdPaceSecPerKm">,
+  athlete: Pick<AthleteProfile, "thresholdPaceSecPerKm"> & Partial<Pick<AthleteProfile, "birthDate">>,
   asOf: string,
 ): Reference[] {
   const from = addDays(asOf, -WINDOW_DAYS);
   const refs: Reference[] = [];
+  const hrMax = maxHr(activities, athlete, asOf);
   for (const a of activities) {
     if (a.sport !== "run" || a.date > asOf || a.date < from || !a.distanceKm || a.distanceKm < 3) continue;
     const timeSec = a.durationMin * 60;
     const pace = timeSec / a.distanceKm;
     if (pace < 150 || pace > 600) continue; // camminate o dati sbagliati
     const type = plan.find((p) => p.completedActivityId === a.id)?.type;
-    const hard = (a.feedback?.rpe ?? 0) >= 8 || (type !== undefined && HARD_TYPES.includes(type));
-    refs.push({ km: a.distanceKm, timeSec, date: a.date, hard, activityId: a.id, label: `corsa del ${fmtDay(a.date)} (${kmText(a.distanceKm)} in ${formatRaceTime(timeSec)}${a.feedback ? `, RPE ${a.feedback.rpe}` : ""})` });
+    const ef = effortOf(a, hrMax, type !== undefined && HARD_TYPES.includes(type));
+    refs.push({ km: a.distanceKm, timeSec, date: a.date, hard: ef.hard, easeFactor: ef.easeFactor, activityId: a.id, label: `corsa del ${fmtDay(a.date)} (${kmText(a.distanceKm)} in ${formatRaceTime(timeSec)}, ${ef.why})` });
     for (const seg of bestSegments(a.splits)) {
       if (seg.km >= a.distanceKm - 0.5) continue; // coincide con la corsa intera
-      refs.push({ km: seg.km, timeSec: seg.timeSec, date: a.date, hard, activityId: a.id, label: `${kmText(seg.km)} più veloci della corsa del ${fmtDay(a.date)} (${formatRaceTime(seg.timeSec)})` });
+      refs.push({ km: seg.km, timeSec: seg.timeSec, date: a.date, hard: ef.hard, easeFactor: ef.easeFactor, activityId: a.id, label: `${kmText(seg.km)} più veloci della corsa del ${fmtDay(a.date)} (${formatRaceTime(seg.timeSec)})` });
     }
   }
   // Test: ritmo di soglia ≈ ritmo dei 10 km × 1,04 (vedi thresholdPaceFromRun).
@@ -133,8 +163,14 @@ export function exponentFor(targetKm: number, fromKm: number, weeklyKm: number, 
   return e;
 }
 
-function predictAt(activities: CompletedActivity[], plan: Pick<PlannedWorkout, "type" | "completedActivityId">[], athlete: Pick<AthleteProfile, "thresholdPaceSecPerKm">, asOf: string) {
-  const refs = references(activities, plan, athlete, asOf);
+function predictAt(activities: CompletedActivity[], plan: Pick<PlannedWorkout, "type" | "completedActivityId">[], athlete: Pick<AthleteProfile, "thresholdPaceSecPerKm"> & Partial<Pick<AthleteProfile, "birthDate">>, asOf: string) {
+  const all = references(activities, plan, athlete, asOf);
+  // Con almeno uno sforzo duro recente: contano quelli (e le corse facili solo come limite minimo, così come sono).
+  // Senza sforzi duri: le corse facili si correggono per quanto erano più lente del massimo, invece di essere lette come gare.
+  const anyHard = all.some((r) => r.hard);
+  const refs = anyHard
+    ? all
+    : all.map((r) => (r.easeFactor ? { ...r, timeSec: r.timeSec / r.easeFactor, label: `${r.label}, corretta per lo sforzo non massimale` } : r));
   const runs28 = activities.filter((a) => a.sport === "run" && a.date <= asOf && a.date > addDays(asOf, -28));
   const weeklyKm = Math.round((runs28.reduce((t, a) => t + (a.distanceKm ?? 0), 0) / 4) * 10) / 10;
   const longestKm = Math.max(0, ...activities.filter((a) => a.sport === "run" && a.date <= asOf && a.date > addDays(asOf, -56)).map((a) => a.distanceKm ?? 0));
@@ -172,7 +208,7 @@ function predictAt(activities: CompletedActivity[], plan: Pick<PlannedWorkout, "
 export function predictRaces(
   activities: CompletedActivity[],
   plan: Pick<PlannedWorkout, "type" | "completedActivityId">[],
-  athlete: Pick<AthleteProfile, "thresholdPaceSecPerKm">,
+  athlete: Pick<AthleteProfile, "thresholdPaceSecPerKm"> & Partial<Pick<AthleteProfile, "birthDate">>,
   today: string,
 ): PredictionReport {
   const now = predictAt(activities, plan, athlete, today);

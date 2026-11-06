@@ -48,3 +48,19 @@ describe("passi al km per le sedute di corsa", () => {
     expect(paceReference(olderTest, runs, [], today)?.source).toMatch(/previsione/);
   });
 });
+
+describe("riferimento: vince la prova più forte", () => {
+  const today = "2026-11-03";
+  const run = (id: string, date: string, km: number, min: number, hr?: number, rpe?: number): CompletedActivity => ({ id, date, sport: "run", title: "", durationMin: min, distanceKm: km, avgHr: hr, source: "strava", ...(rpe && { feedback: { rpe } }) });
+  it("test lento ma gara recente più veloce: si usa la gara", () => {
+    const test = { thresholdPaceSecPerKm: { value: 300, origin: "stimato" as const, date: "2026-10-01" } };
+    const r = paceReference(test, [run("g", "2026-10-26", 10, 42, undefined, 9)], [], today)!;
+    expect(r.source).toMatch(/previsione/);
+    expect(r.thresholdSec).toBeCloseTo(252 * 1.04, 0);
+  });
+  it("test veloce e solo corse facili più recenti: resta il test", () => {
+    const test = { thresholdPaceSecPerKm: { value: 255, origin: "stimato" as const, date: "2026-10-01" } };
+    const r = paceReference(test, [run("e", "2026-10-30", 10, 55, undefined, 4)], [], today)!;
+    expect(r.source).toBe("test del 01/10");
+  });
+});

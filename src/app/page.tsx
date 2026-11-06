@@ -65,7 +65,11 @@ function TodayWorkout({ w, done, stravaOn, demo }: { w: PlannedWorkout; done?: C
           </li>
         ))}
       </ol>
-      {w.paceSource && <p className="text-xs text-faint">Passi stimati da: {w.paceSource}</p>}
+      {w.paceSource && (
+        <p className="text-xs text-faint">
+          Passi stimati da: {w.paceSource}. <Link href="/test" className="underline">Non ti tornano? Inserisci una gara recente</Link>
+        </p>
+      )}
       {w.status === "programmato" ? (
         <div className="flex flex-col gap-2">
           {stravaOn && w.sport !== "gym" && (

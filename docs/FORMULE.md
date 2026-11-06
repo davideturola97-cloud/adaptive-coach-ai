@@ -272,3 +272,13 @@ Stima di mantenimento, ±10–15%; non è un consiglio medico o dietetico.
 - Ripartizione: proteine 1,6 g/kg (1,8 nei giorni intensi e di gara); carboidrati 3 g/kg riposo, 4,5 leggera, 5,5 moderata,
   7–8 intensa, 8 alla vigilia di una gara lunga, 7 il giorno di gara; grassi il resto, almeno 0,8 g/kg. Se i carboidrati non
   ci stanno, si riducono; alla vigilia e il giorno di gara invece si tengono e il totale sale un po'.
+
+## Sforzo delle corse senza RPE (predictions.ts)
+
+FC massima: la più alta vista in 12 settimane, oppure Tanaka (208 − 0,7 × età) se quella vista è sotto il 92% della formula.
+Una corsa con FC media ≥ 90% della massima (almeno 15') vale come sforzo duro, come RPE ≥ 8 o un test.
+Le altre sono sforzi parziali: "più lente del massimo" di un fattore 1,05 (FC ≥ 86%), 1,10 (≥ 80%), 1,18 (sotto), 1,07 (RPE 6–7),
+1,20 (RPE ≤ 5), 1,15 senza dati. Se nelle 12 settimane c'è almeno uno sforzo duro si usano i dati così come sono (le facili
+fanno solo da limite minimo); altrimenti le corse facili si correggono con quel fattore invece di essere lette come gare.
+Riferimento per i passi: tra test recente (4 mesi) e previsione da uno sforzo duro vince il più veloce; una previsione
+da corse facili non sostituisce mai un test recente.

@@ -98,3 +98,27 @@ describe("obiettivo scelto dall'atleta", () => {
     expect(hard.text).toMatch(/2:30 più veloce dell'"ambizioso"/);
   });
 });
+
+describe("corse da Strava senza RPE", () => {
+  const strava = (id: string, date: string, km: number, min: number, hr?: number): CompletedActivity => ({ id, date, sport: "run", title: "", durationMin: min, distanceKm: km, avgHr: hr, source: "strava" });
+  const athlete = { birthDate: "1997-03-01" }; // FC massima stimata (Tanaka) ≈ 188
+
+  it("le corse facili non vengono lette come gare: previsione corretta per lo sforzo", () => {
+    const easy = [strava("a", "2026-10-28", 10, 55, 140), strava("b", "2026-10-31", 12, 66, 142), strava("c", "2026-11-03", 8, 44, 138)];
+    const r = predictRaces(easy, [], athlete, TODAY);
+    const tenK = r.predictions.find((p) => p.key === "10k")!;
+    // A 5:30 /km con FC al 75% della massima il 10 km "a tutta" è molto più veloce di 55'
+    expect(tenK.timeSec).toBeLessThan(55 * 60 * 0.9);
+    expect(tenK.basedOn.label).toMatch(/corretta per lo sforzo non massimale/);
+    expect(tenK.confidence).not.toBe("alta");
+  });
+
+  it("una corsa dura si riconosce dalla FC anche senza RPE, e allora conta quella", () => {
+    const acts = [strava("a", "2026-10-28", 10, 55, 140), strava("h", "2026-10-25", 10, 43, 172)];
+    const r = predictRaces(acts, [], athlete, TODAY);
+    const tenK = r.predictions.find((p) => p.key === "10k")!;
+    expect(Math.round(tenK.timeSec)).toBe(43 * 60);
+    expect(tenK.basedOn.hard).toBe(true);
+    expect(tenK.basedOn.label).toMatch(/FC media 172/);
+  });
+});

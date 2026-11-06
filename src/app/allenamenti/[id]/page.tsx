@@ -89,7 +89,8 @@ export default async function WorkoutPage({ params, searchParams }: { params: Pr
         {w.paceSource ? (
           <>
             Passi al km stimati dalla tua forma attuale: <b className="text-fg">{w.paceSource}</b>. Si aggiornano da soli a ogni corsa registrata.
-            Se in una giornata il passo costa più fatica del previsto (caldo, salita, stanchezza), comanda l&apos;RPE: rallenta senza problemi.
+            Se in una giornata il passo costa più fatica del previsto (caldo, salita, stanchezza), comanda l&apos;RPE: rallenta senza problemi.{" "}
+            I passi non ti tornano? <Link href="/test" className="font-semibold text-fg underline">Inserisci il tempo di una gara recente</Link> (es. 10 km o mezza): il coach lo usa subito.
           </>
         ) : (
           <>L&apos;intensità è indicata con la scala RPE da 1 a 10 (sforzo percepito). I passi al km compariranno dopo qualche corsa registrata o un test.</>

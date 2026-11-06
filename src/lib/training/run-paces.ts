@@ -57,7 +57,7 @@ export function paceRange(t: number, [fast, slow]: readonly [number, number]): s
 }
 
 export function paceReference(
-  athlete: Pick<AthleteProfile, "thresholdPaceSecPerKm">,
+  athlete: Pick<AthleteProfile, "thresholdPaceSecPerKm"> & Partial<Pick<AthleteProfile, "birthDate">>,
   activities: CompletedActivity[],
   plan: Pick<PlannedWorkout, "type" | "completedActivityId">[],
   today: string,
@@ -66,11 +66,12 @@ export function paceReference(
   const five = report.predictions.find((p) => p.key === "5k");
   const ten = report.predictions.find((p) => p.key === "10k");
   const test = athlete.thresholdPaceSecPerKm;
-  // Una previsione affidabile (media o alta) basata su una corsa più recente del test descrive meglio la forma attuale.
-  const fresher = ten && ten.confidence !== "bassa" && (!test || ten.basedOn.date > test.date);
-  // Il test vale se recente (4 mesi); altrimenti la previsione dagli allenamenti, se c'è.
-  if (test && test.date >= addDays(today, -120) && !fresher) {
-    return { thresholdSec: test.value, source: `test del ${fmtDay(test.date)}`, fiveKPaceSec: five?.paceSec };
+  const recentTest = test && test.date >= addDays(today, -120) ? test : undefined;
+  const predT = ten ? ten.paceSec * 1.04 : undefined;
+  // Vince la prova più forte: un test recente e una previsione da uno sforzo duro si confrontano e si tiene la più veloce.
+  // Una previsione da corse facili non scavalca mai un test recente (le corse facili non dicono quanto vai forte).
+  if (recentTest && (!predT || !ten!.basedOn.hard || recentTest.value <= predT)) {
+    return { thresholdSec: recentTest.value, source: `test del ${fmtDay(recentTest.date)}`, fiveKPaceSec: five?.paceSec };
   }
   if (ten) {
     return {
