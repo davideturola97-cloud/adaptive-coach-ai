@@ -282,3 +282,13 @@ Le altre sono sforzi parziali: "più lente del massimo" di un fattore 1,05 (FC �
 fanno solo da limite minimo); altrimenti le corse facili si correggono con quel fattore invece di essere lette come gare.
 Riferimento per i passi: tra test recente (4 mesi) e previsione da uno sforzo duro vince il più veloce; una previsione
 da corse facili non sostituisce mai un test recente.
+
+## Allenarsi per migliorare (run-paces.ts: paceTargets, thresholdOn)
+
+Verso la prossima gara di corsa con un obiettivo (il tuo, altrimenti il "possibile"):
+- soglia da raggiungere = soglia di oggi × (tempo obiettivo ÷ tempo previsto), usando il più veloce tra il tuo obiettivo e il
+  "possibile" (si migliora anche se l'obiettivo è facile), mai oltre l'"ambizioso" e mai più lenta di oggi;
+- le sedute future usano una soglia che scende in modo lineare da oggi a quella da raggiungere, 10 giorni prima della gara
+  (poi resta lì durante lo scarico); ripetute, soglia, riscaldamenti e recuperi seguono la soglia della loro data;
+- le fasi a ritmo gara (ritmo mezza per una mezza, ritmo 10 km per un 10 km, ritmo maratona) usano il passo del tuo obiettivo ±3″/km;
+- facili e lunghi seguono la stessa soglia ma nelle loro fasce tranquille: correrli più forte non fa migliorare.

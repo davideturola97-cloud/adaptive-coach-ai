@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CompletedActivity, PlannedWorkout } from "@/lib/domain/types";
-import { paceRange, paceReference, withRunPaces } from "./run-paces";
+import { paceRange, paceReference, thresholdOn, withRunPaces } from "./run-paces";
 import { template } from "./templates";
 
 const w = (type: PlannedWorkout["type"]) => ({ ...template(type), id: "x", date: "2026-11-05", status: "programmato" } as PlannedWorkout);
@@ -62,5 +62,48 @@ describe("riferimento: vince la prova più forte", () => {
     const test = { thresholdPaceSecPerKm: { value: 255, origin: "stimato" as const, date: "2026-10-01" } };
     const r = paceReference(test, [run("e", "2026-10-30", 10, 55, undefined, 4)], [], today)!;
     expect(r.source).toBe("test del 01/10");
+  });
+});
+
+describe("allenarsi per migliorare: passi che progrediscono verso l'obiettivo", () => {
+  const today = "2026-11-06";
+  const reggio = { id: "r", name: "Reggio Emilia", date: "2026-12-13", kind: "singolo" as const, sport: "run" as const, distanceKm: 21.0975, priority: "A" as const };
+  const hard = (date: string, km: number, min: number): CompletedActivity => ({ id: date, date, sport: "run", title: "", durationMin: min, distanceKm: km, source: "strava", feedback: { rpe: 9 } });
+  const acts = [hard("2026-10-25", 10, 45), hard("2026-10-18", 21.0975, 102)];
+
+  it("la soglia scende ogni settimana fino all'obiettivo, raggiunto 10 giorni prima della gara", () => {
+    const ref = paceReference({}, acts, [], today, [reggio])!;
+    expect(ref.targets?.[0]).toMatchObject({ raceName: "Reggio Emilia", goalSource: "possibile" });
+    const t0 = thresholdOn(ref, today).t;
+    const mid = thresholdOn(ref, "2026-11-20").t;
+    const end = thresholdOn(ref, "2026-12-05").t;
+    expect(t0).toBeCloseTo(ref.thresholdSec);
+    expect(mid).toBeLessThan(t0);
+    expect(end).toBeLessThan(mid);
+    expect(end).toBeCloseTo(ref.targets![0].goalThresholdSec);
+    expect(thresholdOn(ref, "2026-12-10").t).toBeCloseTo(end); // in scarico resta lì
+  });
+
+  it("il ritmo gara usa il tuo obiettivo; oltre l'ambizioso la progressione si ferma e te lo dice", () => {
+    const mine = { ...reggio, goalTimeSec: 99 * 60 }; // 1:39:00
+    const ref = paceReference({}, acts, [], today, [mine])!;
+    expect(ref.targets![0].goalSource).toBe("tuo");
+    const w = withRunPaces({ ...template("tempo_run"), id: "x", date: "2026-11-25", status: "programmato", structure: { warmup: [], main: [{ label: "3 km", distanceKm: 3, repeat: 3, rpe: [6, 7], zone: "mezza" }], cooldown: [] } } as unknown as PlannedWorkout, ref);
+    expect(w.structure.main[0].target?.value).toMatch(/^4:39 – 4:45 \/km \(ritmo obiettivo Reggio Emilia\)/);
+    expect(w.paceSource).toMatch(/verso Reggio Emilia in 1:39:00 \(il tuo obiettivo\)/);
+    const wild = paceReference({}, acts, [], today, [{ ...reggio, goalTimeSec: 85 * 60 }])!;
+    expect(wild.targets![0].ambitious).toBe(true);
+    expect(withRunPaces({ ...template("corsa_facile"), id: "y", date: "2026-11-25", status: "programmato" } as PlannedWorkout, wild).paceSource).toMatch(/più veloce dell'"ambizioso"/);
+  });
+});
+
+describe("obiettivo facile", () => {
+  it("i ritmi migliorano lo stesso verso il possibile", () => {
+    const today = "2026-11-06";
+    const easy = { id: "r", name: "Reggio", date: "2026-12-13", kind: "singolo" as const, sport: "run" as const, distanceKm: 21.0975, priority: "A" as const, goalTimeSec: 115 * 60 };
+    const acts = [{ id: "h", date: "2026-10-25", sport: "run" as const, title: "", durationMin: 45, distanceKm: 10, source: "strava" as const, feedback: { rpe: 9 } }];
+    const ref = paceReference({}, acts, [], today, [easy])!;
+    expect(ref.targets![0].easyGoal).toBe(true);
+    expect(thresholdOn(ref, "2026-12-05").t).toBeLessThan(ref.thresholdSec);
   });
 });

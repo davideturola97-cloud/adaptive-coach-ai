@@ -62,7 +62,7 @@ function mapProfile(p: any, sports: any[]): AthleteProfile {
  */
 export async function getAppData(): Promise<AppData> {
   const d = await loadAppData();
-  const ref = paceReference(d.athlete, d.activities, d.plan, d.today);
+  const ref = paceReference(d.athlete, d.activities, d.plan, d.today, d.events);
   if (!ref) return d;
   return { ...d, plan: d.plan.map((w) => (w.status === "programmato" ? withRunPaces(w, ref) : w)) };
 }
