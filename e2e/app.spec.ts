@@ -25,7 +25,7 @@ const SECTIONS = [
 test("si naviga in tutte le sezioni senza errori", async ({ page }) => {
   const errors = trackErrors(page);
   await page.goto("/");
-  await expect(page.getByText("Modalità dimostrativa")).toBeVisible();
+  await expect(page.getByText(/^Modalità dimostrativa: tutti i dati/)).toBeVisible();
   for (const s of SECTIONS) {
     await page.getByRole("navigation").filter({ visible: true }).getByRole("link", { name: s.name, exact: true }).first().click();
     await expect(page).toHaveURL(new RegExp(`${s.path === "/" ? "/$" : s.path}`));

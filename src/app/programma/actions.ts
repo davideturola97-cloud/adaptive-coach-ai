@@ -5,6 +5,7 @@ import { getAppData } from "@/lib/data/repository";
 import { generatePlan, type PlanDraft } from "@/lib/planning/engine";
 import { getUser } from "@/lib/supabase/server";
 import { paceReference } from "@/lib/training/run-paces";
+import { goalGaps, predictRaces } from "@/lib/training/predictions";
 
 export type PreviewState = { draft?: PlanDraft; weeks?: number; error?: string; saved?: string };
 
@@ -19,6 +20,7 @@ async function draftFor(weeks: number, allowDemo = false) {
     today: data.today, startDate: data.today, athlete: data.athlete, events: data.events, tests: data.plannedTests, weeks,
     history: { activities: data.activities, plan: data.plan.filter((p) => p.date < data.today) },
     thresholdSec: ref?.thresholdSec,
+    goalGap: goalGaps(data.events, predictRaces(data.activities, data.plan, data.athlete, data.today), data.today),
   });
   return { draft };
 }

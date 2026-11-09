@@ -6,7 +6,7 @@ import { Card, OriginTag, PageHeader, SectionTitle } from "@/components/ui";
 import { daysBetween, formatDayMonth, weekdayName } from "@/lib/dates";
 import { getAppData } from "@/lib/data/repository";
 import { formatRaceTime, goalVerdict, predictRaces, raceGoals } from "@/lib/training/predictions";
-import { RaceGoalForm } from "@/components/race-goal-form";
+import { RaceGoalForm, UseAsGoal } from "@/components/race-goal-form";
 import { racePlan } from "@/lib/training/race-plan";
 
 export const dynamic = "force-dynamic";
@@ -74,6 +74,17 @@ export default async function RacePlanPage({ params, searchParams }: { params: P
               <p className={clsx("mt-3 rounded-xl px-3 py-2 text-sm", verdict.level === "molto difficile" ? "bg-bad/10 text-bad" : verdict.level === "ambizioso" ? "bg-warn/10 text-warn" : "bg-ok/10 text-ok")}>{verdict.text}</p>
             )}
             <p className="mt-2 text-xs text-muted">{goals ? `${goals.note} ` : ""}Il piano qui sotto è costruito su &quot;{GOALS.find((g) => g.key === pick)!.label.toLowerCase()}&quot;.</p>
+            {mine && (
+              <p className="mt-2 text-xs text-muted">
+                I ritmi delle sedute seguono già il tuo obiettivo. Se l&apos;hai appena cambiato, <Link href="/programma" className="font-semibold text-fg underline">rigenera il programma</Link> per adattare anche il tipo di sedute.
+              </p>
+            )}
+            {pick !== "mio" && timeOf(pick) && (
+              <div className="mt-3">
+                <UseAsGoal eventId={e.id} label={GOALS.find((g) => g.key === pick)!.label} time={formatRaceTime(timeOf(pick)!)} demo={mode === "demo"} />
+                <p className="mt-1 text-xs text-muted">Il programma e i ritmi delle sedute si costruiscono sull&apos;obiettivo che scegli.</p>
+              </div>
+            )}
             <div className="mt-4">
               <RaceGoalForm eventId={e.id} current={mine ? formatRaceTime(mine) : undefined} demo={mode === "demo"} />
             </div>

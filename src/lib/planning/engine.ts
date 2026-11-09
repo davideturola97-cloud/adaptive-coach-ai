@@ -17,6 +17,7 @@ import { template } from "@/lib/training/templates";
 import { applyTargets } from "./targets";
 import { buildSession, fitLevel, maxLevel, FAMILIES, type Family } from "./library";
 import { trainingState, type TrainingHistory } from "./progression";
+import { formatRaceTime } from "@/lib/training/predictions";
 import { exerciseLine, exerciseMinutes, gymLabel, isLegExercise, legLoad, reduceExercise } from "@/lib/training/gym-schedule";
 
 export type Phase = "base" | "costruzione" | "rifinitura" | "scarico" | "gara" | "recupero";
@@ -65,6 +66,11 @@ export interface PlanInput {
   thresholdSec?: number;
   /** Revisione settimanale: moltiplica il volume della prima settimana (es. 0,85 dopo una settimana pesante). */
   firstWeekFactor?: number;
+  /**
+   * Quanto l'obiettivo di ogni gara è più veloce della previsione di oggi (0,03 = 3% più veloce), per id della gara.
+   * Più il salto è grande, prima comincia il lavoro specifico e più spesso si corre a ritmo gara.
+   */
+  goalGap?: Record<string, number>;
 }
 
 const ALL_DAYS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
@@ -171,14 +177,15 @@ function runClass(e: RaceEvent | undefined): "corta" | "mezza" | "maratona" {
  * Famiglia della seduta di qualità, come la sceglierebbe un allenatore: in base alla fase, alla gara obiettivo
  * e a quante sedute di qualità ha già quello sport nella settimana (n = 0 la principale, 1 la seconda).
  */
-export function qualityFamily(sport: Sport, phase: Phase, target: RaceEvent | undefined, week: number, n: number, weeksToRace?: number): Family | null {
+export function qualityFamily(sport: Sport, phase: Phase, target: RaceEvent | undefined, week: number, n: number, weeksToRace?: number, gap = 0): Family | null {
   const alt = week % 2 === 0;
   if (sport === "run") {
     const c = runClass(target);
     switch (phase) {
       case "base": return n === 0 ? (alt ? "fartlek" : "salite") : "soglia";
       case "costruzione": {
-        const specific = weeksToRace !== undefined && weeksToRace <= 6;
+        // Lavoro specifico a ritmo gara nelle ultime 6 settimane; 8 se l'obiettivo chiede un salto (più veloce della previsione di oggi).
+        const specific = weeksToRace !== undefined && weeksToRace <= (gap >= 0.01 ? 8 : 6);
         if (c === "corta") return n === 0 ? "vo2" : specific ? "ritmo_10k" : "soglia";
         if (c === "mezza") return n === 0 ? "soglia" : specific ? "ritmo_mezza" : alt ? "vo2" : "ritmo_10k";
         return n === 0 ? "soglia" : "ritmo_mezza";
@@ -389,7 +396,7 @@ export function generatePlan(input: PlanInput): PlanDraft {
       const nQ = s === focus || (focus === "tri" && s === "run") ? (count >= 5 && !conservative && hardLeft.n >= 2 ? 2 : 1) : 1;
       for (let n = 0; n < nQ; n++) {
         if (!(hardLeft.n > 0 && (count >= 2 || s === "swim" || phase === "gara"))) break;
-        const family = conservative ? null : qualityFamily(s, phase, target, w, n, weeksToRace);
+        const family = conservative ? null : qualityFamily(s, phase, target, w, n, weeksToRace, target ? input.goalGap?.[target.id] ?? 0 : 0);
         sportSlots.push({ sport: s, role: "qualita", type: family ? FAMILIES[family].type : qualityType(s, phase, w, conservative), minutes: 55, priority: 2 + n, ...(family && { family }) });
         // Il nuoto di qualità pesa poco su gambe e sistema nervoso: non toglie spazio alla corsa e alla bici.
         if (s !== "swim") hardLeft.n -= 1;
@@ -578,7 +585,8 @@ export function generatePlan(input: PlanInput): PlanDraft {
           light ? `${PHASE_LABEL[phase].toLowerCase()}: versione leggera (livello ${L} di ${maxLevel(f)}) per arrivare fresco`
           : cur.used === 0 ? `livello ${L} di ${maxLevel(f)}: ${cur.reason}`
           : `livello ${L} di ${maxLevel(f)}: un gradino sopra la volta precedente, se l'hai chiusa bene`;
-        const verso = slot.sport === "run" || slot.sport === "bike" || slot.sport === "swim" ? (target ? ` verso ${target.name}` : "") : "";
+        const goalTxt = target?.goalTimeSec ? ` (obiettivo ${formatRaceTime(target.goalTimeSec)})` : "";
+        const verso = slot.sport === "run" || slot.sport === "bike" || slot.sport === "swim" ? (target ? ` verso ${target.name}${goalTxt}` : "") : "";
         wkt = {
           ...wkt, type: lib.type, title: lib.title, intensity: lib.intensity, durationMin: lib.durationMin, structure: lib.structure,
           technicalTips: [...lib.technicalTips, ...wkt.technicalTips.slice(0, 1)],
@@ -590,7 +598,9 @@ export function generatePlan(input: PlanInput): PlanDraft {
       if (slot.role === "lungo" && slot.sport === "run" && (phase === "costruzione" || phase === "rifinitura")) {
         const c = runClass(target);
         const n = finales;
-        if (c !== "corta" && w % 2 === 1 && wkt.structure.main[0]?.durationMin && wkt.structure.main[0].durationMin >= 50) {
+        // Con un obiettivo ambizioso il finale a ritmo gara c'è in ogni lungo, non a settimane alterne.
+        const everyWeek = target ? (input.goalGap?.[target.id] ?? 0) >= 0.02 : false;
+        if (c !== "corta" && (w % 2 === 1 || everyWeek) && wkt.structure.main[0]?.durationMin && wkt.structure.main[0].durationMin >= 50) {
           const finale = Math.min(10 + 5 * n, Math.round(wkt.structure.main[0].durationMin * 0.4));
           const zone = c === "maratona" ? "maratona" : "mezza";
           wkt = {

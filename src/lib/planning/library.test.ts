@@ -86,3 +86,11 @@ describe("progressione dalla storia", () => {
     expect(st.weeklyMin).toBeGreaterThan(100);
   });
 });
+
+describe("allenamenti costruiti sull'obiettivo", () => {
+  it("obiettivo ambizioso: lavoro a ritmo gara 8 settimane prima invece di 6", () => {
+    const reggio = { id: "r", name: "Reggio", date: "2026-12-13", kind: "singolo" as const, sport: "run" as const, distanceKm: 21.1, priority: "A" as const };
+    expect(qualityFamily("run", "costruzione", reggio, 0, 1, 7, 0)).not.toBe("ritmo_mezza");
+    expect(qualityFamily("run", "costruzione", reggio, 0, 1, 7, 0.03)).toBe("ritmo_mezza");
+  });
+});

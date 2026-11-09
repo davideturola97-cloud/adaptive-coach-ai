@@ -292,3 +292,6 @@ Verso la prossima gara di corsa con un obiettivo (il tuo, altrimenti il "possibi
   (poi resta lì durante lo scarico); ripetute, soglia, riscaldamenti e recuperi seguono la soglia della loro data;
 - le fasi a ritmo gara (ritmo mezza per una mezza, ritmo 10 km per un 10 km, ritmo maratona) usano il passo del tuo obiettivo ±3″/km;
 - facili e lunghi seguono la stessa soglia ma nelle loro fasce tranquille: correrli più forte non fa migliorare.
+- Obiettivo e struttura: salto = (previsione − obiettivo) ÷ previsione. Con un salto ≥ 1% il lavoro a ritmo gara comincia
+  8 settimane prima della gara invece di 6; con un salto ≥ 2% ogni lungo in costruzione e rifinitura ha il finale a ritmo gara.
+  Nel piano gara si può scegliere sicuro, possibile o ambizioso come obiettivo con un tocco.

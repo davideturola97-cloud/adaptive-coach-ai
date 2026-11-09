@@ -7,6 +7,7 @@ import { addDays, mondayOf, weekdayName, daysBetween } from "@/lib/dates";
 import type { AthleteProfile, CompletedActivity, PlannedTest, PlannedWorkout, RaceEvent } from "@/lib/domain/types";
 import type { CheckIn } from "@/lib/training/readiness";
 import { generatePlan, type PlanDraft } from "./engine";
+import { goalGaps, predictRaces } from "@/lib/training/predictions";
 
 export interface ReviewInput {
   today: string;
@@ -100,6 +101,7 @@ export function weeklyReview(input: ReviewInput, force = false): WeeklyReview | 
     history: { activities: input.activities, plan: input.plan.filter((p) => p.date < today) },
     thresholdSec: input.thresholdSec,
     firstWeekFactor: factor,
+    goalGap: goalGaps(input.events, predictRaces(input.activities, input.plan, input.athlete, today), today),
   });
 
   // Differenze nella prossima settimana, giorno per giorno.

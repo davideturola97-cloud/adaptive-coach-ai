@@ -10,7 +10,7 @@
  * 3. Si tiene la proiezione più veloce tra i riferimenti abbastanza vicini come distanza (almeno 1/8 della gara).
  * 4. Affidabilità: alta solo con uno sforzo massimale o quasi (test, gara, RPE ≥ 8) recente e vicino alla distanza.
  */
-import type { AthleteProfile, CompletedActivity, PlannedWorkout, WorkoutType } from "@/lib/domain/types";
+import type { AthleteProfile, CompletedActivity, PlannedWorkout, RaceEvent, WorkoutType } from "@/lib/domain/types";
 import { addDays } from "@/lib/dates";
 import { riegel } from "./formulas";
 
@@ -261,4 +261,15 @@ export function goalVerdict(goalSec: number, g: RaceGoals): { level: "facile" | 
   if (goalSec >= g.possibile) return { level: "realistico", text: `Il tuo obiettivo è tra "sicuro" e "possibile": realistico, con una buona giornata.` };
   if (goalSec >= g.ambizioso) return { level: "ambizioso", text: `Il tuo obiettivo è tra "possibile" e "ambizioso" (${diff(g.possibile - goalSec)} più veloce del possibile): serve una giornata molto buona.` };
   return { level: "molto difficile", text: `Il tuo obiettivo è ${diff(g.ambizioso - goalSec)} più veloce dell'"ambizioso": oggi è molto difficile. Partire a quel passo rischia di far saltare la gara: valuta di partire sul "possibile" e decidere al 15° km.` };
+}
+
+/** Per ogni gara di corsa con un obiettivo: quanto l'obiettivo è più veloce della previsione di oggi (0,03 = 3%). */
+export function goalGaps(events: RaceEvent[], report: PredictionReport, today: string): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const e of events) {
+    if (!e.goalTimeSec || !e.distanceKm || e.date < today || e.sport !== "run" || e.kind !== "singolo") continue;
+    const p = report.predictions.find((x) => Math.abs(x.km - e.distanceKm!) < 0.6);
+    if (p) out[e.id] = (p.timeSec - e.goalTimeSec) / p.timeSec;
+  }
+  return out;
 }

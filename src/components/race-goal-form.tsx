@@ -43,3 +43,23 @@ export function RaceGoalForm({ eventId, current, demo }: { eventId: string; curr
     </form>
   );
 }
+
+/** "Scegli come mio obiettivo": salva uno dei tre obiettivi calcolati come obiettivo della gara. */
+export function UseAsGoal({ eventId, label, time, demo }: { eventId: string; label: string; time: string; demo: boolean }) {
+  const [pending, start] = useTransition();
+  const [msg, setMsg] = useState<{ ok?: string; error?: string }>();
+  const router = useRouter();
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        type="button"
+        disabled={pending || demo}
+        onClick={() => start(async () => { const r = await setRaceGoal(eventId, time); setMsg(r); if (r.ok) router.replace(`/gara/${eventId}?obiettivo=mio`); })}
+        className="min-h-12 rounded-xl bg-fg px-4 text-sm font-semibold text-bg disabled:opacity-50"
+      >
+        {pending ? "..." : `Scegli "${label}" (${time}) come mio obiettivo`}
+      </button>
+      {msg?.error && <p role="alert" className="text-sm text-bad">{msg.error}</p>}
+    </div>
+  );
+}
