@@ -57,6 +57,8 @@ export interface WorkoutStep {
   zone?: string;
   /** Esercizio della scheda di palestra (serie, ripetizioni, carico previsti). */
   exercise?: GymExercise;
+  /** Distanza calcolata dalla durata e dal passo previsto (corsa): si mostra in km, la durata resta indicativa. */
+  kmEstimated?: boolean;
 }
 
 export interface WorkoutStructure {
@@ -92,6 +94,8 @@ export interface PlannedWorkout {
   skipReason?: string;
   /** Da dove vengono i passi mostrati (calcolati al momento, non salvati). */
   paceSource?: string;
+  /** Distanza totale stimata dai passi (corsa), quando la seduta è a tempo. */
+  distanceEstimated?: boolean;
 }
 
 export interface Feedback {

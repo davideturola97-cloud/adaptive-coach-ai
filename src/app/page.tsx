@@ -53,7 +53,7 @@ function TodayWorkout({ w, done, stravaOn, demo }: { w: PlannedWorkout; done?: C
         <div className="min-w-0">
           <SportBadge sport={w.sport} />
           <h2 className="mt-2 text-xl font-bold">{w.title}</h2>
-          <p className="mt-1 text-sm text-muted">{formatDuration(w.durationMin)} · {w.intensity}</p>
+          <p className="mt-1 text-sm text-muted">{w.sport === "run" && w.distanceKm ? `${w.distanceEstimated ? "≈ " : ""}${w.distanceKm.toLocaleString("it-IT")} km (circa ${formatDuration(w.durationMin)})` : formatDuration(w.durationMin)} · {w.intensity}</p>
         </div>
         <StatusLabel status={w.status} />
       </div>

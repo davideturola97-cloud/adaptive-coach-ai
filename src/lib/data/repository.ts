@@ -1,5 +1,5 @@
 import "server-only";
-import { paceReference, withRunPaces } from "@/lib/training/run-paces";
+import { paceReference, withRunPacesKm } from "@/lib/training/run-paces";
 import type { CheckIn } from "@/lib/training/readiness";
 import { addDays, todayISO } from "@/lib/dates";
 import { buildDemoData, type DemoData } from "@/lib/demo/data";
@@ -64,7 +64,7 @@ export async function getAppData(): Promise<AppData> {
   const d = await loadAppData();
   const ref = paceReference(d.athlete, d.activities, d.plan, d.today, d.events);
   if (!ref) return d;
-  return { ...d, plan: d.plan.map((w) => (w.status === "programmato" ? withRunPaces(w, ref) : w)) };
+  return { ...d, plan: d.plan.map((w) => (w.status === "programmato" ? withRunPacesKm(w, ref) : w)) };
 }
 
 async function loadAppData(): Promise<AppData> {

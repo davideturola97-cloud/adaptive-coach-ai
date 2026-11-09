@@ -166,6 +166,21 @@ function repTime(km: number, t: number, [fast, slow]: readonly [number, number])
   return `≈ ${sec(t * fast)}–${sec(t * slow)} ogni ${what}`;
 }
 
+/** Km arrotondati al mezzo km (minimo 0,5). */
+const halfKm = (km: number) => Math.max(0.5, Math.round(km * 2) / 2);
+const mins = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h ${String(Math.round(m % 60)).padStart(2, "0")}'` : `${Math.round(m)}'`);
+
+/**
+ * Fase continua a tempo (riscaldamento, corsa facile, lungo, finale, defaticamento): diventa in km al passo medio della sua fascia.
+ * Le ripetute restano come sono (a distanza o a tempo, con i metri per frazione).
+ */
+function inKm(s: WorkoutStep, paceSec: number, range: string): WorkoutStep {
+  if (s.repeat || s.distanceKm || !s.durationMin || s.durationMin < 3) return withTarget(s, range);
+  const km = halfKm((s.durationMin * 60) / paceSec);
+  return { ...s, distanceKm: km, kmEstimated: true, target: { value: `${range} (≈ ${mins(s.durationMin)})`, origin: "stimato" } };
+}
+const mid = (t: number, [a, b]: readonly [number, number]) => t * (a + b) / 2;
+
 /** Seduta di corsa con i passi su ogni fase. Le altre sedute restano invariate. */
 export function withRunPaces<T extends PlannedWorkout>(w: T, ref: PaceReference | null): T {
   if (w.sport !== "run" || !ref) return w;
@@ -174,8 +189,8 @@ export function withRunPaces<T extends PlannedWorkout>(w: T, ref: PaceReference 
   const racePace = target ? target.goalSec / target.raceKm : undefined;
   const raceRange = (p: number) => `${paceText(Math.round(p - 3))} – ${paceText(Math.round(p + 3))} /km (ritmo obiettivo ${target!.raceName})`;
   const main = w.structure.main.map((s) => {
-    if (w.type === "progressivo") {
-      return withTarget(s, `da ${paceText(r5(t * 1.25))} a ${paceText(r5(t * 1.02))} /km: un terzo a ${paceText(r5(t * 1.25))}, uno a ${paceText(r5(t * 1.12))}, l'ultimo a ${paceText(r5(t * 1.02))}`);
+    if (w.type === "progressivo" && s.zone !== "rpe" && !isZone(s.zone)) {
+      return inKm(s, t * 1.13, `da ${paceText(r5(t * 1.25))} a ${paceText(r5(t * 1.02))} /km: un terzo a ${paceText(r5(t * 1.25))}, uno a ${paceText(r5(t * 1.12))}, l'ultimo a ${paceText(r5(t * 1.02))}`);
     }
     if (w.type === "test_corsa") {
       const p = ref.fiveKPaceSec ?? t / 1.04 / 1.03;
@@ -186,6 +201,7 @@ export function withRunPaces<T extends PlannedWorkout>(w: T, ref: PaceReference 
     const zone = isZone(s.zone) ? s.zone : MAIN_ZONE[w.type];
     if (!zone) return s;
     if (racePace && target?.zone === zone) {
+      if (!s.repeat && !s.distanceKm && s.durationMin) return inKm(s, racePace, raceRange(racePace));
       const hintR = s.distanceKm ? ` · ≈ ${paceText(racePace * s.distanceKm)} ogni ${s.distanceKm < 1 ? `${Math.round(s.distanceKm * 1000)} m` : `${String(s.distanceKm).replace(".", ",")} km`}` : "";
       return withTarget(s, `${raceRange(racePace)}${hintR}`);
     }
@@ -196,6 +212,7 @@ export function withRunPaces<T extends PlannedWorkout>(w: T, ref: PaceReference 
       : s.distanceKm ? ` (${repTime(s.distanceKm, t, z)})`
       : s.repeat && s.durationMin && fast ? ` (${repDistance(s.durationMin, t, z)} ogni ${zone === "soglia" || zone === "mezza" ? "blocco" : "frazione"})`
       : "";
+    if (!s.repeat && !s.distanceKm && s.durationMin) return inKm(s, mid(t, z), paceRange(t, z));
     return withTarget(s, `${paceRange(t, z)}${hint}`);
   });
   const hasReps = w.structure.main.some((s) => (s.repeat ?? 1) > 1 && s.zone !== "rpe") || Boolean(w.structure.recoveries && w.structure.recoveryZone);
@@ -211,10 +228,25 @@ export function withRunPaces<T extends PlannedWorkout>(w: T, ref: PaceReference 
     paceSource: `${ref.source}${progress}${target?.easyGoal && target.possibleSec ? `. Il tuo obiettivo è alla portata: le sedute di qualità puntano comunque a migliorare, verso il "possibile" (${formatRaceTime(target.possibleSec)}); le sedute a ritmo gara restano sul tuo passo` : ""}${target?.ambitious ? ". Il tuo obiettivo è più veloce dell'\"ambizioso\": la progressione si ferma lì per sicurezza, le sedute a ritmo gara usano comunque il tuo passo" : ""}`,
     structure: {
       ...w.structure,
-      warmup: w.structure.warmup.map((s) => (s.zone === "rpe" ? s : withTarget(s, paceRange(t, ZONES.riscaldamento)))),
+      warmup: w.structure.warmup.map((s) => (s.zone === "rpe" ? s : inKm(s, mid(t, ZONES.riscaldamento), paceRange(t, ZONES.riscaldamento)))),
       main,
       ...(hasReps && recZone !== "rpe" && { recoveryTarget: { value: paceRange(t, ZONES[isZone(recZone) ? recZone : "recuperoTraProve"]), origin: "stimato" as const } }),
-      cooldown: w.structure.cooldown.map((s) => withTarget(s, paceRange(t, ZONES.defaticamento))),
+      cooldown: w.structure.cooldown.map((s) => inKm(s, mid(t, ZONES.defaticamento), paceRange(t, ZONES.defaticamento))),
     },
   };
+}
+
+/** Seduta di corsa con passi e, per le fasi a tempo, i km; più la distanza totale stimata. */
+export function withRunPacesKm<T extends PlannedWorkout>(w: T, ref: PaceReference | null): T {
+  const out = withRunPaces(w, ref);
+  if (out === w || w.distanceKm) return out;
+  const st = out.structure;
+  const { t } = ref ? thresholdOn(ref, w.date) : { t: 0 };
+  const stepKm = (s: WorkoutStep) => {
+    if (s.zone === "rpe" && !s.distanceKm) return ((s.durationMin ?? 0) * (s.repeat ?? 1) * 60) / (t * 1.1);
+    if (s.distanceKm) return s.distanceKm * (s.repeat ?? 1);
+    return ((s.durationMin ?? 0) * (s.repeat ?? 1) * 60) / (t * 1.0);
+  };
+  const total = [...st.warmup, ...st.main, ...st.cooldown].reduce((sum, s) => sum + stepKm(s), 0);
+  return total > 0 ? { ...out, distanceKm: halfKm(total), distanceEstimated: true } : out;
 }

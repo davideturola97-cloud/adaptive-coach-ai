@@ -100,7 +100,7 @@ export function WorkoutRow({ w, showDate = true }: { w: PlannedWorkout; showDate
         <p className="truncate font-semibold">{w.title}</p>
         <p className="truncate text-xs text-muted">
           {showDate && `${weekdayName(w.date, true)} ${formatDayMonth(w.date)} · `}
-          {WORKOUT_TYPE_LABEL[w.type]} · {formatDuration(w.durationMin)} · {w.intensity}
+          {WORKOUT_TYPE_LABEL[w.type]} · {w.sport === "run" && w.distanceKm ? `${w.distanceEstimated ? "≈ " : ""}${w.distanceKm.toLocaleString("it-IT")} km` : formatDuration(w.durationMin)} · {w.intensity}
         </p>
       </div>
       <StatusLabel status={w.status} />

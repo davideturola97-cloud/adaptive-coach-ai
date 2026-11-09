@@ -45,7 +45,7 @@ function workoutLine(w: PlannedWorkout) {
         ...st.cooldown.map((x) => `defaticamento ${x.target?.value ?? "-"}`),
       ].join("; ")}`
     : "";
-  return `${w.date} (${d(w.date)}) · ${SPORTS[w.sport].label} · ${w.title} [${WORKOUT_TYPE_LABEL[w.type]}] · ${formatDuration(w.durationMin)} · ${w.intensity} · stato: ${w.status} · id: ${w.id}${paces}`;
+  return `${w.date} (${d(w.date)}) · ${SPORTS[w.sport].label} · ${w.title} [${WORKOUT_TYPE_LABEL[w.type]}] · ${w.sport === "run" && w.distanceKm ? `${w.distanceEstimated ? "circa " : ""}${w.distanceKm} km (${formatDuration(w.durationMin)})` : formatDuration(w.durationMin)} · ${w.intensity} · stato: ${w.status} · id: ${w.id}${paces}`;
 }
 
 const WEEKDAY_FULL = ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"];

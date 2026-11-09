@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CompletedActivity, PlannedWorkout } from "@/lib/domain/types";
-import { paceRange, paceReference, thresholdOn, withRunPaces } from "./run-paces";
+import { paceRange, paceReference, thresholdOn, withRunPaces, withRunPacesKm } from "./run-paces";
 import { template } from "./templates";
 
 const w = (type: PlannedWorkout["type"]) => ({ ...template(type), id: "x", date: "2026-11-05", status: "programmato" } as PlannedWorkout);
@@ -15,15 +15,18 @@ describe("passi al km per le sedute di corsa", () => {
     const r = withRunPaces(w("ripetute"), REF);
     expect(r.structure.main[0].target).toEqual({ value: "4:20 – 4:30 /km (≈ 670–690 m ogni frazione)", origin: "stimato" });
     expect(r.structure.recoveryTarget?.value).toBe("6:20 – 7:15 /km");
-    expect(r.structure.warmup[0].target?.value).toBe("5:50 – 6:30 /km");
-    expect(r.structure.cooldown[0].target?.value).toBe("6:00 – 6:45 /km");
+    expect(r.structure.warmup[0].target?.value).toBe("5:50 – 6:30 /km (≈ 15')");
+    expect(r.structure.warmup[0]).toMatchObject({ distanceKm: 2.5, kmEstimated: true });
+    expect(r.structure.cooldown[0].target?.value).toBe("6:00 – 6:45 /km (≈ 10')");
     expect(r.paceSource).toBe("test del 01/11");
   });
 
   it("ogni tipo di corsa ha il suo passo; bici e sedute senza riferimento invariate", () => {
-    expect(withRunPaces(w("corsa_facile"), REF).structure.main[0].target?.value).toBe("5:35 – 6:10 /km");
+    const easy = withRunPaces(w("corsa_facile"), REF).structure.main[0];
+    expect(easy.target?.value).toBe("5:35 – 6:10 /km (≈ 35')");
+    expect(easy.distanceKm).toBe(6);
     expect(withRunPaces(w("tempo_run"), REF).structure.main[0].target?.value).toMatch(/^4:35 – 4:50 \/km \(≈ 2\d{3}–2\d{3} m ogni blocco\)$/);
-    expect(withRunPaces(w("lungo"), REF).structure.main[0].target?.value).toBe("5:20 – 5:55 /km");
+    expect(withRunPaces(w("lungo"), REF).structure.main[0].target?.value).toBe("5:20 – 5:55 /km (≈ 1h 10')");
     expect(withRunPaces(w("progressivo"), REF).structure.main[0].target?.value).toMatch(/^da 5:50 a 4:45/);
     expect(withRunPaces(w("test_corsa"), REF).structure.main[0].target?.value).toMatch(/^parti a 4:35/);
     const bike = w("endurance");
@@ -105,5 +108,15 @@ describe("obiettivo facile", () => {
     const ref = paceReference({}, acts, [], today, [easy])!;
     expect(ref.targets![0].easyGoal).toBe(true);
     expect(thresholdOn(ref, "2026-12-05").t).toBeLessThan(ref.thresholdSec);
+  });
+});
+
+describe("corsa in km", () => {
+  it("il lungo da 1h45 diventa circa 20,5 km; la seduta ha la distanza totale", () => {
+    const long = { ...template("lungo"), id: "l", date: "2026-11-15", status: "programmato", structure: { warmup: [], main: [{ label: "Corsa continua", durationMin: 105, rpe: [4, 5] }], cooldown: [] } } as unknown as PlannedWorkout;
+    const r = withRunPacesKm(long, { thresholdSec: 255, source: "test" }); // soglia 4:15 → lungo ~5:14 /km
+    expect(r.structure.main[0].distanceKm).toBe(20.5);
+    expect(r.structure.main[0].target?.value).toMatch(/\(≈ 1h 45'\)$/);
+    expect(r).toMatchObject({ distanceKm: 20.5, distanceEstimated: true });
   });
 });

@@ -36,7 +36,11 @@ function Step({ s }: { s: WorkoutStep }) {
         )}
       </div>
       <div className="shrink-0 text-right">
-        {s.durationMin !== undefined && <p className="num text-xl font-semibold">{formatDuration(s.durationMin)}</p>}
+        {s.kmEstimated && s.distanceKm ? (
+          <p className="num text-xl font-semibold">{s.distanceKm.toLocaleString("it-IT")} km</p>
+        ) : s.durationMin !== undefined ? (
+          <p className="num text-xl font-semibold">{formatDuration(s.durationMin)}</p>
+        ) : null}
         <p className="text-xs text-muted">RPE {s.rpe[0] === s.rpe[1] ? s.rpe[0] : `${s.rpe[0]}–${s.rpe[1]}`}</p>
       </div>
     </li>
@@ -80,7 +84,15 @@ export default async function WorkoutPage({ params, searchParams }: { params: Pr
       </header>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Card><p className="text-xs text-muted">Durata</p><p className="num text-3xl font-semibold">{formatDuration(w.durationMin)}</p></Card>
+        {w.sport === "run" && w.distanceKm ? (
+          <Card>
+            <p className="text-xs text-muted">Distanza</p>
+            <p className="num text-3xl font-semibold">{w.distanceEstimated ? "≈ " : ""}{w.distanceKm.toLocaleString("it-IT")} km</p>
+            <p className="text-xs text-muted">circa {formatDuration(w.durationMin)}</p>
+          </Card>
+        ) : (
+          <Card><p className="text-xs text-muted">Durata</p><p className="num text-3xl font-semibold">{formatDuration(w.durationMin)}</p></Card>
+        )}
         <Card><p className="text-xs text-muted">Intensità</p><p className="mt-1 font-semibold">{w.intensity}</p></Card>
         <Card className="col-span-2 sm:col-span-1"><p className="text-xs text-muted">Obiettivo</p><p className="mt-1 text-sm">{w.objective}</p></Card>
       </div>

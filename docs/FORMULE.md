@@ -295,3 +295,9 @@ Verso la prossima gara di corsa con un obiettivo (il tuo, altrimenti il "possibi
 - Obiettivo e struttura: salto = (previsione − obiettivo) ÷ previsione. Con un salto ≥ 1% il lavoro a ritmo gara comincia
   8 settimane prima della gara invece di 6; con un salto ≥ 2% ogni lungo in costruzione e rifinitura ha il finale a ritmo gara.
   Nel piano gara si può scegliere sicuro, possibile o ambizioso come obiettivo con un tocco.
+
+## Corsa in km
+
+Le fasi continue a tempo (riscaldamento, corsa facile, lungo, finali, defaticamento, progressivo) si mostrano in km:
+durata ÷ passo medio della loro fascia (alla soglia della data della seduta), arrotondati al mezzo km; la durata resta
+indicata tra parentesi. Ripetute invariate. Distanza totale della seduta = somma delle fasi (≈, stimata).
