@@ -181,6 +181,21 @@ function inKm(s: WorkoutStep, paceSec: number, range: string): WorkoutStep {
 }
 const mid = (t: number, [a, b]: readonly [number, number]) => t * (a + b) / 2;
 
+/** Metri "tondi" per una frazione: a 50 m sotto il km, a 100 m sopra. */
+export function roundMeters(m: number): number {
+  return m < 1000 ? Math.max(100, Math.round(m / 50) * 50) : Math.round(m / 100) * 100;
+}
+export const distText = (km: number) => (km < 1 ? `${Math.round(km * 1000)} m` : `${String(Math.round(km * 10) / 10).replace(".", ",")} km`);
+
+/** Ripetuta a tempo → a distanza, al passo medio della sua fascia: 6 × 3' → 6 × 700 m. */
+function repInKm(s: WorkoutStep, paceSec: number, range: string): WorkoutStep {
+  if (!s.repeat || s.distanceKm || !s.durationMin) return withTarget(s, range);
+  const km = roundMeters(((s.durationMin * 60) / paceSec) * 1000) / 1000;
+  const secs = Math.round(s.durationMin * 60);
+  const dur = secs % 60 ? `${Math.floor(secs / 60) ? `${Math.floor(secs / 60)}'` : ""}${secs % 60}″` : `${secs / 60}'`;
+  return { ...s, label: "Frazione", distanceKm: km, kmEstimated: true, target: { value: `${range} (≈ ${dur} ognuna)`, origin: "stimato" } };
+}
+
 /** Seduta di corsa con i passi su ogni fase. Le altre sedute restano invariate. */
 export function withRunPaces<T extends PlannedWorkout>(w: T, ref: PaceReference | null): T {
   if (w.sport !== "run" || !ref) return w;
@@ -202,6 +217,7 @@ export function withRunPaces<T extends PlannedWorkout>(w: T, ref: PaceReference 
     if (!zone) return s;
     if (racePace && target?.zone === zone) {
       if (!s.repeat && !s.distanceKm && s.durationMin) return inKm(s, racePace, raceRange(racePace));
+      if (s.repeat && !s.distanceKm && s.durationMin) return repInKm(s, racePace, raceRange(racePace));
       const hintR = s.distanceKm ? ` · ≈ ${paceText(racePace * s.distanceKm)} ogni ${s.distanceKm < 1 ? `${Math.round(s.distanceKm * 1000)} m` : `${String(s.distanceKm).replace(".", ",")} km`}` : "";
       return withTarget(s, `${raceRange(racePace)}${hintR}`);
     }
@@ -213,6 +229,7 @@ export function withRunPaces<T extends PlannedWorkout>(w: T, ref: PaceReference 
       : s.repeat && s.durationMin && fast ? ` (${repDistance(s.durationMin, t, z)} ogni ${zone === "soglia" || zone === "mezza" ? "blocco" : "frazione"})`
       : "";
     if (!s.repeat && !s.distanceKm && s.durationMin) return inKm(s, mid(t, z), paceRange(t, z));
+    if (s.repeat && !s.distanceKm && s.durationMin) return repInKm(s, mid(t, z), paceRange(t, z));
     return withTarget(s, `${paceRange(t, z)}${hint}`);
   });
   const hasReps = w.structure.main.some((s) => (s.repeat ?? 1) > 1 && s.zone !== "rpe") || Boolean(w.structure.recoveries && w.structure.recoveryZone);
@@ -230,7 +247,14 @@ export function withRunPaces<T extends PlannedWorkout>(w: T, ref: PaceReference 
       ...w.structure,
       warmup: w.structure.warmup.map((s) => (s.zone === "rpe" ? s : inKm(s, mid(t, ZONES.riscaldamento), paceRange(t, ZONES.riscaldamento)))),
       main,
-      ...(hasReps && recZone !== "rpe" && { recoveryTarget: { value: paceRange(t, ZONES[isZone(recZone) ? recZone : "recuperoTraProve"]), origin: "stimato" as const } }),
+      ...(hasReps && recZone !== "rpe" && {
+        recoveryTarget: (() => {
+          const z = ZONES[isZone(recZone) ? recZone : "recuperoTraProve"];
+          const rm = w.structure.recoveryMin;
+          const meters = rm ? roundMeters(((rm * 60) / mid(t, z)) * 1000) : undefined;
+          return { value: `${paceRange(t, z)}${meters ? ` · circa ${meters} m ogni recupero` : ""}`, origin: "stimato" as const };
+        })(),
+      }),
       cooldown: w.structure.cooldown.map((s) => inKm(s, mid(t, ZONES.defaticamento), paceRange(t, ZONES.defaticamento))),
     },
   };
@@ -247,6 +271,10 @@ export function withRunPacesKm<T extends PlannedWorkout>(w: T, ref: PaceReferenc
     if (s.distanceKm) return s.distanceKm * (s.repeat ?? 1);
     return ((s.durationMin ?? 0) * (s.repeat ?? 1) * 60) / (t * 1.0);
   };
-  const total = [...st.warmup, ...st.main, ...st.cooldown].reduce((sum, s) => sum + stepKm(s), 0);
-  return total > 0 ? { ...out, distanceKm: halfKm(total), distanceEstimated: true } : out;
+  const recKm = st.recoveryMin && st.recoveryZone !== "rpe" ? (st.main.reduce((n, s) => n + Math.max(0, (s.repeat ?? 1) - 1), 0) * st.recoveryMin * 60) / (t * 1.45) : 0;
+  const total = [...st.warmup, ...st.main, ...st.cooldown].reduce((sum, s) => sum + stepKm(s), 0) + recKm;
+  // Titolo con le distanze: "Ripetute VO₂max 6 × 2'" → "Ripetute VO₂max 6 × 500 m".
+  const conv = st.main.find((s) => s.kmEstimated && s.repeat && s.distanceKm);
+  const title = conv ? out.title.replace(/(\d+) × [\d'″"]+$/, `$1 × ${distText(conv.distanceKm!)}`) : out.title;
+  return total > 0 ? { ...out, title, distanceKm: halfKm(total), distanceEstimated: true } : { ...out, title };
 }

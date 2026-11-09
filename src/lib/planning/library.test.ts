@@ -38,7 +38,7 @@ describe("libreria delle sedute", () => {
     const w = withRunPaces({ ...s, id: "x", date: TODAY, sport: "run", status: "programmato", safetyNotes: [] } as PlannedWorkout, { thresholdSec: 280, source: "test" });
     expect(w.structure.main[0].target?.value).toBe("4:20 – 4:30 /km (≈ 4:20–4:30 ogni 1 km)");
     expect(w.structure.warmup[1].target).toBeUndefined(); // allunghi a sensazione
-    expect(w.structure.recoveryTarget?.value).toBe("6:20 – 7:15 /km");
+    expect(w.structure.recoveryTarget?.value).toBe("6:20 – 7:15 /km · circa 300 m ogni recupero");
     const hills = withRunPaces({ ...buildSession("salite", 2), id: "y", date: TODAY, sport: "run", status: "programmato", safetyNotes: [] } as PlannedWorkout, { thresholdSec: 280, source: "test" });
     expect(hills.structure.main[0].target).toBeUndefined();
     expect(hills.structure.recoveryTarget).toBeUndefined();

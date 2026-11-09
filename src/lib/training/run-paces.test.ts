@@ -13,7 +13,8 @@ describe("passi al km per le sedute di corsa", () => {
 
   it("ripetute: passo, metri per ripetuta, recuperi, riscaldamento e defaticamento", () => {
     const r = withRunPaces(w("ripetute"), REF);
-    expect(r.structure.main[0].target).toEqual({ value: "4:20 – 4:30 /km (≈ 670–690 m ogni frazione)", origin: "stimato" });
+    expect(r.structure.main[0].target).toEqual({ value: "4:20 – 4:30 /km (≈ 3' ognuna)", origin: "stimato" });
+    expect(r.structure.main[0]).toMatchObject({ label: "Frazione", distanceKm: 0.7, repeat: 6 });
     expect(r.structure.recoveryTarget?.value).toBe("6:20 – 7:15 /km");
     expect(r.structure.warmup[0].target?.value).toBe("5:50 – 6:30 /km (≈ 15')");
     expect(r.structure.warmup[0]).toMatchObject({ distanceKm: 2.5, kmEstimated: true });
@@ -25,7 +26,9 @@ describe("passi al km per le sedute di corsa", () => {
     const easy = withRunPaces(w("corsa_facile"), REF).structure.main[0];
     expect(easy.target?.value).toBe("5:35 – 6:10 /km (≈ 35')");
     expect(easy.distanceKm).toBe(6);
-    expect(withRunPaces(w("tempo_run"), REF).structure.main[0].target?.value).toMatch(/^4:35 – 4:50 \/km \(≈ 2\d{3}–2\d{3} m ogni blocco\)$/);
+    const tempo = withRunPaces(w("tempo_run"), REF).structure.main[0];
+    expect(tempo.target?.value).toBe("4:35 – 4:50 /km (≈ 12' ognuna)");
+    expect(tempo.distanceKm).toBeGreaterThan(2.4);
     expect(withRunPaces(w("lungo"), REF).structure.main[0].target?.value).toBe("5:20 – 5:55 /km (≈ 1h 10')");
     expect(withRunPaces(w("progressivo"), REF).structure.main[0].target?.value).toMatch(/^da 5:50 a 4:45/);
     expect(withRunPaces(w("test_corsa"), REF).structure.main[0].target?.value).toMatch(/^parti a 4:35/);
@@ -118,5 +121,13 @@ describe("corsa in km", () => {
     expect(r.structure.main[0].distanceKm).toBe(20.5);
     expect(r.structure.main[0].target?.value).toMatch(/\(≈ 1h 45'\)$/);
     expect(r).toMatchObject({ distanceKm: 20.5, distanceEstimated: true });
+  });
+});
+
+describe("ripetute in distanza", () => {
+  it("6 × 3' diventa 6 × 700 m anche nel titolo; recuperi con i metri", () => {
+    const r = withRunPacesKm({ ...template("ripetute"), id: "x", date: "2026-11-15", status: "programmato" } as PlannedWorkout, REF);
+    expect(r.title).toBe("Ripetute 6 × 700 m");
+    expect(r.distanceEstimated).toBe(true);
   });
 });

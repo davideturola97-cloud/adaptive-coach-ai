@@ -301,3 +301,6 @@ Verso la prossima gara di corsa con un obiettivo (il tuo, altrimenti il "possibi
 Le fasi continue a tempo (riscaldamento, corsa facile, lungo, finali, defaticamento, progressivo) si mostrano in km:
 durata ÷ passo medio della loro fascia (alla soglia della data della seduta), arrotondati al mezzo km; la durata resta
 indicata tra parentesi. Ripetute invariate. Distanza totale della seduta = somma delle fasi (≈, stimata).
+Ripetute a tempo: ogni frazione diventa una distanza al passo medio della sua fascia, arrotondata a 50 m sotto il km e a 100 m
+sopra (es. 6 × 3' → 6 × 700 m); anche il titolo. Recuperi: circa i metri corrispondenti alla durata al passo del recupero.
+Le salite restano a tempo (il passo in salita non conta).

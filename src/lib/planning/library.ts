@@ -215,7 +215,7 @@ export function buildSession(f: Family, level: number, thresholdSec?: number): L
     structure: {
       warmup,
       main: [main],
-      ...(r.rec > 0 && { recoveries: def.recText(r), recoveryZone: def.recZone || undefined }),
+      ...(r.rec > 0 && { recoveries: def.recText(r), recoveryZone: def.recZone || undefined, recoveryMin: r.rec }),
       cooldown: [{ label: "Defaticamento", durationMin: def.cool, rpe: [1, 2] }],
       session: { family: f, level: L, maxLevel: def.levels.length },
     },

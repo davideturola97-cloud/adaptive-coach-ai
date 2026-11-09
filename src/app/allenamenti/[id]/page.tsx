@@ -37,7 +37,7 @@ function Step({ s }: { s: WorkoutStep }) {
       </div>
       <div className="shrink-0 text-right">
         {s.kmEstimated && s.distanceKm ? (
-          <p className="num text-xl font-semibold">{s.distanceKm.toLocaleString("it-IT")} km</p>
+          <p className="num text-xl font-semibold">{s.distanceKm < 1 ? `${Math.round(s.distanceKm * 1000)} m` : `${s.distanceKm.toLocaleString("it-IT")} km`}</p>
         ) : s.durationMin !== undefined ? (
           <p className="num text-xl font-semibold">{formatDuration(s.durationMin)}</p>
         ) : null}

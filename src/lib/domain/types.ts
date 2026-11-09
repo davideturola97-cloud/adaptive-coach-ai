@@ -69,6 +69,8 @@ export interface WorkoutStructure {
   recoveryTarget?: { value: string; origin: ValueOrigin };
   /** Zona di passo dei recuperi (corsa): "recuperoTraProve" di default, "rpe" se si cammina o si scende da una salita. */
   recoveryZone?: string;
+  /** Durata di ogni recupero tra le frazioni, in minuti (per indicarlo anche in metri). */
+  recoveryMin?: number;
   /** Seduta della libreria: famiglia e livello, per far progredire le sedute successive. */
   session?: { family: string; level: number; maxLevel: number };
   cooldown: WorkoutStep[];
