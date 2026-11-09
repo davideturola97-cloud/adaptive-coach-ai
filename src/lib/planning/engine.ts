@@ -386,7 +386,20 @@ export function generatePlan(input: PlanInput): PlanDraft {
         let longMin = Math.min(maxLong, minutes * (s === "run" ? 0.38 : 0.45));
         // Il lungo cresce poco per volta dal lungo più lungo reale: +10' a settimana nella corsa, +15' in bici.
         if (prevLong[s]) longMin = Math.min(longMin, prevLong[s]! + (s === "run" ? 10 : 15));
-        if (phase === "scarico") longMin *= 0.75;
+        // Avvicinamento a una gara importante, come farebbe un allenatore:
+        // la settimana prima un lungo corto e facile (55% del più lungo, max 65' per mezza e gare brevi, 100' per la maratona);
+        // due settimane prima il lungo non cresce più e scende di circa il 15%. Il lungo più impegnativo cade 3 settimane prima.
+        const daysToRace = target ? daysBetween(weekStart, target.date) : undefined;
+        const keyRace = target && target.priority === "A";
+        const longRace = target ? (target.kind === "triathlon" ? (target.legs?.runKm ?? 10) : target.distanceKm ?? 10) >= 30 : false;
+        const peak = prevLong[s] ?? longMin;
+        if (keyRace && phase === "scarico" && daysToRace !== undefined && daysToRace <= 13) {
+          longMin = Math.min(longMin, peak * 0.55, s === "run" ? (longRace ? 100 : 65) : 90);
+        } else if (keyRace && daysToRace !== undefined && daysToRace <= 20) {
+          longMin = Math.min(longMin, peak * 0.85);
+        } else if (phase === "scarico") {
+          longMin *= 0.75;
+        }
         prevLong[s] = Math.max(prevLong[s] ?? 0, longMin);
         sportSlots.push({ sport: s, role: "lungo", type, minutes: longMin, priority: 1 });
       }

@@ -304,3 +304,9 @@ indicata tra parentesi. Ripetute invariate. Distanza totale della seduta = somma
 Ripetute a tempo: ogni frazione diventa una distanza al passo medio della sua fascia, arrotondata a 50 m sotto il km e a 100 m
 sopra (es. 6 × 3' → 6 × 700 m); anche il titolo. Recuperi: circa i metri corrispondenti alla durata al passo del recupero.
 Le salite restano a tempo (il passo in salita non conta).
+
+## Lungo in avvicinamento a una gara A (engine.ts)
+
+Settimana prima della gara (scarico): lungo = il minore tra il calcolo normale, 55% del lungo più lungo del periodo e 65'
+(mezza e gare più brevi) o 100' (maratona); 90' per la bici. Due settimane prima: al massimo l'85% del più lungo.
+Il lungo più impegnativo cade quindi 3 settimane prima. Le settimane di scarico ordinarie (una ogni quattro) restano −25%.

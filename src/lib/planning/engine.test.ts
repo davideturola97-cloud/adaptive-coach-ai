@@ -208,3 +208,18 @@ describe("stabilità", () => {
     expect(daysBetween(plan.startDate, plan.endDate)).toBeGreaterThan(100);
   });
 });
+
+describe("lungo in avvicinamento alla gara", () => {
+  it("la domenica prima della mezza: lungo corto, mai il più lungo del periodo", () => {
+    const runner = { ...athlete, sports: [{ sport: "run" as const, level: "intermedio" as const, yearsExperience: 4 }], weeklyHoursAvailable: 6, longSessionMaxMin: 130, sportDays: {} };
+    const p = generatePlan({ today, athlete: runner, events: [reggio], weeks: 8 });
+    const longs = p.workouts.filter((w) => w.type === "lungo");
+    const before = longs.find((w) => w.date === "2026-12-06")!;
+    expect(before).toBeTruthy();
+    expect(before.durationMin).toBeLessThanOrEqual(65 + 20); // corsa ≤ 65' più riscaldamento e defaticamento
+    const peak = Math.max(...longs.filter((w) => w.date < "2026-12-06").map((w) => w.durationMin));
+    expect(before.durationMin).toBeLessThan(peak * 0.75);
+    const twoBefore = longs.find((w) => w.date === "2026-11-29");
+    if (twoBefore) expect(twoBefore.durationMin).toBeLessThanOrEqual(peak);
+  });
+});
